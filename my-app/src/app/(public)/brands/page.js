@@ -167,6 +167,7 @@ export default function BrandsDirectoryPage() {
                     <div className="flex justify-between items-start gap-4">
                       <img
                         src={brand.logo}
+                        loading="lazy"
                         alt={`${brand.brandName} logo`}
                         onError={fallbackImg}
                         className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shrink-0 shadow-sm bg-white"

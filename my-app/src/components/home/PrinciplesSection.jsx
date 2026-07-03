@@ -31,6 +31,7 @@ export default function PrinciplesSection() {
             {/* Top Small Shield Banner Graphic */}
             <div className="overflow-hidden rounded-xl border border-gray-100 shadow-md">
               <img 
+                loading="lazy"
                 src={dummyPrinciplesData.topBadgeImage} 
                 alt="SBS Principles Shield Certifications" 
                 className="w-full h-auto object-cover max-h-[140px]"

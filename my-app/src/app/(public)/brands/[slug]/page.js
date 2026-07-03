@@ -98,6 +98,7 @@ export default function SingleBrandDynamicProfileView() {
           
           <div className="flex flex-col md:flex-row gap-6 items-start relative z-10">
             <img 
+              loading="lazy"
               src={brand.logo} 
               alt={`${brand.brandName} Logo`}
               onError={fallbackImg}
@@ -219,6 +220,7 @@ export default function SingleBrandDynamicProfileView() {
                 >
                   <img 
                     src={imgUrl} 
+                    loading="lazy" 
                     alt="Gallery Image" 
                     onError={fallbackImg}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -242,6 +244,7 @@ export default function SingleBrandDynamicProfileView() {
           <button className="absolute top-6 right-6 text-white text-sm font-black uppercase tracking-widest bg-white/10 px-3 py-1.5 rounded-full hover:bg-white/20">✕ Close</button>
           <img 
             src={brand.gallery[activeImgIndex]} 
+            loading="lazy"
             alt="Asset View" 
             onError={fallbackImg}
             className="max-h-[85vh] max-w-[95vw] rounded-xl object-contain border border-white/10"

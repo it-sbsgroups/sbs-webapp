@@ -83,7 +83,7 @@ export default function PublicAboutPage() {
                 {journeyImages.map((img, i) => (
                   <div key={i} className={`flex flex-col md:flex-row items-center gap-6 ${i % 2 === 1 ? "md:flex-row-reverse" : ""}`}>
                     <div className="flex-1">
-                      <img src={img.url} alt={img.caption || ""} className="w-full rounded-2xl border border-slate-200 shadow-sm object-cover max-h-80" />
+                      <img loading="lazy" src={img.url} alt={img.caption || ""} className="w-full rounded-2xl border border-slate-200 shadow-sm object-cover max-h-80" />
                     </div>
                     <div className="flex-1 text-center md:text-left px-4">
                       {img.year && (
@@ -154,7 +154,7 @@ export default function PublicAboutPage() {
               {[founders.founder, founders.coFounder].filter((f) => f?.name).map((f, i) => (
                 <div key={i} className="bg-white border border-slate-200 rounded-3xl p-6 text-center space-y-3 shadow-sm">
                   {f.photoUrl ? (
-                    <img src={f.photoUrl} alt={f.name} className="w-24 h-28 object-cover rounded-2xl mx-auto border border-slate-200" />
+                    <img loading="lazy" src={f.photoUrl} alt={f.name} className="w-24 h-28 object-cover rounded-2xl mx-auto border border-slate-200" />
                   ) : (
                     <div className="w-24 h-28 mx-auto bg-slate-100 rounded-2xl flex items-center justify-center">
                       <Icon n="person" cls="text-3xl text-slate-300" />

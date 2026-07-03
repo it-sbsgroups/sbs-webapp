@@ -1,12 +1,5 @@
 "use client";
 
-// app/employees/[slug]/page.js  (FULL REPLACEMENT)
-// Changes:
-//  - Removed the "Connect Online" social icon strip entirely
-//  - Email is shown as the full plain-text address (not hidden behind an
-//    icon button) and wrapped in a real mailto: link
-//  - Confirmed white/black theme throughout (this page was already correct;
-//    kept consistent with the corrected listing page)
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -19,7 +12,6 @@ function toEmpCard(e) {
   return { ...e, name, tag: e.tag || e.designation || e.department || "Team" };
 }
 
-/** Strips any tel: prefix and returns a clean display string + a valid tel: href */
 function telParts(raw) {
   if (!raw) return null;
   const display = raw.replace(/^tel:/, "").trim();
@@ -27,7 +19,6 @@ function telParts(raw) {
   return { display, href: `tel:${display.replace(/\s+/g, "")}` };
 }
 
-/** Strips any mailto: prefix and returns a clean display string + a valid mailto: href */
 function mailParts(raw) {
   if (!raw) return null;
   const display = raw.replace(/^mailto:/, "").trim();
@@ -85,7 +76,7 @@ export default function PublicEmployeeProfileDetail() {
           {/* IDENTITY HEADER */}
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left border-b border-slate-100 pb-6">
             <div className={`shrink-0 w-28 h-28 rounded-3xl bg-gradient-to-br ${profile.bgGradient || "from-slate-100 to-slate-200"} p-1 shadow-sm`}>
-              <img src={profile.avatar} alt={profile.name} className="w-full h-full object-cover object-top rounded-[1.25rem] bg-slate-100" />
+              <img loading="lazy" src={profile.avatar} alt={profile.name} className="w-full h-full object-cover object-top rounded-[1.25rem] bg-slate-100" />
             </div>
             <div className="space-y-1.5 w-full">
               <div className="flex items-center justify-center sm:justify-start gap-1.5">
@@ -115,7 +106,6 @@ export default function PublicEmployeeProfileDetail() {
             </div>
           )}
 
-          {/* CONTACT INFO GRID — email shown in full, mailto enabled, no icon-only links */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2.5">
               <span className="text-[9px] font-black uppercase text-slate-400">Direct Contact</span>
@@ -153,11 +143,8 @@ export default function PublicEmployeeProfileDetail() {
               )}
             </div>
           </div>
-
-          {/* Social icon strip intentionally removed per request */}
         </div>
 
-        {/* MORE TEAM MEMBERS */}
         <div className="space-y-3">
           <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">More From The Team</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

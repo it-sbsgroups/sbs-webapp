@@ -60,8 +60,7 @@ export default function ClientSlider() {
                 <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
 
                 {/* Logo */}
-                <img src={client.logo} alt={client.name}
-                  className="relative z-10 h-full w-full object-cover grayscale transition-[filter,transform] duration-700"
+                <img loading="lazy" src={client.logo} alt={client.name} className="relative z-10 h-full w-full object-cover grayscale transition-[filter,transform] duration-700"
                   style={{
                     transform: "translateZ(50px)",
                     filter: "drop-shadow(0px 4px 8px rgba(0,0,0,0.1))",

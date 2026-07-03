@@ -124,6 +124,7 @@ export default function BrandDeepNestedGalleryView() {
 
           {/* Core HD Image viewport */}
           <img 
+            loading="lazy" 
             src={folder.photos[lightboxIndex]} 
             alt="Immersive Active Asset View" 
             onClick={(e) => e.stopPropagation()}

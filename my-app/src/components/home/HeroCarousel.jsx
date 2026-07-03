@@ -4,10 +4,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import carouselApi from "@/lib/carouselApi";
 
-// ------------------------------------------------------------------
-// Reasonable defaults so the carousel does not crash even before the
-// API responds.  They are overridden by whatever the admin configures.
-// ------------------------------------------------------------------
 const DEFAULT_SETTINGS = {
   autoplay: true,
   overlayOpacity: 0.55,
@@ -25,7 +21,6 @@ export default function HeroCarousel() {
 
   const videoRef = useRef(null);
 
-  // Fetch live data from the backend – only source of slides / settings.
   useEffect(() => {
     (async () => {
       try {
@@ -35,7 +30,6 @@ export default function HeroCarousel() {
           setSettings((prev) => ({ ...prev, ...cfg }));
         }
       } catch {
-        // API unreachable → stays with empty slides and default settings
       }
     })();
   }, []);
@@ -93,6 +87,13 @@ export default function HeroCarousel() {
     if (val === "CENTER") return "items-center text-center mx-auto";
     if (val === "RIGHT") return "items-end text-right ml-auto";
     return "items-start text-left mr-auto";
+  };
+
+  const getButtonJustifyClass = (layout) => {
+    const val = (layout || "LEFT").toUpperCase();
+    if (val === "CENTER") return "justify-center";
+    if (val === "RIGHT") return "justify-end";
+    return "justify-start";
   };
 
   const getBackgroundStyle = (slide) => {
@@ -162,11 +163,12 @@ export default function HeroCarousel() {
                   ref={isActive ? videoRef : null}
                   className="absolute inset-0 h-full w-full object-cover"
                   muted={!toBool(slide.videoSound)}
-                  playsInline
+                  playsInline 
+                  preload="none"
                   loop={toBool(slide.videoLoop)}
                   onEnded={isActive ? handleVideoEnded : undefined}
                 >
-                  <source src={slide.mediaUrl} type="video/mp4" />
+                  <source loading="lazy" src={slide.mediaUrl} type="video/mp4" />
                 </video>
               ) : (
                 <div className="absolute inset-0 h-full w-full" style={getBackgroundStyle(slide)} />

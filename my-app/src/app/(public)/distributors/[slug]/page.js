@@ -185,7 +185,7 @@ export default function PublicDistributorDynamicProfileView() {
           <div className="relative flex flex-col sm:flex-row gap-5 md:gap-6">
             {/* logo */}
             {isImageUrl(distributor.logo) ? (
-              <img src={distributor.logo} alt={`${distributor.companyName} logo`} onError={fallbackImg}
+              <img loading="lazy" src={distributor.logo} alt={`${distributor.companyName} logo`} onError={fallbackImg}
                 className="w-20 h-20 md:w-24 md:h-24 rounded-2xl object-cover border border-slate-200 shadow-sm shrink-0" />
             ) : (
               <span className="w-20 h-20 md:w-24 md:h-24 text-4xl flex items-center justify-center bg-slate-50 border border-slate-200 rounded-2xl shrink-0">
@@ -336,7 +336,7 @@ export default function PublicDistributorDynamicProfileView() {
                   onClick={() => PAGE_CONFIG.gallery.lightbox && setLightboxIndex(i)}
                   className={`${PAGE_CONFIG.gallery.thumbHeight} w-full rounded-xl overflow-hidden border border-slate-200 group relative`}
                 >
-                  <img src={img} alt={`${distributor.companyName} gallery ${i + 1}`} onError={fallbackImg}
+                  <img loading="lazy" src={img} alt={`${distributor.companyName} gallery ${i + 1}`} onError={fallbackImg}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   <span className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-colors flex items-center justify-center">
                     <span className="opacity-0 group-hover:opacity-100 text-white text-xl transition-opacity">🔍</span>
@@ -472,6 +472,7 @@ export default function PublicDistributorDynamicProfileView() {
           )}
 
           <img
+            loading="lazy"
             src={distributor.gallery[lightboxIndex]}
             alt={`${distributor.companyName} gallery ${lightboxIndex + 1}`}
             onError={fallbackImg}

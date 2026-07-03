@@ -110,7 +110,7 @@ export default function PublicEmployeesDirectory() {
                 {/* 1. UPPER PANEL — avatar */}
                 <div className={`h-64 bg-gradient-to-br ${emp.bgGradient} relative flex items-end justify-center border-b border-slate-200 overflow-hidden`} >
                   <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:20px_20px]"></div>
-                  <img src={emp.avatar} alt={emp.name} loading="lazy" className="h-full w-auto object-cover object-top relative z-[1] group-hover:scale-105 transition-transform duration-500" />
+                  <img loading="lazy" src={emp.avatar} alt={emp.name} className="h-full w-auto object-cover object-top relative z-[1] group-hover:scale-105 transition-transform duration-500" />
                   <span className="absolute top-4 right-4 z-[2] text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md bg-white/80 border border-slate-200 text-black-600 backdrop-blur-sm">
                     {emp.tag}
                   </span>

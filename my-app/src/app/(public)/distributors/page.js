@@ -57,7 +57,7 @@ const Stars = ({ rating, size = "text-xs" }) => (
 
 const Logo = ({ distributor, sizeClass = "w-16 h-16", textSize = "text-3xl" }) =>
   isImageUrl(distributor.logo) ? (
-    <img src={distributor.logo} alt={`${distributor.companyName} logo`} onError={fallbackImg}
+    <img loading="lazy" src={distributor.logo} alt={`${distributor.companyName} logo`} onError={fallbackImg}
       className={`${sizeClass} rounded-2xl object-cover border border-slate-200 shrink-0`} />
   ) : (
     <span className={`${sizeClass} ${textSize} flex items-center justify-center bg-slate-50 border border-slate-200 rounded-2xl shrink-0`}>

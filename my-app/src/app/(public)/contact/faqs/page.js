@@ -1,11 +1,5 @@
 "use client";
 
-// =============================================================================
-// FILE: src/app/(public)/contact/faqs/page.js
-// Public FAQ page — live search, accordion list, ask-a-question form
-// Matches the site's existing design language (blue-950, slate palette, rounded-2xl)
-// =============================================================================
-
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import faqApi from "@/lib/faq/api";

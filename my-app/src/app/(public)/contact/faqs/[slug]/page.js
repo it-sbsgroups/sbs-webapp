@@ -22,7 +22,7 @@ export default function PublicStandaloneFaqProfileView() {
         
         <div style="margin: 20px 0; padding: 15px; border-left: 4px solid #1e3a8a; background-color: #f8fafc; border-radius: 8px;">
           <span style="font-size: 10px; font-weight: 900; text-transform: uppercase; color: #1e3a8a; display: block;">Field Engineering Operational Status Log Asset Diagram:</span>
-          <img src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600" alt="Conveyor Infrastructure Layout" style="width: 100%; max-height: 280px; object-fit: cover; border-radius: 12px; margin-top: 8px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);" />
+          <img loading="lazy" src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600" alt="Conveyor Infrastructure Layout" style="width: 100%; max-height: 280px; object-fit: cover; border-radius: 12px; margin-top: 8px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);" />
         </div>
 
         <p style="font-size: 13px; color: #334155; font-weight: 600; line-height: 1.6;">

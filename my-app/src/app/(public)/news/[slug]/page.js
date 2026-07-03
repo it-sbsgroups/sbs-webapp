@@ -28,7 +28,7 @@ function Lightbox({ images, index, onClose, onNav }) {
           className="absolute left-3 sm:left-6 text-white/60 hover:text-white text-3xl font-bold px-2">‹</button>
       )}
       <div className="max-w-4xl max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
-        <img src={img.src} alt={img.caption || ""} className="max-h-[80vh] max-w-full object-contain rounded-lg mx-auto" />
+        <img loading="lazy" src={img.src} alt={img.caption || ""} className="max-h-[80vh] max-w-full object-contain rounded-lg mx-auto" />
         {img.caption && <p className="text-white/80 text-sm text-center mt-3 font-medium">{img.caption}</p>}
         <p className="text-white/40 text-xs text-center mt-1">{index + 1} / {images.length}</p>
       </div>
@@ -304,7 +304,7 @@ export default function PublicNewsDetailPage() {
               {/* ── HEAD IMAGE (Udyogi-style large banner) ──────────────────── */}
               {headImage && (
                 <div className="w-full">
-                  <img src={headImage} alt={article.title} className="w-full max-h-[480px] object-cover" />
+                  <img loading="lazy" src={headImage} alt={article.title} className="w-full max-h-[480px] object-cover" />
                 </div>
               )}
 
@@ -345,7 +345,7 @@ export default function PublicNewsDetailPage() {
                           onClick={() => setLightboxIdx(i)}
                           className="group relative aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100"
                         >
-                          <img src={img.src} alt={img.caption || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          <img loading="lazy" src={img.src} alt={img.caption || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                             <span className="opacity-0 group-hover:opacity-100 text-white text-lg transition-opacity">🔍</span>
                           </div>
@@ -407,7 +407,7 @@ export default function PublicNewsDetailPage() {
                   {adProducts.map((p) => (
                     <Link key={p.id} href={`/products/${p.id}`} className="flex gap-3 items-center p-2 rounded-xl border hover:border-blue-300 hover:shadow-sm transition-all group">
                       <div className="w-14 h-14 shrink-0 bg-slate-50 rounded-lg border flex items-center justify-center p-1">
-                        {firstProductImage(p) ? <img src={firstProductImage(p)} alt={p.name} className="max-w-full max-h-full object-contain" /> : <span className="text-xl">📦</span>}
+                        {firstProductImage(p) ? <img loading="lazy" src={firstProductImage(p)} alt={p.name} className="max-w-full max-h-full object-contain" /> : <span className="text-xl">📦</span>}
                       </div>
                       <div className="min-w-0">
                         <p className="text-[11px] font-black text-slate-900 line-clamp-2 group-hover:text-blue-900">{p.name}</p>

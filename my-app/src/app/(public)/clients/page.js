@@ -55,7 +55,7 @@ const Stars = ({ rating, size = "text-xs" }) => (
 
 const Logo = ({ client, sizeClass = "w-16 h-16", textSize = "text-3xl" }) =>
   isImageUrl(client.logo) ? (
-    <img src={client.logo} alt={`${client.companyName} logo`} onError={fallbackImg}
+    <img loading="lazy" src={client.logo} alt={`${client.companyName} logo`} onError={fallbackImg}
       className={`${sizeClass} rounded-2xl object-cover border border-slate-200 shrink-0`} />
   ) : (
     <span className={`${sizeClass} ${textSize} flex items-center justify-center bg-slate-50 border border-slate-200 rounded-2xl shrink-0`}>
@@ -251,7 +251,7 @@ export default function PublicClientsDirectoryPage() {
                     {SHOW.gallery && client.gallery?.length > 0 && (
                       <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
                         {client.gallery.slice(0, 3).map((g, i) => (
-                          <img key={i} src={g} alt={`${client.companyName} ${i + 1}`} onError={fallbackImg}
+                          <img loading="lazy" key={i} src={g} alt={`${client.companyName} ${i + 1}`} onError={fallbackImg}
                             className="h-14 rounded-lg object-cover border border-slate-200 shrink-0" />
                         ))}
                       </div>

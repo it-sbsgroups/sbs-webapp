@@ -238,8 +238,7 @@ export default function PublicNewsPage() {
                     className="bg-white border rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-md border-slate-200/80 flex flex-col hover:border-blue-950 group">
                     {coverImage && (
                       <div className="aspect-[16/10] bg-slate-100 overflow-hidden">
-                        <img src={coverImage} alt={post.title} loading="lazy"
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <img loading="lazy" src={coverImage} alt={post.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                       </div>
                     )}
                     <div className="p-5 flex flex-col justify-between flex-1">
@@ -304,7 +303,7 @@ export default function PublicNewsPage() {
                     className="flex gap-3 items-center p-2 rounded-xl border border-slate-100 hover:border-blue-300 hover:shadow-sm transition-all group">
                     <div className="w-14 h-14 shrink-0 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-center p-1">
                       {firstProductImage(p) ? (
-                        <img src={firstProductImage(p)} alt={p.name} className="max-w-full max-h-full object-contain" />
+                        <img loading="lazy" src={firstProductImage(p)} alt={p.name} className="max-w-full max-h-full object-contain" />
                       ) : (<span className="text-xl">📦</span>)}
                     </div>
                     <div className="min-w-0">
