@@ -32,6 +32,7 @@ import { AiModule } from './ai/ai.module';                  // ← NEW
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { ContactResponsesModule } from './contacts/contact-responses.module';
+import { IndustryInnovationModule } from './industry-innovation/industry-innovation.module';
 
 @Module({
   imports: [
@@ -58,7 +59,8 @@ import { ContactResponsesModule } from './contacts/contact-responses.module';
     FaqModule,
     AiModule,
     ContactsModule,
-    ContactResponsesModule,           // ← NEW: Gemini chat with DB tool-calling
+    ContactResponsesModule,
+    IndustryInnovationModule,           // ← NEW: Gemini chat with DB tool-calling
   ],
   controllers: [AppController, MailController],
   providers: [AppService, PrismaService, MailService],

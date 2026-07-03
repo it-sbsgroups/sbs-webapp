@@ -5,26 +5,56 @@ import React, { useState, useEffect } from "react";
 import * as Icons from "lucide-react";
 import whyChooseUsData from "@/data/whyChooseUsData";
 
+/** Safely convert a simple HTML string with <span> tags into React elements */
+function parseHtmlTitle(htmlString) {
+  const parts = [];
+  const regex = /(<span\s+className=['"]([^'"]+)['"]>(.*?)<\/span>)/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(htmlString)) !== null) {
+    // Text before the span
+    if (match.index > lastIndex) {
+      parts.push(htmlString.substring(lastIndex, match.index));
+    }
+    const className = match[2];
+    const content = match[3];
+    parts.push(
+      <span key={match.index} className={className}>
+        {content}
+      </span>
+    );
+    lastIndex = regex.lastIndex;
+  }
+  // Remaining text after last span
+  if (lastIndex < htmlString.length) {
+    parts.push(htmlString.substring(lastIndex));
+  }
+  return parts;
+}
+
 export default function WhyChooseUs() {
   const [config, setConfig] = useState(whyChooseUsData);
 
-  // ===== LISTEN FOR ADMIN UPDATES =====
   useEffect(() => {
     const handleUpdate = (e) => {
       if (e.detail?.config) setConfig(e.detail.config);
     };
     window.addEventListener("why-choose-us-admin-update", handleUpdate);
-    return () => window.removeEventListener("why-choose-us-admin-update", handleUpdate);
+    return () =>
+      window.removeEventListener("why-choose-us-admin-update", handleUpdate);
   }, []);
 
   const { design, stats, title, mainDescription } = config;
   const visibleStats = stats?.filter((item) => item.show) || [];
 
-  // ===== GET GRID CLASS BASED ON CARDS PER ROW =====
   const getGridClass = () => {
-    if (design?.cardsPerRow === 3)
-      return "lg:col-span-7 grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
-    return "lg:col-span-7 grid gap-6 grid-cols-1 sm:grid-cols-2";
+    const perRow = design?.cardsPerRow || 4;
+    if (perRow === 3)
+      return "grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+    if (perRow === 4)
+      return "grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4";
+    return "grid gap-6 grid-cols-1 sm:grid-cols-2";
   };
 
   return (
@@ -36,84 +66,71 @@ export default function WhyChooseUs() {
       className="py-16 md:py-24 border-b border-gray-100"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-8 items-center">
-          <div className="lg:col-span-5 space-y-6">
-            {title && (
-              <h2
-                style={{ color: design?.titleColor || "#1E3A8A" }}
-                className="text-3xl font-black tracking-tight sm:text-4xl uppercase leading-tight"
-                // 🟢 Render HTML safely
-                dangerouslySetInnerHTML={{ __html: title }}
-              />
-            )}
-            {mainDescription && (
+        {/* HEADER */}
+        <div className="text-center max-w-2xl mx-auto mb-12 md:mb-16">
+          {title && (
+            <h2
+              style={{ color: design?.titleColor || "#1E3A8A" }}
+              className="text-3xl font-black tracking-tight sm:text-4xl uppercase leading-tight"
+            >
+              {parseHtmlTitle(title)}
+            </h2>
+          )}
+          {mainDescription && (
+            <div
+              className="mt-4 text-sm text-gray-600 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: mainDescription }}
+            />
+          )}
+        </div>
+
+        {/* CARDS */}
+        <div className={getGridClass()}>
+          {visibleStats.map((item) => {
+            const DynamicIcon = Icons[item.iconName] || Icons.HelpCircle;
+
+            return (
               <div
-                className="text-sm text-gray-600 leading-relaxed max-w-md"
-                // 🟢 Render HTML safely
-                dangerouslySetInnerHTML={{ __html: mainDescription }}
-              />
-            )}
-          </div>
-
-          {/* ===== RIGHT GRID AREA (Dynamic Cards) ===== */}
-          <div className={getGridClass()}>
-            {visibleStats.map((item) => {
-              const DynamicIcon = Icons[item.iconName] || Icons.HelpCircle;
-
-              return (
-                <div
-                  key={item.id}
-                  style={{ backgroundColor: design?.cardBackgroundColor || "#F9FAFB" }}
-                  className="group p-6 rounded-2xl border border-gray-100 transition-all duration-300 hover:bg-white hover:shadow-xl"
-                >
-                  {/* Dynamic Icon */}
-                  <div
-                    className="flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 transition-colors duration-300 mb-4"
-                    style={{
-                      backgroundColor: design?.iconDefaultBg || "#F3F4F6",
-                      color: design?.iconDefaultColor || "#374151",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor =
-                        design?.iconHoverBg || design?.primaryColor || "#DC2626";
-                      e.currentTarget.style.color =
-                        design?.iconHoverColor || "#FFFFFF";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor =
-                        design?.iconDefaultBg || "#F3F4F6";
-                      e.currentTarget.style.color =
-                        design?.iconDefaultColor || "#374151";
-                    }}
-                  >
-                    <DynamicIcon
-                      size={24}
-                      className="group-hover:scale-110 transition-transform duration-300"
-                    />
-                  </div>
-
-                  {/* Card Content */}
-                  <div className="space-y-1.5">
-                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">
-                      {item.title}
-                    </h3>
-                    <p className="text-xs text-gray-500 leading-relaxed">
-                      {item.description}
-                    </p>
-                  </div>
+                key={item.id}
+                style={{
+                  backgroundColor: design?.cardBackgroundColor || "#F9FAFB",
+                }}
+                className="
+                  group relative p-6 rounded-2xl border border-gray-100 
+                  transition-all duration-300 ease-in-out
+                  hover:bg-white hover:shadow-xl
+                  hover:scale-[1.05] hover:z-10
+                  text-center
+                "
+              >
+                {/* Icon – blue‑500 background, white icon, no hover effect */}
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500 text-white mb-4 mx-auto">
+                  <DynamicIcon size={24} />
                 </div>
-              );
-            })}
 
-            {/* Empty State */}
-            {visibleStats.length === 0 && (
-              <div className="col-span-full py-12 text-center text-gray-400">
-                <Icons.Package className="mx-auto h-12 w-12 mb-3 opacity-30" />
-                <p className="font-semibold">No features configured</p>
-                <p className="text-sm mt-1">Add features from the admin panel.</p>
+                {/* Content */}
+                <div className="space-y-1.5">
+                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    {item.description}
+                  </p>
+                </div>
               </div>
-            )}
-          </div>
+            );
+          })}
+
+          {/* Empty State */}
+          {visibleStats.length === 0 && (
+            <div className="col-span-full py-12 text-center text-gray-400">
+              <Icons.Package className="mx-auto h-12 w-12 mb-3 opacity-30" />
+              <p className="font-semibold">No features configured</p>
+              <p className="text-sm mt-1">
+                Add features from the admin panel.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </section>
