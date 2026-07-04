@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import PublicHeader from "@/components/public/Header";
 import PublicFooter from "@/components/public/Footer";
-import GeminiChat from "@/components/public/GeminiChat"; // ← AI chat assistant
 import FloatingWhatsapp from "@/components/public/FloatingWhatsapp";
 import ScrollToTop from "@/components/public/ScrollToTop";
 
@@ -57,7 +56,6 @@ export default function PublicLayout({ children }) {
       <PublicFooter />
 
       {/* 4. Gemini AI Floating Chat Assistant */}
-      <GeminiChat />
       <FloatingWhatsapp />
       <ScrollToTop />
 

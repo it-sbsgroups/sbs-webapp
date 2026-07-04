@@ -548,10 +548,8 @@ function ProductsCatalogContent() {
                       style={{ backgroundColor: card?.cardBackground || "#ffffff" }}
                     >
                       {/* IMAGE — fit/ratio/bg all admin-controlled */}
-                      <div
-                        className={`relative w-full ${imageRatioClass} border-b border-slate-100 flex items-center justify-center p-4`}
-                        style={{ backgroundColor: card?.imageBackground || "#f8fafc" }}
-                      >
+                      <div className={`relative w-full ${imageRatioClass} border-b border-slate-100 flex items-center justify-center p-4`}
+                        style={{ backgroundColor: card?.imageBackground || "#f8fafc" }}>
                         {imageUrl ? (
                           <img
                             src={imageUrl}
@@ -570,7 +568,7 @@ function ProductsCatalogContent() {
                       </div>
 
                       <div className="p-5 flex flex-col flex-1">
-                        <div className="flex justify-between items-center mb-2">
+                        {/* <div className="flex justify-between items-center mb-2">
                           {card?.showSkuId && (
                             <span className="text-[10px] font-mono font-bold text-slate-400">
                               {product.id}
@@ -581,21 +579,21 @@ function ProductsCatalogContent() {
                               {product.model}
                             </span>
                           )}
-                        </div>
+                        </div> */}
                         <h3
-                          className="text-sm font-black text-slate-900 tracking-tight transition-colors group-hover:[color:var(--accent)]"
+                          className="text-sm font-black text-black-400 tracking-tight transition-colors group-hover:[color:var(--accent)]"
                           style={{ "--accent": card?.accentColor || "#1e3a8a" }}
                         >
                           {product.name}
                         </h3>
-                        {card?.showKeyFeatures && product.keyFeatures && (
+                        {/* {card?.showKeyFeatures && product.keyFeatures && (
                           <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed font-medium line-clamp-3">
                             {product.keyFeatures}
                           </p>
-                        )}
+                        )} */}
 
                         <div className="mt-auto pt-4 border-t border-slate-100 flex flex-col space-y-3">
-                          {card?.showPricePill && (
+                          {/* {card?.showPricePill && (
                             <div className="flex justify-between items-center">
                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                 Unit Value:
@@ -604,7 +602,7 @@ function ProductsCatalogContent() {
                                 {card?.priceLabel || "Price On Request"}
                               </span>
                             </div>
-                          )}
+                          )} */}
 
                           {rfq?.enabled && (
                             <div className="flex items-center gap-2">
@@ -632,7 +630,7 @@ function ProductsCatalogContent() {
 
                           <Link href={`/products/${product.id}`}>
                             <button className="w-full text-[10px] font-black text-blue-600 uppercase tracking-wider py-2 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors">
-                              👁️ View Details
+                              View Details
                             </button>
                           </Link>
                         </div>

@@ -15,7 +15,7 @@ import RfqManager from "@/components/admin/products/RfqManager";
 import RfqSettings from "@/components/admin/products/RfqSettings";
 import productsApi from "@/lib/productsApi";
 import categoriesApi from "@/lib/categoriesApi";
-import brandsApi from "@/lib/brandsApi";
+import brandsApi from "@/lib/brands/Api";
 
 const tabs = [
   { id: "products", label: "Products", icon: Package },

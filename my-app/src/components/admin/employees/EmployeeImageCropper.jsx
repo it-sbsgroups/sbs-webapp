@@ -5,16 +5,6 @@ import ReactCrop, { centerCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import { X, Check, Square } from "lucide-react";
 
-/**
- * Lets the admin drag a RECTANGLE over the photo to choose exactly what to keep,
- * then exports the cropped region as a compressed WebP File. Free aspect by
- * default; a "Square" toggle is offered for headshots.
- *
- * Props:
- *   file        - the selected File
- *   onCancel()  - close without cropping
- *   onCropped(file) - receives the cropped WebP File ready to upload
- */
 export default function EmployeeImageCropper({ file, onCancel, onCropped }) {
   const [imgSrc] = useState(() => URL.createObjectURL(file));
   const [crop, setCrop] = useState();
