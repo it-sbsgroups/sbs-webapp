@@ -27,8 +27,7 @@ import { TestimonialsModule } from './testimonials/testimonials.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SiteConfigModule } from './site-config/site-config.module';
 import { UploadsModule } from './uploads/uploads.module';
-import { FaqModule } from './faq/faq.module';
-import { AiModule } from './ai/ai.module';                  // ← NEW
+import { FaqModule } from './faq/faq.module';              // ← NEW
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { ContactResponsesModule } from './contacts/contact-responses.module';
@@ -57,7 +56,6 @@ import { IndustryInnovationModule } from './industry-innovation/industry-innovat
     SiteConfigModule,   // now includes /site-config/:section with cache invalidation
     UploadsModule,
     FaqModule,
-    AiModule,
     ContactsModule,
     ContactResponsesModule,
     IndustryInnovationModule,           // ← NEW: Gemini chat with DB tool-calling

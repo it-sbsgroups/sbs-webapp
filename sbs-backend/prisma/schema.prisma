@@ -39,39 +39,6 @@ model User {
 
 
 
-model State {
-  id     Int    @id @default(autoincrement())
-  name   String @unique
-  cities City[] 
-  @@map("states")
-}
-
-
-
-model City {
-  id       Int       @id @default(autoincrement())
-  name     String    
-  stateId  Int       
-  state    State     @relation(fields: [stateId], references: [id], onDelete: Cascade)
-  pincodes Pincode[] 
-  @@index([stateId])
-  @@index([name])
-  @@map("cities")
-}
-
-
-
-model Pincode {
-  id     Int    @id @default(autoincrement())
-  code   String @db.VarChar(10)
-  cityId Int    
-  city   City   @relation(fields: [cityId], references: [id], onDelete: Cascade)
-  @@index([code])
-  @@index([cityId])
-  @@map("pincodes")
-}
-
-
 
 // ============================================
 // CATEGORIES
@@ -82,8 +49,6 @@ model Category {
   name          String        
   slug          String        @unique
   image         String?       @db.Text
-  icon          String?       
-  description   String?       @db.Text
   isActive      Boolean       @default(true)
   sortOrder     Int           @default(0)
   createdAt     DateTime      @default(now())
@@ -100,7 +65,6 @@ model Subcategory {
   name        String    
   slug        String    @unique
   image       String?   @db.Text
-  description String?   @db.Text
   isActive    Boolean   @default(true)
   sortOrder   Int       @default(0)
   categoryId  String    
@@ -125,32 +89,12 @@ model Brand {
   website        String?   @db.Text
   email          String?   
   phone          String?   
-  description    String?   @db.Text
   isActive       Boolean   @default(true)
-  isOwnBrand     Boolean   @default(false)
-  address        String?   
-  city           String?   
-  state          String?   
-  country        String?   @default("India")
-  pincode        String?   
-  gstin          String?   
-  pan            String?   
-  registrationNo String?   
-  contactPerson  String?   
-  contactPhone   String?   
-  contactEmail   String?   
-  foundedYear    Int?      
-  employeeCount  Int?      
-  certifications Json?     
+  isOwnBrand     Boolean   @default(false)    
   gallery        Json?     
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   products       Product[] 
-  // Address details
-  // Business details
-  // Contact person
-  // Meta
-  // Media
   @@map("brands")
 }
 
@@ -364,11 +308,6 @@ model ProductSettings {
   brochureButtonText    String   @default("Download Brochure")
   brochureMode          String   @default("download")  // "download" | "preview" | "both"
   updatedAt             DateTime @updatedAt
-  // Layout
-  // Card design
-  // Card toggles
-  // Feature toggles
-  // Detail page & notifications (JSON)
   @@map("product_settings")
 }
 
@@ -633,39 +572,15 @@ model NewsSettings {
 
 model Employee {
   id          String   @id @default(uuid())
-  firstName   String   @map("first_name") @db.VarChar(50)
-  middleName  String?  @map("middle_name") @db.VarChar(50)
-  lastName    String   @map("last_name") @db.VarChar(50)
-  fatherName  String   @map("father_name") @db.VarChar(100)
+  name   String   @map("first_name") @db.VarChar(149)
   email       String   @unique @db.VarChar(100)
   mobile      String   @db.VarChar(15)
-  whatsapp    String?  @db.VarChar(15)
-  linkedin    String?  @db.VarChar(255)
-  instagram   String?  @db.VarChar(255)
-  facebook    String?  @db.VarChar(255)
-  youtube     String?  @db.VarChar(255)
-  twitter     String?  @db.VarChar(255)
   image       String?  @db.Text
-  region      String?  @db.VarChar(100)
-  state       String?  @db.VarChar(100)
-  district    String?  @db.VarChar(100)
-  city        String?  @db.VarChar(100)
-  address     String?  @db.Text
-  landmark    String?  @db.VarChar(200)
-  zipCode     String?  @map("zip_code") @db.VarChar(10)
-  aadhar      String?  @unique @db.VarChar(12)
-  bankAccount String?  @map("bank_account") @db.VarChar(20)
-  ifsc        String?  @db.VarChar(11)
-  bankName    String?  @map("bank_name") @db.VarChar(100)
-  branchName  String?  @map("branch_name") @db.VarChar(100)
-  role        String   @default("employee") @db.VarChar(50)
   designation String?  @map("designation") @db.VarChar(100)
   department  String?  @map("department") @db.VarChar(100)
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
-  // Address fields
-  // Identity and Bank Details
   @@map("employees")
 }
 
@@ -744,25 +659,14 @@ model CarouselSettings {
 
 model Client {
   id           String   @id @default(cuid())
-  slug         String   @unique
-  name         String   // contact person
-  designation  String?  
+  slug         String   @unique  
   companyName  String   
-  industry     String?  
-  servingSince String?  
   logo         String?  @db.Text
   url          String?  @db.Text
-  details      String?  @db.LongText
-  contact      Json?    // { phone, email }
-  social       Json?    // { linkedin, instagram, twitter }
   gallery      Json?    // string[]
-  reviews      Json?    // [{ date, rating, description }]
   isActive     Boolean  @default(true)
-  order        Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  // Nested blobs kept verbatim to match the existing admin shape.
-  @@index([order])
   @@map("clients")
 }
 
@@ -847,9 +751,6 @@ model Faq {
   @@map("faqs")
 }
 
-
-
-
 // =============================================
 // contact us
 // =============================================
@@ -860,7 +761,7 @@ model Contact {
   email       String            @db.VarChar(255)
   phone       String            @db.VarChar(30)
   companyName String            @db.VarChar(255)
-  subject     String            @db.VarChar(255)
+  subject     String?            @db.VarChar(255)
   message     String            @db.Text
   responded   Boolean           @default(false)
   adminNote   String?           @db.Text
@@ -896,7 +797,7 @@ model ContactResponse {
 
 model IndustryInnovation {
   id          String   @id @default(cuid())
-  title       String   @db.VarChar(255)
+  title       String   @db.Text
   description String   @db.Text
   image       String   @db.Text // main section image / background
   isDeleted   Boolean  @default(false)
@@ -910,11 +811,49 @@ model IndustryInnovationKey {
   id              String   @id @default(cuid())
   innovationId    String   // foreign key to IndustryInnovation
   title           String   @db.VarChar(255) // usually mandatory for a key point
-  icon            String?  // optional icon class or image URL
   sortOrder       Int      @default(0) // to control display order
   isDeleted       Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   innovation      IndustryInnovation @relation(fields: [innovationId], references: [id])
+}
+
+model WhyChooseUs {
+  id              String    @id @default(cuid())
+  title           String    @db.Text
+  description     String    @db.Text
+  isDeleted       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  keys            WhyChooseUsKey[]
+}
+
+model WhyChooseUsKey {
+  id              String    @id @default(cuid())
+  WhyChooseUsId   String
+  icon            String    @db.Text
+  title           String    @db.VarChar(255)
+  description     String    @db.Text
+  isDeleted       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  whychooseus     WhyChooseUs @relation(fields: [WhyChooseUsId], references: [id])
+}
+
+model ourPrinciple {
+  id                  String    @id @default(cuid())
+  title               String    @db.Text
+  description         String    @db.Text
+  titleimage          String    @db.Text
+  descriptionimage    String    @db.Text
+  isDeleted       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model AuthoriedNetwork {
+  id                  String    @id @default(cuid())
 }

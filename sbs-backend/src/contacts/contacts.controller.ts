@@ -9,6 +9,7 @@ import { AdminContactsQueryDto } from './dto/admin-contacts-query.dto';
 import { Contact } from './entities/contact.entity';
 import { ContactResponse } from './entities/contact-response.entity';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('contacts')
 @Controller('contacts')
@@ -23,6 +24,7 @@ export class ContactsController {
   }
 
   // 2. PUBLIC SUBMISSION
+  @Public()
   @Post()
   @ApiOperation({ summary: 'Submit a new contact form' })
   @ApiResponse({ status: 201, type: Contact })

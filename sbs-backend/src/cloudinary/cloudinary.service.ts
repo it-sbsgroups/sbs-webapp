@@ -8,15 +8,8 @@ import { ApiKeysService } from '../api-keys/api-keys.service';
 export class CloudinaryService {
   private readonly logger = new Logger(CloudinaryService.name);
 
-  // ApiKeysService is injected — no more ConfigService here.
   constructor(private readonly apiKeys: ApiKeysService) {}
 
-  // ---------------------------------------------------------------------------
-  // Private helper: resolve credentials via the 3-tier fallback chain and
-  // call cloudinary.config() right before each SDK operation.
-  // cloudinary.config() is idempotent and cheap — calling it per-upload is
-  // the only correct way to support live key rotation without a restart.
-  // ---------------------------------------------------------------------------
   private async configureCloudinary(): Promise<void> {
     const [cloudName, apiKey, apiSecret] = await Promise.all([
       this.apiKeys.get('CLOUDINARY_CLOUD_NAME'),
@@ -34,11 +27,6 @@ export class CloudinaryService {
     cloudinary.config({ cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret });
   }
 
-  // ===========================================================================
-  // BROCHURE UPLOAD
-  // PDF must use resource_type:'raw' — 'auto' or 'image' renders only the
-  // first page as a static image, breaking the in-browser PDF viewer.
-  // ===========================================================================
   async uploadBrochure(
     file: Express.Multer.File,
     productId: string,
@@ -69,9 +57,6 @@ export class CloudinaryService {
     });
   }
 
-  // ===========================================================================
-  // PRODUCT IMAGE UPLOAD — compressed to WebP, max 100 KB
-  // ===========================================================================
   async uploadProductImage(
     file: Express.Multer.File,
     productId = 'unassigned',
@@ -120,9 +105,6 @@ export class CloudinaryService {
     });
   }
 
-  // ===========================================================================
-  // EMPLOYEE PROFILE PHOTO — downscale, WebP, max 200 KB
-  // ===========================================================================
   async uploadEmployeeImage(
     file: Express.Multer.File,
     employeeId = 'unassigned',
@@ -160,9 +142,6 @@ export class CloudinaryService {
     });
   }
 
-  // ===========================================================================
-  // GENERIC IMAGE UPLOAD — carousel, client logos, news covers, etc.
-  // ===========================================================================
   async uploadGenericImage(
     file: Express.Multer.File,
     folder = 'misc',
@@ -203,9 +182,6 @@ export class CloudinaryService {
     });
   }
 
-  // ===========================================================================
-  // DELETE HELPERS
-  // ===========================================================================
   async deleteImageByUrl(url: string): Promise<void> {
     await this.configureCloudinary();
     const publicId = this.getPublicIdFromUrl(url);
@@ -220,7 +196,6 @@ export class CloudinaryService {
   async deleteBrochure(publicId: string): Promise<void> {
     await this.configureCloudinary();
     try {
-      // Try raw first (PDFs), fall back to image (DOCX, JPG, etc.)
       const result = await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' });
       if (result.result === 'not found') {
         await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
@@ -230,18 +205,12 @@ export class CloudinaryService {
     }
   }
 
-  // ===========================================================================
-  // URL UTILITY
-  // Strips the version segment (v1234567890/) that Cloudinary inserts after
-  // /upload/ so destroy() receives the correct public_id.
-  // ===========================================================================
   getPublicIdFromUrl(url: string): string | null {
     try {
       const parts = url.split('/');
       const uploadIndex = parts.indexOf('upload');
       if (uploadIndex === -1) return null;
       const afterUpload = parts.slice(uploadIndex + 1);
-      // Drop version segment e.g. "v1714300000"
       const start = /^v\d+$/.test(afterUpload[0]) ? 1 : 0;
       return afterUpload.slice(start).join('/').replace(/\.[^.]+$/, '');
     } catch {

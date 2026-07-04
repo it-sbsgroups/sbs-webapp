@@ -69,10 +69,6 @@ export class MailService {
     return result;
   }
 
-  // ============================================================
-  // HTML EMAIL RENDERING (clean, responsive, branded B2B layout)
-  // ============================================================
-
   private escapeHtml(s: string): string {
     return (s || '')
       .replace(/&/g, '&amp;')
@@ -131,7 +127,6 @@ export class MailService {
     return `<ul style="margin:6px 0;padding-left:18px">${lis}</ul>`;
   }
 
-  /** Responsive branded shell wrapping the message content. */
   private emailShell(opts: {
     heading: string;
     contentHtml: string;
@@ -163,11 +158,6 @@ export class MailService {
     </body></html>`;
   }
 
-  /**
-   * Render an admin text template into a branded HTML email:
-   * substitutes text placeholders, escapes the human copy, then swaps
-   * {productTable}/{productList} tokens for real styled HTML.
-   */
   private renderTemplatedEmail(
     template: string,
     placeholders: Record<string, string>,
@@ -196,8 +186,6 @@ export class MailService {
       .replace(/\{productTable\}/g, tableHtml)
       .replace(/\{productList\}/g, listHtml);
 
-    // If the admin template never referenced the items (e.g. the default
-    // customer auto-reply), still show them so the recipient sees their RFQ.
     if (!hasToken && items && items.length) {
       html += `<div style="height:14px"></div><div style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin-bottom:6px">Requested Items</div>${tableHtml}`;
     }
@@ -210,9 +198,6 @@ export class MailService {
     });
   }
 
-  /**
-   * Send auto-reply to customer using admin-configured templates
-   */
   async sendCustomerAutoReply(rfqData: {
     fullName: string;
     companyName?: string;
@@ -274,9 +259,6 @@ export class MailService {
     }
   }
 
-  /**
-   * Send team notification using admin-configured templates
-   */
   async sendTeamNotification(rfqData: {
     fullName: string;
     clientName?: string;
@@ -297,7 +279,6 @@ export class MailService {
         return;
       }
 
-      // Extract forward emails from settings
       const forwardEmails: string[] = [];
       const rawEmails = settings.forwardToEmails as any[];
 
@@ -359,9 +340,6 @@ export class MailService {
     }
   }
 
-  /**
-   * Send a generic email (for test endpoint)
-   */
   async sendTestEmail(to: string, subject: string, body: string) {
     try {
       const info = await this.transporter.sendMail({
@@ -378,9 +356,6 @@ export class MailService {
     }
   }
 
-  /**
- * Send quotation reply email to customer (different from auto-reply)
- */
     async sendQuotationReply(rfqData: {
     fullName: string;
     email: string;
@@ -453,10 +428,6 @@ export class MailService {
     }
     }
 
-  /**
-   * Send one email to many recipients via BCC (keeps addresses private).
-   * Returns true on success, false on failure (never throws).
-   */
   async sendBroadcast(recipients: string[], subject: string, html: string) {
     const list = (recipients || []).filter((e) => e && e.includes('@'));
     if (list.length === 0) {
@@ -481,9 +452,6 @@ export class MailService {
     }
   }
 
-  /**
-   * Email a one-time testimonial passcode to a client contact.
-   */
   async sendTestimonialPasscode(data: {
     email: string;
     code: string;
@@ -527,12 +495,6 @@ export class MailService {
     }
   }
 
-  // Inside MailService class
-
-  /**
-   * Auto-reply sent immediately after contact form submission.
-   * Templates are hardcoded – no database dependency.
-   */
   async sendContactAutoReply(contact: {
     fullName: string;
     email: string;
@@ -555,10 +517,6 @@ export class MailService {
     }
   }
 
-  /**
-   * Send a manual admin reply, record it as a ContactResponse, and return the record.
-   * Default template is hardcoded; overridden if custom subject/body provided.
-   */
   async sendContactReplyAndRecord(
     contactId: string,
     contactEmail: string,
