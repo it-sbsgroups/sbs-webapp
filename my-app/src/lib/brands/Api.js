@@ -1,21 +1,11 @@
-import apiClient from './client';
+import apiClient from '@/lib/client';
 
 const brandsApi = {
   async getAll() {
     try {
       const response = await apiClient.get('/brands');
-      console.log('Brands raw response:', response);
-      
-      // NestJS returns { data: [...], meta: {...} } for paginated endpoints
-      // But for non-paginated, it might return the array directly or { data: [...] }
-      if (Array.isArray(response)) {
-        return response;
-      }
-      if (response && response.data && Array.isArray(response.data)) {
-        return response.data;
-      }
-      // If response is a single object (unexpected), return empty array
-      console.warn('Unexpected brands response format:', response);
+      if (Array.isArray(response)) return response;
+      if (response?.data && Array.isArray(response.data)) return response.data;
       return [];
     } catch (error) {
       console.error('Failed to fetch brands:', error);
@@ -25,6 +15,11 @@ const brandsApi = {
 
   async getById(id) {
     const response = await apiClient.get(`/brands/${id}`);
+    return response?.data || response;
+  },
+
+  async getBySlug(slug) {
+    const response = await apiClient.get(`/brands/slug/${slug}`);
     return response?.data || response;
   },
 
@@ -40,6 +35,21 @@ const brandsApi = {
 
   async delete(id) {
     return apiClient.delete(`/brands/${id}`);
+  },
+
+  async uploadGalleryImage(file, folder = 'brands-gallery') {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await apiClient.post('/uploads/image', formData, {
+      params: { folder },
+      headers: { 'Content-Type': undefined },
+    });
+
+    return {
+      url: response?.data?.url || response?.url,
+      ...response?.data,
+    };
   },
 };
 

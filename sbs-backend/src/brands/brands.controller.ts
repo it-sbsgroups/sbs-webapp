@@ -13,6 +13,12 @@ export class BrandsController {
   }
 
   @Public()
+  @Get('slug/:slug')
+  findBySlug(@Param('slug') slug: string) {
+    return this.brandsService.findBySlug(slug);
+  }
+
+  @Public()
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.brandsService.findOne(id);

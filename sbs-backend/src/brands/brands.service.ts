@@ -27,6 +27,15 @@ export class BrandsService {
     return brand;
   }
 
+  async findBySlug(slug: string) {
+    const brand = await this.prisma.brand.findUnique({
+      where: { slug },
+      include: { _count: { select: { products: true } } },
+    });
+    if (!brand) throw new NotFoundException('Brand not found');
+    return brand;
+  }
+
   async create(data: any) {
     const slug = this.slugify(data.name);
     const existing = await this.prisma.brand.findUnique({ where: { slug } });

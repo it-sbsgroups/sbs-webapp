@@ -1,31 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import brandsApi from "@/lib/brandsApi";
-import { Plus, Edit, Trash2, X, Save, Search, Building2, Mail, Phone, Globe, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import brandsApi from "@/lib/brands/Api";
+import { Plus, Edit, Trash2, X, Save, Search, Building2, Mail, Phone, Globe, ChevronLeft, ChevronRight } from "lucide-react";
+import BrandGalleryUploader from "@/components/admin/brand/BrandGalleryUploader";
 
-// Empty form template matching backend schema
+const Toggle = ({ checked, onChange }) => (
+  <button type="button" onClick={onChange} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${ checked ? 'bg-blue-600' : 'bg-gray-300' }`}>
+    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${ checked ? 'translate-x-[18px]' : 'translate-x-[2px]' }`} />
+  </button>
+);
+
 const emptyForm = {
   name: "",
   logo: "",
   website: "",
   email: "",
   phone: "",
-  description: "",
-  address: "",
-  city: "",
-  state: "",
-  country: "India",
-  pincode: "",
-  gstin: "",
-  pan: "",
-  registrationNo: "",
-  contactPerson: "",
-  contactPhone: "",
-  contactEmail: "",
-  foundedYear: "",
-  employeeCount: "",
+  isActive: true,
+  isOwnBrand: false,
+  gallery: [],
 };
+
+const STORAGE_KEY = "brands_management_state";
 
 export default function BrandsManagementPage() {
   const [brands, setBrands] = useState([]);
@@ -37,9 +34,47 @@ export default function BrandsManagementPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
-  // ============================================
-  // FETCH BRANDS
-  // ============================================
+  const modalOpenRef = useRef(false);
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.showModal) {
+          setShowModal(true);
+          setEditingId(parsed.editingId);
+          setFormData(parsed.formData);
+        }
+      } catch (e) {
+        sessionStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showModal || editingId) {
+      sessionStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ showModal, editingId, formData })
+      );
+    } else {
+      sessionStorage.removeItem(STORAGE_KEY);
+    }
+    modalOpenRef.current = showModal;
+  }, [showModal, editingId, formData]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (modalOpenRef.current) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
   const fetchBrands = async () => {
     try {
       const data = await brandsApi.getAll();
@@ -56,27 +91,23 @@ export default function BrandsManagementPage() {
     fetchBrands();
   }, []);
 
-  // ============================================
-  // FILTER & PAGINATION
-  // ============================================
   const filteredBrands = searchQuery.trim()
     ? brands.filter((b) => {
         const q = searchQuery.toLowerCase();
         return (
           String(b?.name || "").toLowerCase().includes(q) ||
-          String(b?.email || "").toLowerCase().includes(q) ||
-          String(b?.city || "").toLowerCase().includes(q) ||
-          String(b?.state || "").toLowerCase().includes(q)
+          String(b?.website || "").toLowerCase().includes(q) ||
+          String(b?.email || "").toLowerCase().includes(q)
         );
       })
     : brands;
 
   const totalPages = Math.ceil(filteredBrands.length / pageSize);
-  const paginatedBrands = filteredBrands.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedBrands = filteredBrands.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
-  // ============================================
-  // FORM HANDLERS
-  // ============================================
   const openCreateModal = () => {
     setEditingId(null);
     setFormData(emptyForm);
@@ -91,22 +122,18 @@ export default function BrandsManagementPage() {
       website: brand?.website || "",
       email: brand?.email || "",
       phone: brand?.phone || "",
-      description: brand?.description || "",
-      address: brand?.address || "",
-      city: brand?.city || "",
-      state: brand?.state || "",
-      country: brand?.country || "India",
-      pincode: brand?.pincode || "",
-      gstin: brand?.gstin || "",
-      pan: brand?.pan || "",
-      registrationNo: brand?.registrationNo || "",
-      contactPerson: brand?.contactPerson || "",
-      contactPhone: brand?.contactPhone || "",
-      contactEmail: brand?.contactEmail || "",
-      foundedYear: brand?.foundedYear || "",
-      employeeCount: brand?.employeeCount || "",
+      isActive: brand?.isActive ?? true,
+      isOwnBrand: brand?.isOwnBrand ?? false,
+      gallery: brand?.gallery || [],
     });
     setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingId(null);
+    setFormData(emptyForm);
+    sessionStorage.removeItem(STORAGE_KEY);
   };
 
   const handleSave = async (e) => {
@@ -117,21 +144,12 @@ export default function BrandsManagementPage() {
     }
 
     try {
-      const payload = {
-        ...formData,
-        foundedYear: formData.foundedYear ? Number(formData.foundedYear) : null,
-        employeeCount: formData.employeeCount ? Number(formData.employeeCount) : null,
-      };
-
       if (editingId) {
-        await brandsApi.update(editingId, payload);
+        await brandsApi.update(editingId, formData);
       } else {
-        await brandsApi.create(payload);
+        await brandsApi.create(formData);
       }
-
-      setShowModal(false);
-      setFormData(emptyForm);
-      setEditingId(null);
+      closeModal();
       await fetchBrands();
     } catch (error) {
       alert("Failed to save brand: " + error.message);
@@ -152,9 +170,17 @@ export default function BrandsManagementPage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // ============================================
-  // LOADING
-  // ============================================
+  const handleToggleChange = async (brandId, field, newValue) => {
+    try {
+      await brandsApi.update(brandId, { [field]: newValue });
+      setBrands((prev) =>
+        prev.map((b) => (b.id === brandId ? { ...b, [field]: newValue } : b))
+      );
+    } catch (error) {
+      alert(`Failed to update: ${error.message}`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -165,47 +191,36 @@ export default function BrandsManagementPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+
+      {/* ... Header, Search ... */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm">
         <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">
-            Brand & Distributor Registry
-          </h1>
-          <p className="text-xs text-slate-500 font-medium mt-1">
-            {brands.length} brands registered · Manage manufacturers, suppliers, and distribution partners
-          </p>
+          <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Brand & Distributor Registry</h1>
+          <p className="text-xs text-slate-500 font-medium mt-1">{brands.length} brands registered · Manage manufacturers, suppliers, and distribution partners</p>
         </div>
-        <button
-          onClick={openCreateModal}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl uppercase tracking-wider transition-all shadow-sm shrink-0 flex items-center gap-2"
-        >
+        <button onClick={openCreateModal} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl uppercase tracking-wider transition-all shadow-sm shrink-0 flex items-center gap-2" >
           <Plus size={14} /> Register New Brand
         </button>
       </div>
 
-      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-          placeholder="Search brands by name, email, city, state..."
-          className="w-full rounded-xl border border-slate-300 py-2.5 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none bg-white"
-        />
+        <input type="text" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} placeholder="Search brands by name, email, website..." className="w-full rounded-xl border border-slate-300 py-2.5 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none bg-white" />
       </div>
 
-      {/* Brands Table */}
+      {/* Table */}
       <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-black uppercase tracking-wider text-slate-400">
                 <th className="py-4 px-5">Brand Name</th>
+                <th className="py-4 px-5">Website</th>
                 <th className="py-4 px-5">Contact</th>
-                <th className="py-4 px-5">Location</th>
-                <th className="py-4 px-5">GSTIN</th>
+                <th className="py-4 px-5">Active</th>
+                <th className="py-4 px-5">Own Brand</th>
                 <th className="py-4 px-5">Products</th>
+                <th className="py-4 px-5">Gallery</th>
                 <th className="py-4 px-5 text-right">Actions</th>
               </tr>
             </thead>
@@ -217,63 +232,62 @@ export default function BrandsManagementPage() {
                       {brand?.logo ? (
                         <img src={brand.logo} alt="" className="h-8 w-8 rounded-lg object-cover border" />
                       ) : (
-                        <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                          <Building2 size={14} className="text-blue-600" />
-                        </div>
+                        <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center"><Building2 size={14} className="text-blue-600" /></div>
                       )}
                       <div>
                         <p className="font-black text-slate-900">{String(brand?.name || "—")}</p>
-                        <p className="text-[10px] text-slate-400 font-mono">{String(brand?.id || "")}</p>
                       </div>
                     </div>
                   </td>
                   <td className="py-4 px-5">
-                    <div className="space-y-0.5">
+                    {brand?.website && (
+                      <a href={brand.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1"><Globe size={10} /> Visit</a>
+                    )}
+                  </td>
+                  <td className="py-4 px-5">
+                    <div className="space-y-1">
                       {brand?.email && (
                         <p className="flex items-center gap-1 text-[11px]">
-                          <Mail size={10} /> {String(brand.email)}
+                          <Mail size={10} />
+                          <a href={`mailto:${brand.email}`} className="text-blue-600 hover:underline">{brand.email}</a>
                         </p>
                       )}
                       {brand?.phone && (
                         <p className="flex items-center gap-1 text-[11px]">
-                          <Phone size={10} /> {String(brand.phone)}
+                          <Phone size={10} />
+                          <a href={`tel:${brand.phone}`} className="text-blue-600 hover:underline">{brand.phone}</a>
                         </p>
-                      )}
-                      {brand?.contactPerson && (
-                        <p className="text-[10px] text-slate-400">Contact: {String(brand.contactPerson)}</p>
                       )}
                     </div>
                   </td>
                   <td className="py-4 px-5">
-                    <div className="flex items-center gap-1">
-                      <MapPin size={10} className="text-slate-400" />
-                      <span>
-                        {[brand?.city, brand?.state, brand?.country].filter(Boolean).join(", ") || "—"}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <Toggle checked={Boolean(brand.isActive)} onChange={() => handleToggleChange(brand.id, "isActive", !brand.isActive)} />
+                      <span className="text-[10px]">{brand.isActive ? "Yes" : "No"}</span>
                     </div>
                   </td>
-                  <td className="py-4 px-5 font-mono text-[11px]">
-                    {String(brand?.gstin || "—")}
+                  <td className="py-4 px-5">
+                    <div className="flex items-center gap-2">
+                      <Toggle checked={Boolean(brand.isOwnBrand)} onChange={() => handleToggleChange(brand.id, "isOwnBrand", !brand.isOwnBrand)} />
+                      <span className="text-[10px]">{brand.isOwnBrand ? "Yes" : "No"}</span>
+                    </div>
                   </td>
                   <td className="py-4 px-5">
                     <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-bold">
                       {brand?._count?.products ?? brand?.productCount ?? 0} items
                     </span>
                   </td>
+                  <td className="py-4 px-5">
+                    <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                      {(brand.gallery?.length ?? 0)} images
+                    </span>
+                  </td>
                   <td className="py-4 px-5 text-right">
                     <div className="flex justify-end gap-1">
-                      <button
-                        onClick={() => openEditModal(brand)}
-                        className="rounded-lg p-2 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
-                        title="Edit"
-                      >
+                      <button onClick={() => openEditModal(brand)} className="rounded-lg p-2 text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="Edit">
                         <Edit size={15} />
                       </button>
-                      <button
-                        onClick={() => handleDelete(brand?.id)}
-                        className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                        title="Delete"
-                      >
+                      <button onClick={() => handleDelete(brand?.id)} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600" title="Delete">
                         <Trash2 size={15} />
                       </button>
                     </div>
@@ -282,7 +296,7 @@ export default function BrandsManagementPage() {
               ))}
               {paginatedBrands.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-16 text-center text-slate-400">
+                  <td colSpan={8} className="py-16 text-center text-slate-400">
                     <Building2 className="mx-auto h-10 w-10 mb-3 opacity-30" />
                     <p className="font-semibold">No brands registered yet</p>
                     <p className="text-xs mt-1">Click "Register New Brand" to add your first manufacturer or distributor.</p>
@@ -297,34 +311,26 @@ export default function BrandsManagementPage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <span className="text-sm text-slate-500">
-            Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filteredBrands.length)} of {filteredBrands.length}
-          </span>
+          <span className="text-sm text-slate-500">Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filteredBrands.length)} of {filteredBrands.length}</span>
           <div className="flex gap-1">
-            <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}
-              className="rounded-lg border p-2 disabled:opacity-40"><ChevronLeft size={16} /></button>
+            <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="rounded-lg border p-2 disabled:opacity-40"><ChevronLeft size={16} /></button>
             <span className="px-3 py-2 text-sm font-medium">Page {currentPage} of {totalPages}</span>
-            <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages}
-              className="rounded-lg border p-2 disabled:opacity-40"><ChevronRight size={16} /></button>
+            <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} className="rounded-lg border p-2 disabled:opacity-40"><ChevronRight size={16} /></button>
           </div>
         </div>
       )}
 
-      {/* Create/Edit Modal */}
+      {/* Create/Edit Modal – Notice closeModal instead of setShowModal(false) */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 z-50 overflow-y-auto">
           <form onSubmit={handleSave} className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex justify-between items-center border-b px-6 py-4 sticky top-0 bg-white rounded-t-2xl z-10">
-              <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
-                {editingId ? "Edit Brand Details" : "Register New Brand / Distributor"}
-              </h2>
-              <button type="button" onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 font-bold">
-                <X size={20} />
-              </button>
+              <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">{editingId ? "Edit Brand Details" : "Register New Brand / Distributor"}</h2>
+              <button type="button" onClick={closeModal} className="text-slate-400 hover:text-slate-600 font-bold"><X size={20} /></button>
             </div>
 
-            {/* Modal Body */}
+            {/* Modal Body – unchanged except the gallery uploader is already using the fixed version */}
             <div className="p-6 space-y-5">
               {/* Basic Information */}
               <div className="space-y-4">
@@ -332,24 +338,16 @@ export default function BrandsManagementPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
                     <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Brand Name *</label>
-                    <input type="text" required value={formData.name} onChange={(e) => handleFieldChange("name", e.target.value)}
-                      placeholder="e.g., Makita Corporation" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
+                    <input type="text" required value={formData.name} onChange={(e) => handleFieldChange("name", e.target.value)} placeholder="e.g., Makita Corporation" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Logo URL</label>
-                    <input type="text" value={formData.logo} onChange={(e) => handleFieldChange("logo", e.target.value)}
-                      placeholder="https://example.com/logo.png" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
+                    <input type="text" value={formData.logo} onChange={(e) => handleFieldChange("logo", e.target.value)} placeholder="https://example.com/logo.png" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Website</label>
-                    <input type="text" value={formData.website} onChange={(e) => handleFieldChange("website", e.target.value)}
-                      placeholder="https://www.brand.com" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
+                    <input type="text" value={formData.website} onChange={(e) => handleFieldChange("website", e.target.value)} placeholder="https://www.brand.com" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
                   </div>
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Description</label>
-                  <textarea rows={2} value={formData.description} onChange={(e) => handleFieldChange("description", e.target.value)}
-                    placeholder="Brief description of the brand..." className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500 resize-none" />
                 </div>
               </div>
 
@@ -359,107 +357,41 @@ export default function BrandsManagementPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Email</label>
-                    <input type="email" value={formData.email} onChange={(e) => handleFieldChange("email", e.target.value)}
-                      placeholder="info@brand.com" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
+                    <input type="email" value={formData.email} onChange={(e) => handleFieldChange("email", e.target.value)} placeholder="info@brand.com" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Phone</label>
-                    <input type="text" value={formData.phone} onChange={(e) => handleFieldChange("phone", e.target.value)}
-                      placeholder="+91-22-12345678" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Contact Person</label>
-                    <input type="text" value={formData.contactPerson} onChange={(e) => handleFieldChange("contactPerson", e.target.value)}
-                      placeholder="John Doe" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Contact Phone</label>
-                    <input type="text" value={formData.contactPhone} onChange={(e) => handleFieldChange("contactPhone", e.target.value)}
-                      placeholder="+91-9876543210" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Contact Email</label>
-                    <input type="email" value={formData.contactEmail} onChange={(e) => handleFieldChange("contactEmail", e.target.value)}
-                      placeholder="person@brand.com" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
+                    <input type="text" value={formData.phone} onChange={(e) => handleFieldChange("phone", e.target.value)} placeholder="+91-22-12345678" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
                   </div>
                 </div>
               </div>
 
-              {/* Address */}
+              {/* Status Toggles */}
               <div className="space-y-4">
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b pb-2">Address</h3>
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Street Address</label>
-                  <input type="text" value={formData.address} onChange={(e) => handleFieldChange("address", e.target.value)}
-                    placeholder="123 Industrial Area" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">City</label>
-                    <input type="text" value={formData.city} onChange={(e) => handleFieldChange("city", e.target.value)}
-                      placeholder="Mumbai" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">State</label>
-                    <input type="text" value={formData.state} onChange={(e) => handleFieldChange("state", e.target.value)}
-                      placeholder="Maharashtra" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Pincode</label>
-                    <input type="text" value={formData.pincode} onChange={(e) => handleFieldChange("pincode", e.target.value)}
-                      placeholder="400001" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Business Details */}
-              <div className="space-y-4">
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b pb-2">Business Details</h3>
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b pb-2">Status</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">GSTIN</label>
-                    <input type="text" value={formData.gstin} onChange={(e) => handleFieldChange("gstin", e.target.value)}
-                      placeholder="27AAAAA0000A1Z5" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
+                  <div className="flex items-center gap-3">
+                    <Toggle checked={formData.isActive} onChange={() => handleFieldChange("isActive", !formData.isActive)} />
+                    <span className="text-xs font-medium">{formData.isActive ? "Active" : "Inactive"}</span>
                   </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">PAN</label>
-                    <input type="text" value={formData.pan} onChange={(e) => handleFieldChange("pan", e.target.value)}
-                      placeholder="AAAAA0000A" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Registration No</label>
-                    <input type="text" value={formData.registrationNo} onChange={(e) => handleFieldChange("registrationNo", e.target.value)}
-                      placeholder="U74999MH2020PTC123456" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Country</label>
-                    <input type="text" value={formData.country} onChange={(e) => handleFieldChange("country", e.target.value)}
-                      placeholder="India" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Founded Year</label>
-                    <input type="number" value={formData.foundedYear} onChange={(e) => handleFieldChange("foundedYear", e.target.value)}
-                      placeholder="1915" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Employee Count</label>
-                    <input type="number" value={formData.employeeCount} onChange={(e) => handleFieldChange("employeeCount", e.target.value)}
-                      placeholder="5000" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
+                  <div className="flex items-center gap-3">
+                    <Toggle checked={formData.isOwnBrand} onChange={() => handleFieldChange("isOwnBrand", !formData.isOwnBrand)} />
+                    <span className="text-xs font-medium">{formData.isOwnBrand ? "Own Brand" : "Third Party"}</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Image Gallery */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b pb-2">Image Gallery</h3>
+                <BrandGalleryUploader images={formData.gallery || []} onChange={(newGallery) => handleFieldChange("gallery", newGallery)} />
               </div>
             </div>
 
             {/* Modal Footer */}
             <div className="flex justify-end gap-3 border-t px-6 py-4 sticky bottom-0 bg-white rounded-b-2xl">
-              <button type="button" onClick={() => setShowModal(false)}
-                className="px-5 py-2.5 text-xs font-bold rounded-xl border border-slate-300 hover:bg-slate-50 transition-colors">
-                Cancel
-              </button>
-              <button type="submit"
-                className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors">
-                <Save size={14} /> {editingId ? "Update Brand" : "Register Brand"}
-              </button>
+              <button type="button" onClick={closeModal} className="px-5 py-2.5 text-xs font-bold rounded-xl border border-slate-300 hover:bg-slate-50 transition-colors">Cancel</button>
+              <button type="submit" className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors"><Save size={14} /> {editingId ? "Update Brand" : "Register Brand"}</button>
             </div>
           </form>
         </div>
