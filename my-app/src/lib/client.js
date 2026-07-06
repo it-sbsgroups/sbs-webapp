@@ -1,11 +1,3 @@
-// src/lib/api/client.js
-
-// Resolve the API base URL.
-// - Use NEXT_PUBLIC_API_URL when explicitly set.
-// - Otherwise, in the browser, derive the backend host from the current page host
-//   so that when the app is opened over the LAN (e.g. http://192.168.1.20:3000),
-//   API calls go to http://192.168.1.20:4000/api instead of localhost (which a
-//   phone/other device on the network cannot reach).
 function resolveApiBaseUrl() {
   if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
   if (typeof window !== 'undefined' && window.location?.hostname) {
@@ -22,15 +14,11 @@ class ApiClient {
     this.baseUrl = baseUrl;
   }
 
-  /**
-   * Make an HTTP request to the API
-   */
   async request(endpoint, options = {}) {
     const url = `${this.baseUrl}${endpoint}`;
 
     const config = {
-      // Send cookies too, so same-domain deployments authenticate via the
-      // httpOnly session cookie even without the Bearer token below.
+
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',

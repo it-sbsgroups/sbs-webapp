@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import brandsApi from "@/lib/brands/Api";
-import { Plus, Edit, Trash2, X, Save, Search, Building2, Mail, Phone, Globe, ChevronLeft, ChevronRight } from "lucide-react";
+import testimonialsApi from "@/lib/testimonialsApi";
+import toast from "react-hot-toast";
+import { Plus, Edit, Trash2, X, Save, Search, Building2, Mail, Phone, Globe, ChevronLeft, ChevronRight, MessageSquareQuote } from "lucide-react";
 import BrandGalleryUploader from "@/components/admin/brand/BrandGalleryUploader";
 
 const Toggle = ({ checked, onChange }) => (
@@ -33,6 +35,7 @@ export default function BrandsManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+  const [requestingId, setRequestingId] = useState(null);
 
   const modalOpenRef = useRef(false);
 
@@ -181,6 +184,27 @@ export default function BrandsManagementPage() {
     }
   };
 
+  const handleRequestTestimonial = async (brand) => {
+    if (brand.isOwnBrand) {
+      toast.error("Testimonial requests can't be sent to your own brand.");
+      return;
+    }
+    if (!brand.email) {
+      toast.error("This brand has no email on file.");
+      return;
+    }
+    if (!confirm(`Send a testimonial request email to ${brand.name} (${brand.email})?`)) return;
+    setRequestingId(brand.id);
+    try {
+      await testimonialsApi.requestForBrand(brand.id);
+      toast.success(`Testimonial request sent to ${brand.email}`);
+    } catch (error) {
+      toast.error(error.message || "Failed to send testimonial request.");
+    } finally {
+      setRequestingId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -284,6 +308,14 @@ export default function BrandsManagementPage() {
                   </td>
                   <td className="py-4 px-5 text-right">
                     <div className="flex justify-end gap-1">
+                      <button
+                        onClick={() => handleRequestTestimonial(brand)}
+                        disabled={brand.isOwnBrand || requestingId === brand.id}
+                        title={brand.isOwnBrand ? "Not available for your own brand" : "Send testimonial request email"}
+                        className="rounded-lg p-2 text-slate-400 hover:bg-purple-50 hover:text-purple-600 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                      >
+                        <MessageSquareQuote size={15} />
+                      </button>
                       <button onClick={() => openEditModal(brand)} className="rounded-lg p-2 text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="Edit">
                         <Edit size={15} />
                       </button>

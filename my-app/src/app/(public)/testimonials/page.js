@@ -42,25 +42,50 @@ export default function PublicTestimonialsPage() {
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2">
-            {items.map((t, i) => (
-              <article key={t.id} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col gap-4">
-                <p className="text-slate-700 leading-relaxed">“{t.testimony}”</p>
-                <div className="mt-auto flex items-center gap-3 pt-2 border-t border-slate-100">
-                  <span className="h-11 w-11 flex items-center justify-center text-xl bg-slate-100 rounded-xl border border-slate-200">
-                    {AVATARS[i % AVATARS.length]}
-                  </span>
-                  <div>
-                    <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                      {t.name}
-                      <span className="text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">VERIFIED</span>
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      {t.designation ? `${t.designation} · ` : ""}{t.companyName}
+            {items.map((t, i) => {
+              const bound = t.client || t.brand;
+              const logo = t.client?.logo || t.brand?.logo;
+              const href = t.client ? `/clients/${t.client.slug}` : t.brand ? `/brands/${t.brand.slug}` : null;
+              const badgeLabel = t.sourceType === "BRAND" ? "Partner Brand" : "Client";
+
+              const AvatarBlock = (
+                <span className="h-11 w-11 flex items-center justify-center text-xl bg-slate-100 rounded-xl border border-slate-200 overflow-hidden shrink-0">
+                  {logo ? (
+                    <img src={logo} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    AVATARS[i % AVATARS.length]
+                  )}
+                </span>
+              );
+
+              return (
+                <article key={t.id} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col gap-4">
+                  <p className="text-slate-700 leading-relaxed">“{t.testimony}”</p>
+                  <div className="mt-auto flex items-center gap-3 pt-2 border-t border-slate-100">
+                    {href ? (
+                      <Link href={href} className="shrink-0">{AvatarBlock}</Link>
+                    ) : (
+                      AvatarBlock
+                    )}
+                    <div>
+                      <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                        {t.name}
+                        <span className="text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">VERIFIED</span>
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {t.designation ? `${t.designation} · ` : ""}
+                        {href ? (
+                          <Link href={href} className="hover:underline">{t.companyName}</Link>
+                        ) : (
+                          t.companyName
+                        )}
+                        {bound && <span className="ml-1 text-[9px] font-bold text-slate-400 uppercase">· {badgeLabel}</span>}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         )}
 

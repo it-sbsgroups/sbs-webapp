@@ -1,5 +1,15 @@
-import { IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsIn,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
+/**
+ * Manual passcode issuance — used when an admin types in a company name/email
+ * by hand instead of picking an existing Client/Brand record.
+ */
 export class IssuePasscodeDto {
   @IsString()
   companyName!: string;

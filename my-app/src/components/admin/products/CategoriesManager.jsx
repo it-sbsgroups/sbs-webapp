@@ -10,7 +10,7 @@ export default function CategoriesManager() {
   const [loading, setLoading] = useState(true);
   const [editingCat, setEditingCat] = useState(null);
   const [editingSub, setEditingSub] = useState(null);
-  const [catForm, setCatForm] = useState({ name: "", image: "", icon: "" });
+  const [catForm, setCatForm] = useState({ name: "", image: ""});
   const [subForm, setSubForm] = useState({ name: "", categoryId: "", image: "" });
   const [searchQuery, setSearchQuery] = useState("");
   const [catPage, setCatPage] = useState(1);
@@ -43,7 +43,7 @@ export default function CategoriesManager() {
   const catTotalPages = Math.ceil(filteredCategories.length / pageSize);
   const paginatedCats = filteredCategories.slice((catPage - 1) * pageSize, catPage * pageSize);
 
-  const resetCatForm = () => { setCatForm({ name: "", image: "", icon: "" }); setEditingCat(null); };
+  const resetCatForm = () => { setCatForm({ name: "", image: "",}); setEditingCat(null); };
   const resetSubForm = () => { setSubForm({ name: "", categoryId: "", image: "" }); setEditingSub(null); };
 
   const handleSaveCategory = async () => {
@@ -160,7 +160,7 @@ export default function CategoriesManager() {
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
-                  <button onClick={() => { setEditingCat(cat?.id); setCatForm({ name: cat?.name || "", icon: cat?.icon || "" }); }}
+                  <button onClick={() => { setEditingCat(cat?.id); setCatForm({ name: cat?.name || "", image: cat?.image || "", sortOrder: cat?.sortOrder || undefined, isActive: cat?.isActive || false }); }}
                     className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600"><Edit size={13} /></button>
                   <button onClick={() => handleDeleteCategory(cat?.id)} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 size={13} /></button>
                 </div>

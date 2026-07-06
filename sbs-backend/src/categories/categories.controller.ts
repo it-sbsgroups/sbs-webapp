@@ -49,7 +49,7 @@ export class CategoriesController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() data: { name: string; image?: string; icon?: string; description?: string }) {
+  create(@Body() data: { name: string; image?: string; sortOrder?: number }) {
     return this.categoriesService.create(data);
   }
 

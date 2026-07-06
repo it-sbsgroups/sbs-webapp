@@ -16,7 +16,7 @@ export class ProductsService {
   ) {}
 
   private readonly productInclude = {
-    category: { select: { id: true, name: true, slug: true, icon: true } },
+    category: { select: { id: true, name: true, slug: true } },
     subcategory: { select: { id: true, name: true, slug: true } },
     brand: { select: { id: true, name: true, slug: true, logo: true } },
     images: { orderBy: { sortOrder: 'asc' as const } },

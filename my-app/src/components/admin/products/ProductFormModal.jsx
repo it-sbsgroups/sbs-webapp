@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Save, Plus, Trash2, Bold, Italic, List as ListIcon, Upload, FileText } from "lucide-react";
+import { X, Save, Plus, Trash2, Upload, FileText } from "lucide-react";
 import BrochureUploader from "./BrochureUploader";
 import productsApi from "@/lib/productsApi";
 import ProductImageUploader from "./ProductImageUploader";
+import RichTextEditor from "@/components/shared/RichTextEditor";
 
 export default function ProductFormModal({ open, initialData, categories, subcategories, brands, onClose, onSave }) {
   const [form, setForm] = useState({
@@ -83,24 +84,6 @@ export default function ProductFormModal({ open, initialData, categories, subcat
 
   const removeCertification = (index) => {
     setForm((prev) => ({ ...prev, certifications: prev.certifications.filter((_, i) => i !== index) }));
-  };
-
-  const insertFormatting = (format) => {
-    const textarea = document.getElementById("product-description-editor");
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = form.description || "";
-    let replacement = "";
-    switch (format) {
-      case "bold": replacement = `**${text.substring(start, end) || "bold text"}**`; break;
-      case "italic": replacement = `*${text.substring(start, end) || "italic text"}*`; break;
-      case "list": replacement = `\n- ${text.substring(start, end) || "list item"}`; break;
-      case "heading": replacement = `\n## ${text.substring(start, end) || "heading"}\n`; break;
-      default: break;
-    }
-    const newText = text.substring(0, start) + replacement + text.substring(end);
-    updateField("description", newText);
   };
 
   const getFilteredSubcategories = () => subcategories.filter((s) => s.categoryId === form.categoryId);
@@ -244,25 +227,14 @@ export default function ProductFormModal({ open, initialData, categories, subcat
           {/* 3. DESCRIPTION */}
           {/* ============================================ */}
           <div className="rounded-2xl border p-5">
-            <h3 className="text-base font-semibold mb-4">Product Description (Rich Text)</h3>
-            <div className="flex gap-1 mb-2 bg-slate-100 rounded-lg p-1.5">
-              {[
-                { icon: <Bold size={14} />, format: "bold", title: "Bold" },
-                { icon: <Italic size={14} />, format: "italic", title: "Italic" },
-                { icon: <ListIcon size={14} />, format: "list", title: "Bullet List" },
-                { icon: <span className="text-xs font-bold">H</span>, format: "heading", title: "Heading" },
-              ].map((btn) => (
-                <button key={btn.format} type="button" onClick={() => insertFormatting(btn.format)}
-                  title={btn.title} className="rounded-lg p-2 hover:bg-white hover:shadow-sm transition-all text-slate-600">
-                  {btn.icon}
-                </button>
-              ))}
-            </div>
-            <textarea id="product-description-editor" rows={8} value={form.description || ""}
-              onChange={(e) => updateField("description", e.target.value)}
-              placeholder="Write detailed product description here...&#10;&#10;**bold text** for emphasis&#10;*italic text* for notes&#10;- list items&#10;## headings"
-              className="w-full rounded-xl border px-4 py-3 text-sm resize-none font-mono" />
-            <p className="text-[10px] text-slate-400 mt-1">Supports Markdown: **bold**, *italic*, - lists, ## headings</p>
+            <h3 className="text-base font-semibold mb-4">Product Description</h3>
+            <RichTextEditor
+              value={form.description || ""}
+              onChange={(html) => updateField("description", html)}
+              placeholder="Write a detailed product description…"
+              uploadFolder="product-descriptions"
+              resetKey={form.id || "new-product"}
+            />
           </div>
 
           {/* ============================================ */}

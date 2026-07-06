@@ -30,7 +30,20 @@ export class BrandsService {
   async findBySlug(slug: string) {
     const brand = await this.prisma.brand.findUnique({
       where: { slug },
-      include: { _count: { select: { products: true } } },
+      include: {
+        _count: { select: { products: true } },
+        testimonials: {
+          where: { status: 'APPROVED' },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            name: true,
+            designation: true,
+            testimony: true,
+            createdAt: true,
+          },
+        },
+      },
     });
     if (!brand) throw new NotFoundException('Brand not found');
     return brand;

@@ -47,18 +47,6 @@ export class EmployeeService {
         });
       }
 
-      if (data.aadhar) {
-        const existingAadhar = await this.prisma.employee.findUnique({
-          where: { aadhar: data.aadhar },
-        });
-        if (existingAadhar) {
-          throw new ConflictException({
-            message: 'Employee with this Aadhar number already exists',
-            error: 'Duplicate Aadhar',
-          });
-        }
-      }
-
       const employee = await this.prisma.employee.create({ data });
       this.logger.log(`✅ Employee created: ${employee.id}`);
       return employee;

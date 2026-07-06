@@ -57,6 +57,18 @@ export class TestimonialsController {
     return this.testimonials.deletePasscode(id);
   }
 
+  // ---- Admin: request a testimonial from an existing Client/Brand ----
+
+  @Post('request/client/:clientId')
+  requestForClient(@Param('clientId') clientId: string) {
+    return this.testimonials.requestForClient(clientId);
+  }
+
+  @Post('request/brand/:brandId')
+  requestForBrand(@Param('brandId') brandId: string) {
+    return this.testimonials.requestForBrand(brandId);
+  }
+
   // ---- Admin: moderation ----
 
   @Get()

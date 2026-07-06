@@ -65,13 +65,6 @@ const navTree = [
     defaultOpen: true,
     children: [
       {
-        id: "crm-clients",
-        name: "Clients",
-        icon: Building2,
-        href: "/admin/clients",
-        type: "link",
-      },
-      {
         id: "crm-products",
         name: "Products",
         icon: TableProperties,
@@ -79,24 +72,17 @@ const navTree = [
         type: "link",
       },
       {
-        id: "crm-faqs",
-        name: "FAQs",
-        icon: MessageSquareText,
-        href: "/admin/faq-manager",
-        type: "link",
-      },
-      {
-        id: "crm-news",
-        name: "News & Media",
-        icon: Newspaper,
-        href: "/admin/news",
-        type: "link",
-      },
-      {
         id: "crm-distributors",
         name: "Distributors",
         icon: AlignVerticalSpaceBetween,
         href: "/admin/distributors",
+        type: "link",
+      },
+      {
+        id: "crm-clients",
+        name: "Clients",
+        icon: Building2,
+        href: "/admin/clients",
         type: "link",
       },
       {
@@ -113,6 +99,20 @@ const navTree = [
         href: "/admin/testimonials",
         type: "link",
       },
+      {
+        id: "crm-news",
+        name: "News & Media",
+        icon: Newspaper,
+        href: "/admin/news",
+        type: "link",
+      },
+      {
+        id: "crm-faqs",
+        name: "FAQs",
+        icon: MessageSquareText,
+        href: "/admin/faq-manager",
+        type: "link",
+      },
     ],
   },
 
@@ -125,13 +125,10 @@ const navTree = [
     defaultOpen: true,
     children: [
       {
-        // Phase 1: Replaces comp-header + comp-footer + comp-company
-        // (single consolidated config page — old /admin/header, /admin/footer,
-        //  /admin/company pages and their routes have been removed)
-        id: "comp-site-settings",
-        name: "Site Settings",
+        id: "comp-site-config",
+        name: "Site Configuration",
         icon: AlignVerticalSpaceBetween,
-        href: "/admin/site-settings",
+        href: "/admin/site-config",
         type: "link",
       },
       {

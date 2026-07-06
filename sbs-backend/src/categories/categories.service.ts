@@ -30,7 +30,7 @@ export class CategoriesService {
     return category;
   }
 
-  async create(data: { name: string; image?: string; icon?: string; description?: string }) {
+  async create(data: { name: string; image?: string; sortOrder?: number }) {
     const slug = this.slugify(data.name);
     const existing = await this.prisma.category.findUnique({ where: { slug } });
     if (existing) throw new BadRequestException('Category with this name already exists');
@@ -40,7 +40,7 @@ export class CategoriesService {
     });
   }
 
-  async update(id: string, data: { name?: string; image?: string; icon?: string; description?: string; isActive?: boolean }) {
+  async update(id: string, data: { name?: string; image?: string; isActive?: boolean }) {
     await this.findOne(id);
     const updateData: any = { ...data };
     if (data.name) updateData.slug = this.slugify(data.name);

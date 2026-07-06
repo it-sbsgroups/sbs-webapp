@@ -21,8 +21,7 @@ export default function AdminEmployeesPage() {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
   const [filters, setFilters] = useState({
-    search: '', role: '', department: '', designation: '',
-    state: '', city: '', isActive: '',
+    search: '', role: '', department: '', designation: '', isActive: '',
     page: 1, limit: 10, sortBy: 'createdAt', sortOrder: 'desc',
   });
 
@@ -198,7 +197,6 @@ export default function AdminEmployeesPage() {
                     <Th label="Role" col="role" filters={filters} onSort={sortByCol} />
                     <Th label="Department" col="department" filters={filters} onSort={sortByCol} />
                     <th className="text-left p-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Contact</th>
-                    <Th label="Location" col="city" filters={filters} onSort={sortByCol} />
                     <th className="text-left p-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
                     <th className="text-right p-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
                   </tr>
@@ -217,14 +215,6 @@ export default function AdminEmployeesPage() {
                         placeholder="Filter…" className="w-full text-xs border border-gray-200 rounded-md px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-400" />
                     </td>
                     <td className="px-4 py-2" />
-                    <td className="px-4 py-2">
-                      <div className="flex gap-1">
-                        <input value={filters.city} onChange={(e) => setFilter('city', e.target.value)}
-                          placeholder="City" className="w-1/2 text-xs border border-gray-200 rounded-md px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                        <input value={filters.state} onChange={(e) => setFilter('state', e.target.value)}
-                          placeholder="State" className="w-1/2 text-xs border border-gray-200 rounded-md px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                      </div>
-                    </td>
                     <td className="px-4 py-2">
                       <select value={filters.isActive === '' ? '' : String(filters.isActive)}
                         onChange={(e) => { const v = e.target.value; setFilter('isActive', v === '' ? '' : v === 'true'); }}
@@ -265,7 +255,6 @@ export default function AdminEmployeesPage() {
                         <p className="text-gray-800">{emp.email}</p>
                         <p className="text-xs text-gray-400">{emp.mobile}</p>
                       </td>
-                      <td className="p-4 text-gray-500">{[emp.city, emp.state].filter(Boolean).join(', ') || '—'}</td>
                       <td className="p-4">
                         <button onClick={() => handleToggleActive(emp.id)}
                           className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${

@@ -13,6 +13,7 @@ import {
   loadProductsSettings,
   resolveRecommendations,
 } from "@/lib/productsSettings";
+import RichTextRenderer from "@/components/shared/RichTextRenderer";
 
 const PAGE_CONFIG = {
   layout: {
@@ -123,7 +124,6 @@ function reshapeProduct(p) {
     distributorId: p.brandId || p.distributorId || (p.brand && p.brand.id) || "",
     clientIds: [],
     brandName,
-    // Prefer the rich description; fall back to key features.
     specification: p.keyFeatures || "",
     description: p.description || p.keyFeatures || "",
     manufacturer: p.manufacturer || "",
@@ -172,17 +172,39 @@ function DescriptionBlock({ text }) {
   const [expanded, setExpanded] = useState(false);
   const { maxChars, expandable } = PAGE_CONFIG.description;
   if (!text) return null;
-  const isLong = text.length > maxChars;
-  const shown = expanded || !isLong ? text : text.slice(0, maxChars).trimEnd() + "…";
+
+  // Measure length off the plain text (tags stripped) so long/short detection
+  // still works the same way it did for plain-text descriptions.
+  const plain = text.replace(/<[^>]+>/g, "");
+  const isLong = plain.length > maxChars;
+
+  if (!isLong || expanded) {
+    return (
+      <div>
+        <RichTextRenderer html={text} />
+        {isLong && expandable && (
+          <button
+            onClick={() => setExpanded(false)}
+            className="mt-2 text-xs font-black text-blue-700 uppercase tracking-wider hover:text-blue-900 transition-colors"
+          >
+            − Read less
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
-      <p className="text-sm text-slate-700 leading-relaxed font-medium whitespace-pre-line">{shown}</p>
-      {isLong && expandable && (
+      <p className="text-sm text-slate-700 leading-relaxed font-medium whitespace-pre-line">
+        {plain.slice(0, maxChars).trimEnd()}…
+      </p>
+      {expandable && (
         <button
-          onClick={() => setExpanded((v) => !v)}
+          onClick={() => setExpanded(true)}
           className="mt-2 text-xs font-black text-blue-700 uppercase tracking-wider hover:text-blue-900 transition-colors"
         >
-          {expanded ? "− Read less" : "+ Read more"}
+          + Read more
         </button>
       )}
     </div>
@@ -516,9 +538,6 @@ export default function ProductDetailPage() {
                   <div className="flex flex-col">
                     {/* SKU + model chips */}
                     <div className="flex flex-wrap items-center gap-2 mb-3">
-                      <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-md">
-                        {product.sku}
-                      </span>
                       {product.model && (
                         <span className="text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
                           Model: {product.model}
@@ -681,7 +700,6 @@ export default function ProductDetailPage() {
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4">
                       {/* <SpecItem label="Location" value={brand.location} /> */}
-                      <SpecItem label="Onboarded Since" value={brand.onboardedSince} />
                       <SpecItem label="Products Listed" value={`${brand.productCount}+`} />
                       {/* <SpecItem label="Operational Zone" value={brand.operationalZone} /> */}
                     </div>

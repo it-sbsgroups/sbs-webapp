@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 import faqApi from "@/lib/faq/api";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
+import RichTextEditor from "@/components/shared/RichTextEditor";
 
 const TABS = [
   { key: "pending",  label: "Pending",   emoji: "📥", desc: "User-submitted questions awaiting an answer" },
@@ -77,23 +78,17 @@ function AnswerModal({ faq, onClose, onSave }) {
             <p className="text-sm font-semibold text-slate-800 leading-relaxed">{faq.question}</p>
           </div>
 
-          {/* Answer textarea */}
+          {/* Answer editor */}
           <div className="space-y-1.5">
             <label className="text-xs font-black text-slate-700 uppercase tracking-wide">
               Your Answer <span className="text-red-500">*</span>
             </label>
-            <p className="text-[11px] text-slate-400">
-              Plain text, HTML, or Markdown with Cloudinary image URLs are all supported.
-            </p>
-            <textarea
+            <RichTextEditor
               value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              rows={8}
-              placeholder="Write a clear, helpful answer..."
-              className="w-full text-sm p-3.5 bg-slate-50 border border-slate-200 rounded-xl
-                         focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400
-                         resize-y text-slate-700 font-medium leading-relaxed"
-              required
+              onChange={setAnswer}
+              placeholder="Write a clear, helpful answer…"
+              uploadFolder="faq-answers"
+              resetKey={faq?.id}
             />
           </div>
 
@@ -207,16 +202,12 @@ function CreateFaqForm({ onSuccess }) {
         <label className="text-xs font-black text-slate-700 uppercase tracking-wide">
           Answer <span className="text-red-500">*</span>
         </label>
-        <p className="text-[11px] text-slate-400">Supports plain text, HTML, and Cloudinary image URLs.</p>
-        <textarea
+        <RichTextEditor
           value={form.answer}
-          onChange={(e) => set("answer", e.target.value)}
-          rows={8}
-          placeholder="Write a clear, complete answer..."
-          className="w-full text-sm p-3.5 bg-slate-50 border border-slate-200 rounded-xl
-                     focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400
-                     resize-y text-slate-700 font-medium leading-relaxed"
-          required
+          onChange={(html) => set("answer", html)}
+          placeholder="Write a clear, complete answer…"
+          uploadFolder="faq-answers"
+          resetKey="new-faq"
         />
       </div>
 

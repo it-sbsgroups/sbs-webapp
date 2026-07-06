@@ -38,11 +38,45 @@ export class ClientsService {
     return this.prisma.client.findMany({
       where: { isActive: true },
       orderBy: [{ order: 'asc' }, { companyName: 'asc' }],
+      // Don't leak the contact's personal email/phone on the public site.
+      select: {
+        id: true,
+        slug: true,
+        companyName: true,
+        companyAddress: true,
+        logo: true,
+        website: true,
+        gallery: true,
+        order: true,
+      },
     });
   }
 
   async findBySlug(slug: string) {
-    const client = await this.prisma.client.findUnique({ where: { slug } });
+    const client = await this.prisma.client.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        slug: true,
+        companyName: true,
+        companyAddress: true,
+        logo: true,
+        website: true,
+        gallery: true,
+        isActive: true,
+        testimonials: {
+          where: { status: 'APPROVED' },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            name: true,
+            designation: true,
+            testimony: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
     if (!client || !client.isActive) {
       throw new NotFoundException('Client not found');
     }
@@ -54,11 +88,15 @@ export class ClientsService {
   findAll() {
     return this.prisma.client.findMany({
       orderBy: [{ order: 'asc' }, { companyName: 'asc' }],
+      include: { _count: { select: { testimonials: true } } },
     });
   }
 
   async findOne(id: string) {
-    const client = await this.prisma.client.findUnique({ where: { id } });
+    const client = await this.prisma.client.findUnique({
+      where: { id },
+      include: { testimonials: true, testimonialPasscodes: true },
+    });
     if (!client) throw new NotFoundException('Client not found');
     return client;
   }
@@ -66,6 +104,15 @@ export class ClientsService {
   async create(dto: CreateClientDto) {
     if (!dto.companyName?.trim()) {
       throw new BadRequestException('companyName is required');
+    }
+    if (!dto.contactName?.trim()) {
+      throw new BadRequestException('contactName is required');
+    }
+    if (!dto.email?.trim()) {
+      throw new BadRequestException('email is required');
+    }
+    if (!dto.phone?.trim()) {
+      throw new BadRequestException('phone is required');
     }
     const slug = await this.uniqueSlug(dto.slug || dto.companyName);
     return this.prisma.client.create({ data: { ...dto, slug } });

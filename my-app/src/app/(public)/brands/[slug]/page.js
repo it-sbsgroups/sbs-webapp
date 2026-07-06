@@ -65,9 +65,11 @@ export default function BrandDetailPage() {
     isOwnBrand,
     gallery,
     products,
+    testimonials,
     _count,
   } = brand;
   const productCount = _count?.products ?? 0;
+  const approvedTestimonials = testimonials || [];
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans text-slate-800 antialiased pb-16">
@@ -122,6 +124,37 @@ export default function BrandDetailPage() {
             </div>
           ) : (
             <p className="text-xs text-slate-400 italic">No gallery images have been added yet.</p>
+          )}
+        </div>
+
+        {/* Testimonials Section — bound to this brand via Testimonial.brandId */}
+        <div className="bg-white border border-slate-200/80 rounded-3xl p-6 md:p-8 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider">
+              Partner Testimonials ({approvedTestimonials.length})
+            </h3>
+          </div>
+          {approvedTestimonials.length > 0 ? (
+            <div className="space-y-3">
+              {approvedTestimonials.map((t) => (
+                <div key={t.id} className="bg-slate-50 border border-slate-200/70 rounded-xl p-4">
+                  <p className="text-xs md:text-sm text-slate-700 font-medium leading-relaxed">
+                    "{t.testimony}"
+                  </p>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
+                    <span className="text-xs font-bold text-slate-900">
+                      {t.name}
+                      {t.designation && <span className="text-slate-400 font-semibold"> · {t.designation}</span>}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      {new Date(t.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400 italic">No testimonials have been approved for this brand yet.</p>
           )}
         </div>
       </div>

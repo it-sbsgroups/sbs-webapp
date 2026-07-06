@@ -15,6 +15,16 @@ const PASSCODE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 // Unambiguous alphabet (no 0/O/1/I/L) for codes that get read & typed.
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
+type SourceType = 'CLIENT' | 'BRAND';
+
+interface IssueOptions {
+  sourceType: SourceType;
+  companyName: string;
+  email?: string | null;
+  clientId?: string;
+  brandId?: string;
+}
+
 @Injectable()
 export class TestimonialsService {
   constructor(
@@ -29,45 +39,105 @@ export class TestimonialsService {
     return code;
   }
 
-  // ---- Passcodes (admin) ----
+  // ---- Shared passcode issuance ----
 
-  async issuePasscode(dto: IssuePasscodeDto) {
-    // Retry a few times in the unlikely event of a code collision.
+  /** Core issuance logic shared by manual issuance and client/brand requests. */
+  private async issuePasscodeInternal(opts: IssueOptions) {
+    if (!opts.email) {
+      throw new BadRequestException(
+        'An email address is required to send a testimonial request.',
+      );
+    }
+
     for (let attempt = 0; attempt < 5; attempt++) {
       const code = this.generateCode(8);
       const exists = await this.prisma.testimonialPasscode.findUnique({
         where: { code },
       });
       if (exists) continue;
+
       const passcode = await this.prisma.testimonialPasscode.create({
         data: {
           code,
-          companyName: dto.companyName,
-          email: dto.email,
+          sourceType: opts.sourceType,
+          companyName: opts.companyName,
+          email: opts.email,
+          clientId: opts.clientId,
+          brandId: opts.brandId,
           expiresAt: new Date(Date.now() + PASSCODE_TTL_MS),
         },
       });
 
-      // Auto-email the code to the client contact (non-blocking).
-      if (passcode.email) {
-        const base = (process.env.PUBLIC_SITE_URL || '').replace(/\/$/, '');
-        void this.mail.sendTestimonialPasscode({
-          email: passcode.email,
-          code: passcode.code,
-          companyName: passcode.companyName,
-          expiresAt: passcode.expiresAt,
-          writeUrl: base ? `${base}/testimonials/write` : undefined,
-        });
-      }
+      const base = (process.env.PUBLIC_SITE_URL || '').replace(/\/$/, '');
+      void this.mail.sendTestimonialPasscode({
+        email: passcode.email!,
+        code: passcode.code,
+        companyName: passcode.companyName,
+        expiresAt: passcode.expiresAt,
+        writeUrl: base ? `${base}/testimonials/write` : undefined,
+      });
 
       return passcode;
     }
     throw new BadRequestException('Could not generate a unique passcode, retry.');
   }
 
+  /** Admin manually types a company name/email (no existing Client/Brand record). */
+  issuePasscode(dto: IssuePasscodeDto) {
+    return this.issuePasscodeInternal({
+      sourceType: 'CLIENT',
+      companyName: dto.companyName,
+      email: dto.email,
+    });
+  }
+
+  /** Send a testimonial request to an existing Client, using their record's email. */
+  async requestForClient(clientId: string) {
+    const client = await this.prisma.client.findUnique({
+      where: { id: clientId },
+    });
+    if (!client) throw new NotFoundException('Client not found');
+
+    return this.issuePasscodeInternal({
+      sourceType: 'CLIENT',
+      companyName: client.companyName,
+      email: client.email,
+      clientId: client.id,
+    });
+  }
+
+  /**
+   * Send a testimonial request to an existing partner Brand, using their
+   * record's email. Blocked for brands flagged as our own (isOwnBrand=true) —
+   * we don't ask ourselves for a testimonial.
+   */
+  async requestForBrand(brandId: string) {
+    const brand = await this.prisma.brand.findUnique({
+      where: { id: brandId },
+    });
+    if (!brand) throw new NotFoundException('Brand not found');
+
+    if (brand.isOwnBrand) {
+      throw new BadRequestException(
+        'This brand is marked as your own brand — testimonial requests can only be sent to partner/distributor brands.',
+      );
+    }
+
+    return this.issuePasscodeInternal({
+      sourceType: 'BRAND',
+      companyName: brand.name,
+      email: brand.email,
+      brandId: brand.id,
+    });
+  }
+
   listPasscodes() {
     return this.prisma.testimonialPasscode.findMany({
       orderBy: { createdAt: 'desc' },
+      include: {
+        client: { select: { id: true, companyName: true, logo: true } },
+        brand: { select: { id: true, name: true, logo: true } },
+      },
     });
   }
 
@@ -105,7 +175,8 @@ export class TestimonialsService {
       throw new BadRequestException('This passcode has expired');
     }
 
-    // Create the testimonial (PENDING) and consume the passcode atomically.
+    // Create the testimonial (PENDING), carrying over the client/brand
+    // binding from the passcode, and consume the passcode atomically.
     const [testimonial] = await this.prisma.$transaction([
       this.prisma.testimonial.create({
         data: {
@@ -115,6 +186,9 @@ export class TestimonialsService {
           designation: dto.designation,
           testimony: dto.testimony,
           status: 'PENDING',
+          sourceType: pc.sourceType,
+          clientId: pc.clientId,
+          brandId: pc.brandId,
         },
       }),
       this.prisma.testimonialPasscode.update({
@@ -134,6 +208,10 @@ export class TestimonialsService {
     return this.prisma.testimonial.findMany({
       where: { status: 'APPROVED' },
       orderBy: { createdAt: 'desc' },
+      include: {
+        client: { select: { id: true, companyName: true, logo: true, slug: true } },
+        brand: { select: { id: true, name: true, logo: true, slug: true } },
+      },
     });
   }
 
@@ -147,6 +225,10 @@ export class TestimonialsService {
     return this.prisma.testimonial.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      include: {
+        client: { select: { id: true, companyName: true, logo: true } },
+        brand: { select: { id: true, name: true, logo: true } },
+      },
     });
   }
 
@@ -159,7 +241,13 @@ export class TestimonialsService {
   }
 
   async findOne(id: string) {
-    const t = await this.prisma.testimonial.findUnique({ where: { id } });
+    const t = await this.prisma.testimonial.findUnique({
+      where: { id },
+      include: {
+        client: { select: { id: true, companyName: true, logo: true } },
+        brand: { select: { id: true, name: true, logo: true } },
+      },
+    });
     if (!t) throw new NotFoundException('Testimonial not found');
     return t;
   }
