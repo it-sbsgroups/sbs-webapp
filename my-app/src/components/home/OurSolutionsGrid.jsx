@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 // ✅ Pull real categories/subcategories from the single source of truth
 import { categories } from "@/data/products";
+import categoriesApi from "@/lib/categoriesApi";
 
 export default function OurSolutionsGrid() {
   const router = useRouter();

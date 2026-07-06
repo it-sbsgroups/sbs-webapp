@@ -16,22 +16,7 @@ export class CreateClientDto {
   slug?: string; // auto-generated from companyName when omitted
 
   @IsString()
-  name!: string;
-
-  @IsOptional()
-  @IsString()
-  designation?: string;
-
-  @IsString()
   companyName!: string;
-
-  @IsOptional()
-  @IsString()
-  industry?: string;
-
-  @IsOptional()
-  @IsString()
-  servingSince?: string;
 
   @IsOptional()
   @IsString()
@@ -42,34 +27,12 @@ export class CreateClientDto {
   url?: string;
 
   @IsOptional()
-  @IsString()
-  details?: string;
-
-  @IsOptional()
-  @IsObject()
-  contact?: Record<string, any>; // { phone, email }
-
-  @IsOptional()
-  @IsObject()
-  social?: Record<string, any>; // { linkedin, instagram, twitter }
-
-  @IsOptional()
   @IsArray()
   gallery?: string[];
 
   @IsOptional()
-  @IsArray()
-  reviews?: { date?: string; rating?: number; description?: string }[];
-
-  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  order?: number;
 }
 
 export class UpdateClientDto extends PartialType(CreateClientDto) {}

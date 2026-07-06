@@ -18,8 +18,8 @@ const IMMUTABLE_FIELDS = ['id', 'createdAt', 'updatedAt'] as const;
 // Whitelist of columns that are allowed to be sorted on (prevents
 // "Unknown argument" Prisma errors / injection via sortBy).
 const SORTABLE = new Set([
-  'firstName', 'lastName', 'email', 'mobile', 'createdAt',
-  'updatedAt', 'state', 'city', 'role', 'designation', 'department',
+  'name', 'email', 'mobile', 'createdAt',
+  'updatedAt', 'role', 'designation', 'department',
 ]);
 
 @Injectable()
@@ -88,20 +88,13 @@ export class EmployeeService {
 
       if (search) {
         where.OR = [
-          { firstName: { contains: search } },
-          { lastName: { contains: search } },
+          { name: { contains: search } },
           { email: { contains: search } },
           { mobile: { contains: search } },
-          { fatherName: { contains: search } },
-          { aadhar: { contains: search } },
           { designation: { contains: search } },
           { department: { contains: search } },
         ];
       }
-      if (state) where.state = { contains: state };
-      if (city) where.city = { contains: city };
-      if (district) where.district = { contains: district };
-      if (role) where.role = role;
       if (department) where.department = { contains: department };
       if (designation) where.designation = { contains: designation };
       if (isActive !== undefined) where.isActive = isActive;
@@ -143,11 +136,6 @@ export class EmployeeService {
   async update(id: string, updateEmployeeDto: UpdateEmployeeDto): Promise<Employee> {
     const existing = await this.findOne(id); // throws 404 if missing
 
-    // ── THE CORE FIX ──────────────────────────────────────────────
-    // Build a clean data object: drop immutable fields (id/createdAt/
-    // updatedAt) and any keys with `undefined` value. Previously the
-    // frontend spread the whole employee row (incl. id/timestamps) into
-    // the PATCH body → Prisma threw → error swallowed → silent failure.
     const data: any = {};
     for (const [key, value] of Object.entries(updateEmployeeDto)) {
       if (IMMUTABLE_FIELDS.includes(key as any)) continue;
@@ -164,18 +152,6 @@ export class EmployeeService {
           throw new ConflictException({
             message: 'Email already in use by another employee',
             error: 'Duplicate Email',
-          });
-        }
-      }
-
-      if (data.aadhar && data.aadhar !== existing.aadhar) {
-        const aadharExists = await this.prisma.employee.findUnique({
-          where: { aadhar: data.aadhar },
-        });
-        if (aadharExists) {
-          throw new ConflictException({
-            message: 'Aadhar number already in use by another employee',
-            error: 'Duplicate Aadhar',
           });
         }
       }
@@ -242,21 +218,13 @@ export class EmployeeService {
 
   async getStats() {
     try {
-      const [total, active, inactive, stateStats] = await Promise.all([
+      const [total, active, inactive] = await Promise.all([
         this.prisma.employee.count(),
         this.prisma.employee.count({ where: { isActive: true } }),
         this.prisma.employee.count({ where: { isActive: false } }),
-        this.prisma.employee.groupBy({
-          by: ['state'],
-          _count: { id: true },
-          where: { state: { not: null } },
-          orderBy: { _count: { id: 'desc' } },
-          take: 10,
-        }),
       ]);
       return {
-        total, active, inactive,
-        topStates: stateStats.map((s) => ({ state: s.state, count: s._count.id })),
+        total, active, inactive
       };
     } catch (error) {
       this.logger.error(`❌ Error fetching stats: ${error.message}`, error.stack);

@@ -1,4 +1,3 @@
-// src/industry-innovation/industry-innovation.service.ts
 import {
   Injectable,
   NotFoundException,
@@ -19,6 +18,16 @@ export class IndustryInnovationService {
 
   // ===================== INNOVATION (Parent) =====================
   async create(dto: CreateIndustryInnovationDto) {
+    // ✅ Ensure only one active innovation section exists
+    const existing = await this.prisma.industryInnovation.findFirst({
+      where: { isDeleted: false },
+    });
+    if (existing) {
+      throw new BadRequestException(
+        'Only one industry innovation section is allowed. Please update the existing one.',
+      );
+    }
+
     try {
       const innovation = await this.prisma.industryInnovation.create({
         data: dto,
@@ -32,6 +41,22 @@ export class IndustryInnovationService {
         error: error.message,
       });
     }
+  }
+
+  async findCurrent() {
+    const innovation = await this.prisma.industryInnovation.findFirst({
+      where: { isDeleted: false },
+      include: {
+        keys: {
+          where: { isDeleted: false },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
+    });
+    if (!innovation) {
+      throw new NotFoundException('No active innovation section found.');
+    }
+    return innovation;
   }
 
   async findAll() {
@@ -94,6 +119,20 @@ export class IndustryInnovationService {
   // ===================== KEYS (Sub-resource) =====================
   async createKey(innovationId: string, dto: CreateIndustryInnovationKeyDto) {
     await this.findOne(innovationId); // parent must exist
+
+    // ✅ Limit to maximum 6 active keys per innovation
+    const keyCount = await this.prisma.industryInnovationKey.count({
+      where: {
+        innovationId,
+        isDeleted: false,
+      },
+    });
+    if (keyCount >= 6) {
+      throw new BadRequestException(
+        'Maximum of 6 key points per innovation section reached.',
+      );
+    }
+
     try {
       const key = await this.prisma.industryInnovationKey.create({
         data: { ...dto, innovationId },

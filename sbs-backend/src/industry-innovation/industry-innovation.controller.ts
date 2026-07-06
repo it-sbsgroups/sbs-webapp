@@ -27,10 +27,10 @@ export class IndustryInnovationController {
   }
 
   @Public()
-  @Get()
-  @ApiOperation({ summary: 'List all innovation sections (public)' })
-  findAll() {
-    return this.service.findAll();
+  @Get('current')
+  @ApiOperation({ summary: 'Get the current innovation section (public)' })
+  findCurrent() {
+    return this.service.findCurrent();
   }
 
   @Public()
