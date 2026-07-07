@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import publicNewsApi from "@/lib/news/publicNewsApi";
-import productsApi from "@/lib/productsApi";
 
 const fmtDate = (iso) => {
   if (!iso) return "";
@@ -14,10 +13,7 @@ const fmtDate = (iso) => {
   });
 };
 
-const firstProductImage = (p) => {
-  const img = Array.isArray(p?.images) ? p.images.find((i) => i?.url) : null;
-  return img?.url || "";
-};
+const coverImageOf = (post) => post?.blocks?.[0]?.images?.[0]?.src || "";
 
 export default function PublicNewsPage() {
   // ============================================
@@ -32,12 +28,10 @@ export default function PublicNewsPage() {
     showSearch: true,
     showCategoryFilter: true,
     showSubcategoryFilter: true,
-    adsEnabled: true,
-    adsMaxProducts: 4,
-    adsPlacement: "sidebar",
+    latestNewsEnabled: true,
+    latestNewsCount: 5,
   });
-  const [adProducts, setAdProducts] = useState([]);
-  const [allProducts, setAllProducts] = useState([]);
+  const [latestNews, setLatestNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // ============================================
@@ -54,33 +48,20 @@ export default function PublicNewsPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [postsRes, catData, settingsData, productsRes] = await Promise.all([
+        const [postsRes, catData, settingsData] = await Promise.all([
           publicNewsApi.getPublishedPosts({ pageSize: 100 }),
           publicNewsApi.getCategories(),
           publicNewsApi.getSettings(),
-          productsApi.getAll({ pageSize: 500 }),
         ]);
 
         setPosts(postsRes?.data || []);
         setCategories(Array.isArray(catData) ? catData : []);
-        setAllProducts(productsRes?.data || []);
 
         if (settingsData) {
           setSettings((prev) => ({ ...prev, ...settingsData }));
-          
-          // Load selected ad products if mode is "selected"
-          if (settingsData.productSuggestionMode === "selected" && settingsData.selectedProductIds) {
-            const products = (productsRes?.data || []).filter((p) =>
-              settingsData.selectedProductIds.includes(p.id)
-            );
-            setAdProducts(products.slice(0, settingsData.adsMaxProducts || 4));
-          } else if (settingsData.productSuggestionMode === "random") {
-            // Random selection
-            const shuffled = [...(productsRes?.data || [])].sort(() => 0.5 - Math.random());
-            setAdProducts(shuffled.slice(0, settingsData.adsMaxProducts || 4));
-          } else {
-            // Latest products (default)
-            setAdProducts((productsRes?.data || []).slice(0, settingsData.adsMaxProducts || 4));
+          if (settingsData.latestNewsEnabled !== false) {
+            const latest = await publicNewsApi.getLatestNews(null, settingsData.latestNewsCount || 5);
+            setLatestNews(latest);
           }
         }
       } catch (error) {
@@ -222,7 +203,7 @@ export default function PublicNewsPage() {
 
       {/* BODY */}
       <div className={`grid gap-8 ${
-        adProducts.length > 0 && settings.adsEnabled && (settings.adsPlacement === "sidebar" || settings.adsPlacement === "both")
+        latestNews.length > 0 && settings.latestNewsEnabled !== false
           ? "lg:grid-cols-[1fr_280px]" : "grid-cols-1"
       }`}>
         {/* ARTICLES */}
@@ -292,28 +273,27 @@ export default function PublicNewsPage() {
           )}
         </div>
 
-        {/* AD PRODUCTS SIDEBAR */}
-        {adProducts.length > 0 && settings.adsEnabled && (settings.adsPlacement === "sidebar" || settings.adsPlacement === "both") && (
+        {/* LATEST NEWS SIDEBAR (replaces the old sponsored-products ad slot) */}
+        {latestNews.length > 0 && settings.latestNewsEnabled !== false && (
           <aside className="space-y-4">
             <div className="bg-white border border-slate-200 rounded-2xl p-4 sticky top-6">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Sponsored Products</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Latest News</p>
               <div className="space-y-3">
-                {adProducts.map((p) => (
-                  <Link key={p.id} href={`/products/${p.id}`}
+                {latestNews.map((n) => (
+                  <Link key={n.id} href={`/news/${n.slug}`}
                     className="flex gap-3 items-center p-2 rounded-xl border border-slate-100 hover:border-blue-300 hover:shadow-sm transition-all group">
-                    <div className="w-14 h-14 shrink-0 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-center p-1">
-                      {firstProductImage(p) ? (
-                        <img loading="lazy" src={firstProductImage(p)} alt={p.name} className="max-w-full max-h-full object-contain" />
-                      ) : (<span className="text-xl">📦</span>)}
+                    <div className="w-14 h-14 shrink-0 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-center p-1 overflow-hidden">
+                      {coverImageOf(n) ? (
+                        <img loading="lazy" src={coverImageOf(n)} alt={n.title} className="w-full h-full object-cover" />
+                      ) : (<span className="text-xl">📰</span>)}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[11px] font-black text-slate-900 leading-snug line-clamp-2 group-hover:text-blue-900">{p.name}</p>
-                      <span className="text-[9px] font-bold text-blue-600 uppercase tracking-wider">View →</span>
+                      <p className="text-[11px] font-black text-slate-900 leading-snug line-clamp-2 group-hover:text-blue-900">{n.title}</p>
+                      <span className="text-[9px] font-bold text-blue-600 uppercase tracking-wider">Read →</span>
                     </div>
                   </Link>
                 ))}
               </div>
-              <p className="text-[8px] text-slate-300 font-bold uppercase tracking-widest mt-3 text-center">Sponsored</p>
             </div>
           </aside>
         )}

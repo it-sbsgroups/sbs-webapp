@@ -6,8 +6,9 @@ import Link from "next/link";
 
 // ✅ LIVE DATA — fetched from the NestJS backend (no more static dummy data)
 import publicCatalogApi from "@/lib/publicCatalogApi";
+import Breadcrumb from "@/components/shared/Breadcrumb";
+import apiClient from "@/lib/client";
 import rfqApi from "@/lib/rfqApi";
-// import Breadcrumb from "@/components/shared/Breadcrumb";
 
 // ✅ SETTINGS — admin-controlled look & behavior (read-only here)
 import {
@@ -319,7 +320,7 @@ function ProductsCatalogContent() {
       style={{ backgroundColor: layout?.pageBackground || "#f8fafc" }}
     >
       {/* BREADCRUMB */}
-      {/* <Breadcrumb items={[{ label: "Products" }]} /> */}
+      <Breadcrumb items={[{ label: "Products" }]} />
 
       {/* HEADER SECTION */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
@@ -336,7 +337,15 @@ function ProductsCatalogContent() {
             </p>
           </div>
 
-          {toggles?.showQuoteBucketButton && rfq?.enabled && (
+          <div className="flex items-center gap-3">
+            <a
+              href={`${apiClient.baseUrl}/products/catalogue/download`}
+              className="text-blue-900 font-bold text-xs px-5 py-3 rounded-xl uppercase tracking-wider border-2 border-blue-900 flex items-center gap-2 hover:bg-blue-50 transition-all whitespace-nowrap"
+            >
+              ⬇ Download Catalogue
+            </a>
+
+            {toggles?.showQuoteBucketButton && rfq?.enabled && (
             <button
               onClick={() => {
                 if (rfqCart.length === 0) {
@@ -355,6 +364,7 @@ function ProductsCatalogContent() {
               </span>
             </button>
           )}
+          </div>
         </div>
       </div>
 

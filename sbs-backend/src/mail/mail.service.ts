@@ -452,6 +452,35 @@ export class MailService {
     }
   }
 
+  /**
+   * Sends the SAME email to each recipient ONE AT A TIME (separate `to:` each
+   * time, not one bcc blast). Used where each subscriber should get their own
+   * individual message. Returns { sent, failed } counts.
+   */
+  async sendIndividual(recipients: string[], subject: string, html: string) {
+    const list = (recipients || []).filter((e) => e && e.includes('@'));
+    let sent = 0;
+    let failed = 0;
+    for (const email of list) {
+      try {
+        await this.transporter.sendMail({
+          from: `"SBS Groups" <${this.configService.get('SMTP_USER')}>`,
+          to: email,
+          subject,
+          html,
+        });
+        sent++;
+      } catch (error) {
+        failed++;
+        console.error(`❌ Individual send failed for ${email}:`, error.message);
+      }
+      // small gap so we don't trip the SMTP provider's rate limit
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    console.log(`✅ Individual send complete: ${sent} sent, ${failed} failed`);
+    return { sent, failed };
+  }
+
   async sendTestimonialPasscode(data: {
     email: string;
     code: string;

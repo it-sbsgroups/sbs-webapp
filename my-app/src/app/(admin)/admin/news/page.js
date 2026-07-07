@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import newsApi from "@/lib/news/newsApi";
 import productsApi from "@/lib/productsApi";
 import { uploadImage } from "@/lib/uploadApi";
-import { Plus, Edit, Trash2, X, Save, Search, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, CheckCircle, XCircle, Archive, Upload, GripVertical, Loader2 } from "lucide-react";
+import RichTextEditor from "@/components/shared/RichTextEditor";
+import { Plus, Edit, Trash2, X, Save, Search, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, CheckCircle, XCircle, Archive, Upload, GripVertical, Loader2, Settings } from "lucide-react";
 
 const slugify = (text) =>
   text?.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-').replace(/-+/g, '-') || '';
@@ -162,6 +163,7 @@ export default function AdminNewsManage() {
   const [subcategoryId, setSubcategoryId] = useState("");
   const [allowVersioning, setAllowVersioning] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [blocks, setBlocks] = useState([
     { type: "text", content: "", style: { fontFamily: "serif", color: "#1e293b", fontSize: "16px" } },
   ]);
@@ -619,9 +621,33 @@ export default function AdminNewsManage() {
             <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">
               {editingPostId ? "Edit Article" : "Compose New Article"}
             </h2>
-            {editingPostId && (
-              <button onClick={resetComposer} className="text-xs text-blue-600 hover:underline">Create New Instead</button>
-            )}
+            <div className="flex items-center gap-3">
+              {editingPostId && (
+                <button onClick={resetComposer} className="text-xs text-blue-600 hover:underline">Create New Instead</button>
+              )}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowSettingsMenu((v) => !v)}
+                  className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                  title="Post settings"
+                >
+                  <Settings size={14} /> Settings
+                </button>
+                {showSettingsMenu && (
+                  <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border bg-white shadow-lg p-3 z-20 space-y-3">
+                    <label className="flex items-center justify-between gap-2 text-xs font-bold">
+                      Version Auditing
+                      <input type="checkbox" checked={allowVersioning} onChange={(e) => setAllowVersioning(e.target.checked)} className="h-4 w-4" />
+                    </label>
+                    <label className="flex items-center justify-between gap-2 text-xs font-bold">
+                      Featured Post
+                      <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} className="h-4 w-4" />
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Basic Info */}
@@ -646,24 +672,14 @@ export default function AdminNewsManage() {
               </select>
             </div>
 
-            <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2 text-xs font-bold">
-                <input type="checkbox" checked={allowVersioning} onChange={(e) => setAllowVersioning(e.target.checked)} className="h-4 w-4" />
-                Version Auditing
-              </label>
-              <label className="flex items-center gap-2 text-xs font-bold">
-                <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} className="h-4 w-4" />
-                Featured Post
-              </label>
-              <label className="flex items-center gap-2 text-xs font-bold">
-                <span>Status:</span>
-                <select value={publishStatus} onChange={(e) => setPublishStatus(e.target.value)}
-                  className="border rounded-lg px-2 py-1 text-xs font-bold">
-                  <option value="DRAFT">Draft</option>
-                  <option value="PUBLISHED">Published</option>
-                </select>
-              </label>
-            </div>
+            <label className="flex items-center gap-2 text-xs font-bold w-fit">
+              <span>Status:</span>
+              <select value={publishStatus} onChange={(e) => setPublishStatus(e.target.value)}
+                className="border rounded-lg px-2 py-1 text-xs font-bold">
+                <option value="DRAFT">Draft</option>
+                <option value="PUBLISHED">Published</option>
+              </select>
+            </label>
           </div>
 
           {/* Content Blocks */}
@@ -679,25 +695,13 @@ export default function AdminNewsManage() {
                 </div>
 
                 {block.type === "text" && (
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-2 bg-white p-2 rounded-lg border">
-                      <select value={block.style?.fontFamily || "sans-serif"} onChange={(e) => updateBlockStyle(idx, "fontFamily", e.target.value)} className="text-[10px] font-bold border rounded px-2 py-1">
-                        <option value="sans-serif">Sans Serif</option>
-                        <option value="serif">Serif</option>
-                        <option value="mono">Mono</option>
-                      </select>
-                      <input type="color" value={block.style?.color || "#000"} onChange={(e) => updateBlockStyle(idx, "color", e.target.value)} className="w-7 h-6 border rounded cursor-pointer" />
-                      <select value={block.style?.fontSize || "16px"} onChange={(e) => updateBlockStyle(idx, "fontSize", e.target.value)} className="text-[10px] font-bold border rounded px-2 py-1">
-                        <option value="12px">Small</option>
-                        <option value="16px">Standard</option>
-                        <option value="20px">Sub-heading</option>
-                        <option value="24px">Heading</option>
-                      </select>
-                    </div>
-                    <textarea rows={4} placeholder="Write your paragraph content..." value={block.content || ""} onChange={(e) => updateBlockContent(idx, e.target.value)}
-                      style={{ fontFamily: block.style?.fontFamily, color: block.style?.color, fontSize: block.style?.fontSize }}
-                      className="w-full border p-3 text-sm rounded-lg bg-white focus:outline-none focus:border-blue-400" />
-                  </div>
+                  <RichTextEditor
+                    value={block.content || ""}
+                    onChange={(html) => updateBlockContent(idx, html)}
+                    placeholder="Write your paragraph content…"
+                    uploadFolder="news-content"
+                    resetKey={`${editingPostId || "new-post"}-block-${idx}`}
+                  />
                 )}
 
                 {block.type === "imageRow" && (

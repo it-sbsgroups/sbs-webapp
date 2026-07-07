@@ -106,7 +106,6 @@ export class NewsService {
         subcategory: true,
         blocks: { orderBy: { sortOrder: 'asc' } },
         versions: { orderBy: { createdAt: 'desc' } },
-        adProducts: true,
       },
     });
     if (!post) throw new NotFoundException('Post not found');
@@ -325,20 +324,29 @@ export class NewsService {
   }
 
   // ============================================
-  // AD PRODUCTS
+  // LATEST NEWS (sidebar widget — replaces old ad-products slot)
   // ============================================
-  async getAdProducts(postId: string) {
-    return this.prisma.newsAdProduct.findMany({ where: { postId } });
-  }
-
-  async updateAdProducts(postId: string, productIds: string[]) {
-    await this.prisma.newsAdProduct.deleteMany({ where: { postId } });
-    if (productIds.length > 0) {
-      await this.prisma.newsAdProduct.createMany({
-        data: productIds.map((productId) => ({ postId, productId })),
-      });
-    }
-    return this.prisma.newsAdProduct.findMany({ where: { postId } });
+  async getLatestNews(excludeSlug?: string, limit = 5) {
+    return this.prisma.newsPost.findMany({
+      where: {
+        status: 'PUBLISHED',
+        ...(excludeSlug ? { slug: { not: excludeSlug } } : {}),
+      },
+      orderBy: { publishedAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        publishedAt: true,
+        category: { select: { name: true } },
+        blocks: {
+          where: { type: 'imageRow' },
+          take: 1,
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
+    });
   }
 
   // ============================================
@@ -353,32 +361,29 @@ export class NewsService {
   }
 
   async updateSettings(data: any) {
-    // Ensure selectedProductIds is stored as JSON
-    if (data.selectedProductIds && !Array.isArray(data.selectedProductIds)) {
-      data.selectedProductIds = [];
-    }
-    
+    // Whitelist only fields that still exist on the model — retired ad
+    // fields (adsEnabled, adsMaxProducts, adsPlacement, productSuggestionMode,
+    // selectedProductIds) are silently dropped if an old client still sends them.
+    const clean: any = {};
+    if (data.cardsPerRow !== undefined) clean.cardsPerRow = Number(data.cardsPerRow) || 3;
+    if (data.cardsPerPage !== undefined) clean.cardsPerPage = Number(data.cardsPerPage) || 9;
+    if (data.showSearch !== undefined) clean.showSearch = !!data.showSearch;
+    if (data.showCategoryFilter !== undefined) clean.showCategoryFilter = !!data.showCategoryFilter;
+    if (data.showSubcategoryFilter !== undefined) clean.showSubcategoryFilter = !!data.showSubcategoryFilter;
+    if (data.carouselVisibleCards !== undefined) clean.carouselVisibleCards = Number(data.carouselVisibleCards) || 4;
+    if (data.carouselTotalToPull !== undefined) clean.carouselTotalToPull = Number(data.carouselTotalToPull) || 10;
+    if (data.carouselAutoPlay !== undefined) clean.carouselAutoPlay = !!data.carouselAutoPlay;
+    if (data.carouselPauseOnHover !== undefined) clean.carouselPauseOnHover = !!data.carouselPauseOnHover;
+    if (data.carouselIntervalMs !== undefined) clean.carouselIntervalMs = Number(data.carouselIntervalMs) || 3000;
+    if (data.commentsRequireApproval !== undefined) clean.commentsRequireApproval = !!data.commentsRequireApproval;
+    if (data.commentsAllowReplies !== undefined) clean.commentsAllowReplies = !!data.commentsAllowReplies;
+    if (data.latestNewsEnabled !== undefined) clean.latestNewsEnabled = !!data.latestNewsEnabled;
+    if (data.latestNewsCount !== undefined) clean.latestNewsCount = Number(data.latestNewsCount) || 5;
+
     return this.prisma.newsSettings.upsert({
       where: { id: 'default' },
-      create: { 
-        ...data, 
-        id: 'default',
-        cardsPerRow: Number(data.cardsPerRow) || 3,
-        cardsPerPage: Number(data.cardsPerPage) || 9,
-        carouselVisibleCards: Number(data.carouselVisibleCards) || 4,
-        carouselTotalToPull: Number(data.carouselTotalToPull) || 10,
-        carouselIntervalMs: Number(data.carouselIntervalMs) || 3000,
-        adsMaxProducts: Number(data.adsMaxProducts) || 4,
-      },
-      update: {
-        ...data,
-        cardsPerRow: Number(data.cardsPerRow) || 3,
-        cardsPerPage: Number(data.cardsPerPage) || 9,
-        carouselVisibleCards: Number(data.carouselVisibleCards) || 4,
-        carouselTotalToPull: Number(data.carouselTotalToPull) || 10,
-        carouselIntervalMs: Number(data.carouselIntervalMs) || 3000,
-        adsMaxProducts: Number(data.adsMaxProducts) || 4,
-      },
+      create: { ...clean, id: 'default' },
+      update: clean,
     });
   }
 }

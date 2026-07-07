@@ -1,60 +1,26 @@
-import { IsOptional, IsString, IsBoolean, IsEnum, IsInt, Min, Max } from 'class-validator';
+import { IsOptional, IsString, IsBoolean, IsInt, Min, Max, IsIn } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-
-export enum EmployeeRole {
-  ADMIN = 'admin',
-  MANAGER = 'manager',
-  TEAM_LEAD = 'team_lead',
-  EMPLOYEE = 'employee',
-  INTERN = 'intern',
-  HR = 'hr',
-  ACCOUNTANT = 'accountant',
-  SUPERVISOR = 'supervisor',
-}
 
 export enum SortOrder {
   ASC = 'asc',
   DESC = 'desc',
 }
 
+// Only columns that actually exist on the Employee table.
+const SORTABLE_FIELDS = ['name', 'email', 'mobile', 'createdAt', 'updatedAt', 'designation', 'department'] as const;
+
 export class QueryEmployeeDto {
-  @ApiPropertyOptional({ description: 'Search term for name, email, mobile, aadhar' })
+  @ApiPropertyOptional({ description: 'Search term for name, email, mobile, designation, department' })
   @IsString()
   @IsOptional()
   search?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by state' })
-  @IsString()
-  @IsOptional()
-  state?: string;
-
-  @ApiPropertyOptional({ description: 'Filter by city' })
-  @IsString()
-  @IsOptional()
-  city?: string;
-
-  @ApiPropertyOptional({ description: 'Filter by district' })
-  @IsString()
-  @IsOptional()
-  district?: string;
-
-  // 🆕 Role filter
-  @ApiPropertyOptional({ 
-    description: 'Filter by role',
-    enum: EmployeeRole
-  })
-  @IsEnum(EmployeeRole)
-  @IsOptional()
-  role?: EmployeeRole;
-
-  // 🆕 Department filter
   @ApiPropertyOptional({ description: 'Filter by department' })
   @IsString()
   @IsOptional()
   department?: string;
 
-  // 🆕 Designation filter - THIS WAS MISSING!
   @ApiPropertyOptional({ description: 'Filter by designation' })
   @IsString()
   @IsOptional()
@@ -81,17 +47,13 @@ export class QueryEmployeeDto {
   @IsOptional()
   limit?: number = 10;
 
-  @ApiPropertyOptional({ 
-    description: 'Sort field', 
-    default: 'createdAt',
-    enum: ['firstName', 'lastName', 'email', 'mobile', 'createdAt', 'updatedAt', 'state', 'city', 'role', 'designation', 'department']
-  })
+  @ApiPropertyOptional({ description: 'Sort field', default: 'createdAt', enum: SORTABLE_FIELDS })
   @IsString()
+  @IsIn(SORTABLE_FIELDS)
   @IsOptional()
   sortBy?: string = 'createdAt';
 
   @ApiPropertyOptional({ description: 'Sort order', enum: SortOrder, default: SortOrder.DESC })
-  @IsEnum(SortOrder)
   @IsOptional()
   sortOrder?: SortOrder = SortOrder.DESC;
 }

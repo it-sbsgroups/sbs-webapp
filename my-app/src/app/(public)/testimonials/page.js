@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import testimonialsApi from "@/lib/testimonialsApi";
-// import Breadcrumb from "@/components/shared/Breadcrumb";
 
 const AVATARS = ["🏭", "⚡", "🔧", "🚛", "🏗️", "⚙️", "🛠️", "📦"];
 
@@ -24,7 +23,6 @@ export default function PublicTestimonialsPage() {
 
   return (
     <div className="bg-slate-50 min-h-screen p-6 md:p-12 font-sans text-slate-800 antialiased">
-      {/* <Breadcrumb items={[{ label: "Testimonials" }]} /> */}
       <div className="max-w-6xl mx-auto space-y-8">
         <header className="text-center space-y-3">
           <h1 className="text-3xl md:text-4xl font-black text-slate-900">What Our Partners Say</h1>

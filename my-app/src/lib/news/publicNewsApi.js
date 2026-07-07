@@ -64,6 +64,21 @@ const publicNewsApi = {
   },
 
   /**
+   * Get latest news for the "Latest News" sidebar widget (replaces old ads slot)
+   */
+  async getLatestNews(excludeSlug, limit = 5) {
+    try {
+      const res = await apiClient.get('/news/public/latest', { excludeSlug, limit });
+      if (Array.isArray(res)) return res;
+      if (res?.data && Array.isArray(res.data)) return res.data;
+      return [];
+    } catch (error) {
+      console.error('Failed to fetch latest news:', error);
+      return [];
+    }
+  },
+
+  /**
    * Get news categories
    */
   async getCategories() {

@@ -4,6 +4,7 @@ import { ProductsService } from './products.service';
 import { ProductsController } from './products.controller';
 import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { CataloguePdfService } from './catalogue-pdf.service';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     }),
   ],
   controllers: [ProductsController],
-  providers: [ProductsService],
+  providers: [ProductsService, CataloguePdfService],
   exports: [ProductsService],
 })
 export class ProductsModule {}

@@ -38,10 +38,6 @@ export class EmployeeController {
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
-  // ──────────────────────────────────────────────────────────────────
-  // IMAGE UPLOAD — receives raw file, compresses → webp → Cloudinary,
-  // returns { url }. The frontend stores this url in the form's `image`.
-  // ──────────────────────────────────────────────────────────────────
   @Post('upload-image')
   @ApiOperation({ summary: 'Upload & compress an employee photo to Cloudinary' })
   @ApiConsumes('multipart/form-data')
@@ -71,7 +67,7 @@ export class EmployeeController {
   @Post()
   @ApiOperation({ summary: 'Create a new employee' })
   @ApiResponse({ status: 201, description: 'Employee created successfully' })
-  @ApiResponse({ status: 409, description: 'Employee with email/aadhar already exists' })
+  @ApiResponse({ status: 409, description: 'Employee with this email already exists' })
   @ApiResponse({ status: 400, description: 'Bad request - validation error' })
   create(@Body() createEmployeeDto: CreateEmployeeDto) {
     return this.employeeService.create(createEmployeeDto);

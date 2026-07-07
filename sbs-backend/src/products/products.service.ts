@@ -416,8 +416,13 @@ export class ProductsService {
   async uploadBrochure(productId: string, file: Express.Multer.File) {
     const product = await this.findOne(productId);
 
-    // Delete old brochure if exists
-    if (product.brochureUrl) {
+    // Delete old brochure if exists — use the STORED publicId/resourceType,
+    // never re-derive it from the URL (that was the source of silent failures).
+    if (product.brochurePublicId) {
+      await this.cloudinary
+        .deleteBrochure(product.brochurePublicId, product.brochureResourceType || 'raw')
+        .catch(() => {});
+    } else if (product.brochureUrl) {
       const publicId = this.cloudinary.getPublicIdFromUrl(product.brochureUrl);
       if (publicId) {
         await this.cloudinary.deleteBrochure(publicId).catch(() => {});
@@ -455,6 +460,8 @@ export class ProductsService {
         brochureName: result.name,
         brochureSize: result.size,
         brochureFormat: result.format,
+        brochurePublicId: result.publicId,
+        brochureResourceType: result.resourceType,
       },
     });
   }
@@ -462,7 +469,11 @@ export class ProductsService {
   async deleteBrochure(productId: string) {
     const product = await this.findOne(productId);
 
-    if (product.brochureUrl) {
+    if (product.brochurePublicId) {
+      await this.cloudinary
+        .deleteBrochure(product.brochurePublicId, product.brochureResourceType || 'raw')
+        .catch(() => {});
+    } else if (product.brochureUrl) {
       const publicId = this.cloudinary.getPublicIdFromUrl(product.brochureUrl);
       if (publicId) {
         await this.cloudinary.deleteBrochure(publicId).catch(() => {});
@@ -476,6 +487,8 @@ export class ProductsService {
         brochureName: null,
         brochureSize: null,
         brochureFormat: null,
+        brochurePublicId: null,
+        brochureResourceType: null,
       },
     });
   }

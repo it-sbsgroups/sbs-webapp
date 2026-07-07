@@ -4,6 +4,7 @@
 //   + AiModule       — Gemini chat with real DB tool-calling
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaService } from './prisma/prisma.service';
@@ -37,6 +38,7 @@ import { IndustryInnovationModule } from './industry-innovation/industry-innovat
   imports: [
     PrismaModule,
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     ApiKeysModule,      // ← NEW: register before any module that uses it
     AuthModule,         // JwtAuthGuard now uses ApiKeysService
     ProductsModule,

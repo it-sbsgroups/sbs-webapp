@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 
@@ -183,6 +184,108 @@ export class NotificationsService {
   private truncate(s: string, n: number) {
     const clean = (s || '').replace(/<[^>]*>/g, '').trim();
     return clean.length > n ? clean.slice(0, n - 1) + '…' : clean;
+  }
+
+  // -------------------- Manual send (admin-triggered, one-by-one) --------------------
+
+  /** Admin hits "Send Now" on the Products page for one or more products. */
+  async notifyProductsManual(productIds: string[]) {
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, name: true, sku: true, slug: true, keyFeatures: true, description: true },
+    });
+    if (products.length === 0) return { sent: 0, failed: 0 };
+
+    const subject =
+      products.length === 1
+        ? `New Product: ${products[0].name} — SBS Groups`
+        : `${products.length} New Products — SBS Groups`;
+
+    const rows = products
+      .map((p) => {
+        const url = this.siteUrl ? `${this.siteUrl}/products/${p.sku || p.slug || p.id}` : '#';
+        const blurb = this.truncate(p.keyFeatures || p.description || 'Now available in our catalog.', 160);
+        return `<tr><td style="padding:10px 0">
+          <div style="border:1px solid #e2e8f0;border-radius:10px;padding:16px">
+            <div style="font-size:16px;font-weight:700;color:#0f172a">${p.name}</div>
+            ${p.sku ? `<div style="color:#64748b;font-size:13px;margin-top:2px">SKU: ${p.sku}</div>` : ''}
+            <div style="color:#334155;font-size:14px;margin-top:8px">${blurb}</div>
+            <a href="${url}" style="display:inline-block;margin-top:10px;color:#1e3a8a;font-size:13px;font-weight:700">View Product →</a>
+          </div>
+        </td></tr>`;
+      })
+      .join('');
+
+    const html = this.shell({
+      heading: products.length === 1 ? 'New Product Available' : 'New Products Available',
+      preheader: subject,
+      bodyHtml: rows,
+    });
+
+    const emails = await this.recipients('notifyProducts');
+    const result = await this.mail.sendIndividual(emails, subject, html);
+    await this.log('PRODUCT', subject, emails, {
+      status: result.failed === 0 ? 'sent' : 'partial',
+      productIds: products.map((p) => p.id),
+    });
+    return result;
+  }
+
+  // -------------------- Scheduling (manual OR bulk, one-by-one at send time) --------------------
+
+  async scheduleNotification(params: { type: 'PRODUCT' | 'NEWS'; targetIds: string[]; scheduledAt: Date }) {
+    return this.prisma.scheduledNotification.create({
+      data: {
+        type: params.type,
+        targetIds: params.targetIds as any,
+        scheduledAt: params.scheduledAt,
+      },
+    });
+  }
+
+  async listScheduled(type?: string) {
+    return this.prisma.scheduledNotification.findMany({
+      where: type ? { type } : {},
+      orderBy: { scheduledAt: 'asc' },
+    });
+  }
+
+  async cancelScheduled(id: string) {
+    return this.prisma.scheduledNotification.update({
+      where: { id },
+      data: { status: 'cancelled' },
+    });
+  }
+
+  /** Runs every minute; sends any scheduled notification whose time has come. */
+  @Cron('0 * * * * *')
+  async processDueScheduledNotifications() {
+    const due = await this.prisma.scheduledNotification.findMany({
+      where: { status: 'pending', scheduledAt: { lte: new Date() } },
+    });
+    for (const item of due) {
+      try {
+        const ids = Array.isArray(item.targetIds) ? (item.targetIds as string[]) : [];
+        if (item.type === 'PRODUCT') {
+          await this.notifyProductsManual(ids);
+        } else if (item.type === 'NEWS') {
+          const posts = await this.prisma.newsPost.findMany({ where: { id: { in: ids } } });
+          for (const post of posts) {
+            await this.notifyNewNews(post as any);
+          }
+        }
+        await this.prisma.scheduledNotification.update({
+          where: { id: item.id },
+          data: { status: 'sent', sentAt: new Date() },
+        });
+      } catch (e: any) {
+        this.logger.error(`Scheduled notification ${item.id} failed: ${e?.message}`);
+        await this.prisma.scheduledNotification.update({
+          where: { id: item.id },
+          data: { status: 'failed', error: e?.message },
+        });
+      }
+    }
   }
 
   /** Admin: paginated notification history. */

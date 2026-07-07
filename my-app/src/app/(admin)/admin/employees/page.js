@@ -13,7 +13,7 @@ import toast from 'react-hot-toast';
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AdminEmployeesPage() {
   const [employees, setEmployees] = useState([]);
-  const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0, topStates: [] });
+  const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0, topDepartments: [] });
   const [meta, setMeta] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -21,7 +21,7 @@ export default function AdminEmployeesPage() {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
   const [filters, setFilters] = useState({
-    search: '', role: '', department: '', designation: '', isActive: '',
+    search: '', department: '', designation: '', isActive: '',
     page: 1, limit: 10, sortBy: 'createdAt', sortOrder: 'desc',
   });
 
@@ -99,12 +99,11 @@ export default function AdminEmployeesPage() {
   const setFilter = (key, value) => setFilters((p) => ({ ...p, [key]: value, page: 1 }));
   const setPage = (page) => setFilters((p) => ({ ...p, page }));
   const clearFilters = () => setFilters((p) => ({
-    ...p, search: '', role: '', department: '', designation: '', state: '', city: '', isActive: '', page: 1,
+    ...p, search: '', department: '', designation: '', isActive: '', page: 1,
   }));
 
   const hasActiveFilters =
-    filters.search || filters.role || filters.department || filters.designation ||
-    filters.state || filters.city || filters.isActive !== '';
+    filters.search || filters.department || filters.designation || filters.isActive !== '';
 
   // toggle sort when clicking a sortable column header
   const sortByCol = (col) => setFilters((p) => ({
@@ -141,12 +140,6 @@ export default function AdminEmployeesPage() {
                 className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-56"
               />
             </div>
-
-            <select value={filters.role} onChange={(e) => setFilter('role', e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">All Roles</option>
-              {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
 
             <select
               value={filters.isActive === '' ? '' : String(filters.isActive)}
@@ -193,8 +186,8 @@ export default function AdminEmployeesPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <Th label="Employee" col="firstName" filters={filters} onSort={sortByCol} />
-                    <Th label="Role" col="role" filters={filters} onSort={sortByCol} />
+                    <Th label="Employee" col="name" filters={filters} onSort={sortByCol} />
+                    <Th label="Designation" col="designation" filters={filters} onSort={sortByCol} />
                     <Th label="Department" col="department" filters={filters} onSort={sortByCol} />
                     <th className="text-left p-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Contact</th>
                     <th className="text-left p-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
@@ -204,11 +197,8 @@ export default function AdminEmployeesPage() {
                   <tr className="bg-white border-b border-gray-100">
                     <td className="px-4 py-2" />
                     <td className="px-4 py-2">
-                      <select value={filters.role} onChange={(e) => setFilter('role', e.target.value)}
-                        className="w-full text-xs border border-gray-200 rounded-md px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-400">
-                        <option value="">All</option>
-                        {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-                      </select>
+                      <input value={filters.designation} onChange={(e) => setFilter('designation', e.target.value)}
+                        placeholder="Filter…" className="w-full text-xs border border-gray-200 rounded-md px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-400" />
                     </td>
                     <td className="px-4 py-2">
                       <input value={filters.department} onChange={(e) => setFilter('department', e.target.value)}
@@ -236,20 +226,15 @@ export default function AdminEmployeesPage() {
                             <img src={emp.image} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
                           ) : (
                             <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm shrink-0">
-                              {emp.firstName?.[0]}{emp.lastName?.[0]}
+                              {emp.name?.[0]}
                             </div>
                           )}
                           <div>
-                            <p className="font-medium text-gray-900">{emp.firstName} {emp.lastName}</p>
-                            <p className="text-xs text-gray-400">{emp.designation || '—'}</p>
+                            <p className="font-medium text-gray-900">{emp.name}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="p-4">
-                        <span className="inline-flex px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-medium capitalize">
-                          {(emp.role || 'employee').replace('_', ' ')}
-                        </span>
-                      </td>
+                      <td className="p-4 text-gray-500">{emp.designation || '—'}</td>
                       <td className="p-4 text-gray-500">{emp.department || '—'}</td>
                       <td className="p-4">
                         <p className="text-gray-800">{emp.email}</p>
@@ -336,13 +321,6 @@ export default function AdminEmployeesPage() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-const ROLES = [
-  { value: 'admin', label: 'Admin' }, { value: 'manager', label: 'Manager' },
-  { value: 'team_lead', label: 'Team Lead' }, { value: 'employee', label: 'Employee' },
-  { value: 'intern', label: 'Intern' }, { value: 'hr', label: 'HR' },
-  { value: 'accountant', label: 'Accountant' }, { value: 'supervisor', label: 'Supervisor' },
-];
-
 function Th({ label, col, filters, onSort }) {
   const active = filters.sortBy === col;
   return (
@@ -372,26 +350,25 @@ function StatCard({ label, value, icon, bg, valueColor = 'text-gray-900' }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STEP-WISE FORM
-// Required: firstName, lastName, mobile, email, image
+// Required: name, mobile, email, image
 // ─────────────────────────────────────────────────────────────────────────────
 const STEPS = [
-  { id: 'photo',    label: 'Photo' },
-  { id: 'personal', label: 'Personal' },
-  { id: 'work',     label: 'Work' },
-  { id: 'contact',  label: 'Contact' },
-  { id: 'address',  label: 'Address' },
-  { id: 'bank',     label: 'Bank' },
-  { id: 'social',   label: 'Social' },
+  { id: 'photo',   label: 'Photo' },
+  { id: 'details', label: 'Details' },
 ];
 
+// Matches the real Employee model exactly — name, email, mobile, image,
+// designation, department, isActive. Nothing else is ever persisted, so
+// nothing else is collected here (previously this form also asked for
+// Aadhar/bank account/IFSC/full address/social links, none of which the
+// backend has a column for — it was silently discarded on every save).
 const EMPTY_FORM = {
   image: '',
-  firstName: '', middleName: '', lastName: '', fatherName: '',
-  role: 'employee', designation: '', department: '',
-  email: '', mobile: '', whatsapp: '',
-  region: '', state: '', district: '', city: '', address: '', landmark: '', zipCode: '',
-  aadhar: '', bankAccount: '', ifsc: '', bankName: '', branchName: '',
-  linkedin: '', instagram: '', facebook: '', youtube: '', twitter: '',
+  name: '',
+  designation: '',
+  department: '',
+  email: '',
+  mobile: '',
   isActive: true,
 };
 
@@ -400,24 +377,13 @@ function validateStep(stepId, f) {
     case 'photo':
       if (!f.image) return 'Employee photo is required.';
       return '';
-    case 'personal':
-      if (!f.firstName.trim()) return 'First name is required.';
-      if (f.firstName.trim().length < 2) return 'First name must be at least 2 characters.';
-      if (!f.lastName.trim()) return 'Last name is required.';
-      if (f.lastName.trim().length < 2) return 'Last name must be at least 2 characters.';
-      return '';
-    case 'contact':
+    case 'details':
+      if (!f.name.trim()) return 'Full name is required.';
+      if (f.name.trim().length < 2) return 'Full name must be at least 2 characters.';
       if (!f.email.trim()) return 'Email is required.';
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) return 'Please enter a valid email.';
       if (!f.mobile.trim()) return 'Mobile number is required.';
       if (!/^[0-9]{10}$/.test(f.mobile)) return 'Mobile must be exactly 10 digits.';
-      if (f.whatsapp && !/^[0-9]{10}$/.test(f.whatsapp)) return 'WhatsApp must be exactly 10 digits.';
-      return '';
-    case 'bank':
-      if (f.aadhar && !/^[0-9]{12}$/.test(f.aadhar)) return 'Aadhar must be exactly 12 digits.';
-      if (f.zipCode && !/^[0-9]{5,6}$/.test(f.zipCode)) return 'ZIP code must be 5 or 6 digits.';
-      if (f.ifsc && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(f.ifsc)) return 'Invalid IFSC code (e.g. HDFC0001234).';
-      if (f.bankAccount && !/^[0-9]+$/.test(f.bankAccount)) return 'Bank account must contain only digits.';
       return '';
     default:
       return '';
@@ -473,7 +439,7 @@ function EmployeeFormModal({ employee, onClose, onSubmit }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[92vh]">
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[92vh]">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <div>
             <h2 className="text-lg font-bold text-gray-900">{employee ? 'Edit Employee' : 'Add New Employee'}</h2>
@@ -520,24 +486,22 @@ function EmployeeFormModal({ employee, onClose, onSubmit }) {
             <ImageUploadStep value={formData.image} onChange={setImage} />
           )}
 
-          {currentStep.id === 'personal' && (
+          {currentStep.id === 'details' && (
             <div className="grid grid-cols-2 gap-4">
-              <Field label="First Name *"><input type="text" name="firstName" value={formData.firstName} onChange={handleChange} className={inputClass(stepError && !formData.firstName)} /></Field>
-              <Field label="Middle Name"><input type="text" name="middleName" value={formData.middleName} onChange={handleChange} className={inputClass()} /></Field>
-              <Field label="Last Name *"><input type="text" name="lastName" value={formData.lastName} onChange={handleChange} className={inputClass(stepError && !formData.lastName)} /></Field>
-              <Field label="Father Name"><input type="text" name="fatherName" value={formData.fatherName} onChange={handleChange} className={inputClass()} /></Field>
-            </div>
-          )}
-
-          {currentStep.id === 'work' && (
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Role">
-                <select name="role" value={formData.role} onChange={handleChange} className={inputClass()}>
-                  {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
+              <Field label="Full Name *" className="col-span-2">
+                <input type="text" name="name" value={formData.name} onChange={handleChange}
+                  className={inputClass(stepError && !formData.name.trim())} placeholder="e.g. Rohan Mehta" />
               </Field>
               <Field label="Designation"><input type="text" name="designation" value={formData.designation} onChange={handleChange} className={inputClass()} placeholder="e.g. Senior Developer" /></Field>
-              <Field label="Department" className="col-span-2"><input type="text" name="department" value={formData.department} onChange={handleChange} className={inputClass()} placeholder="e.g. Information Technology" /></Field>
+              <Field label="Department"><input type="text" name="department" value={formData.department} onChange={handleChange} className={inputClass()} placeholder="e.g. Information Technology" /></Field>
+              <Field label="Email *">
+                <input type="email" name="email" value={formData.email} onChange={handleChange}
+                  className={inputClass(stepError && (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)))} placeholder="name@company.com" />
+              </Field>
+              <Field label="Mobile * (10 digits)">
+                <input type="text" name="mobile" value={formData.mobile} onChange={handleChange}
+                  className={inputClass(stepError && !/^[0-9]{10}$/.test(formData.mobile))} placeholder="9876543210" maxLength={10} />
+              </Field>
               <Field label="Active Status" className="col-span-2">
                 <label className="flex items-center gap-3 cursor-pointer">
                   <div className={`relative w-11 h-6 rounded-full transition-colors ${formData.isActive ? 'bg-blue-600' : 'bg-gray-300'}`}>
@@ -547,48 +511,6 @@ function EmployeeFormModal({ employee, onClose, onSubmit }) {
                   <span className="text-sm text-gray-700">{formData.isActive ? 'Active' : 'Inactive'}</span>
                 </label>
               </Field>
-            </div>
-          )}
-
-          {currentStep.id === 'contact' && (
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Email *" className="col-span-2">
-                <input type="email" name="email" value={formData.email} onChange={handleChange}
-                  className={inputClass(stepError && (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)))} placeholder="name@company.com" />
-              </Field>
-              <Field label="Mobile * (10 digits)">
-                <input type="text" name="mobile" value={formData.mobile} onChange={handleChange}
-                  className={inputClass(stepError && !/^[0-9]{10}$/.test(formData.mobile))} placeholder="9876543210" maxLength={10} />
-              </Field>
-              <Field label="WhatsApp (10 digits)">
-                <input type="text" name="whatsapp" value={formData.whatsapp} onChange={handleChange} className={inputClass()} placeholder="9876543210 (optional)" maxLength={10} />
-              </Field>
-            </div>
-          )}
-
-          {currentStep.id === 'bank' && (
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Aadhar Number (12 digits)">
-                <input type="text" name="aadhar" value={formData.aadhar} onChange={handleChange}
-                  className={inputClass(stepError && formData.aadhar && !/^[0-9]{12}$/.test(formData.aadhar))} placeholder="123456789012" maxLength={12} />
-              </Field>
-              <Field label="Bank Account No."><input type="text" name="bankAccount" value={formData.bankAccount} onChange={handleChange} className={inputClass()} /></Field>
-              <Field label="IFSC Code">
-                <input type="text" name="ifsc" value={formData.ifsc} onChange={handleChange}
-                  className={inputClass(stepError && formData.ifsc && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(formData.ifsc))} placeholder="HDFC0001234" />
-              </Field>
-              <Field label="Bank Name"><input type="text" name="bankName" value={formData.bankName} onChange={handleChange} className={inputClass()} /></Field>
-              <Field label="Branch Name" className="col-span-2"><input type="text" name="branchName" value={formData.branchName} onChange={handleChange} className={inputClass()} /></Field>
-            </div>
-          )}
-
-          {currentStep.id === 'social' && (
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="LinkedIn"><input type="url" name="linkedin" value={formData.linkedin} onChange={handleChange} className={inputClass()} placeholder="https://linkedin.com/in/username" /></Field>
-              <Field label="Instagram"><input type="url" name="instagram" value={formData.instagram} onChange={handleChange} className={inputClass()} placeholder="https://instagram.com/username" /></Field>
-              <Field label="Facebook"><input type="url" name="facebook" value={formData.facebook} onChange={handleChange} className={inputClass()} placeholder="https://facebook.com/username" /></Field>
-              <Field label="YouTube"><input type="url" name="youtube" value={formData.youtube} onChange={handleChange} className={inputClass()} placeholder="https://youtube.com/@channel" /></Field>
-              <Field label="Twitter" className="col-span-2"><input type="url" name="twitter" value={formData.twitter} onChange={handleChange} className={inputClass()} placeholder="https://twitter.com/username" /></Field>
             </div>
           )}
         </div>
@@ -734,8 +656,8 @@ function inputClass(hasError = false) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 function EmailModal({ employee, onClose, onSend }) {
-  const [subject, setSubject] = useState(`Hello ${employee.firstName}!`);
-  const [body, setBody] = useState(`Dear ${employee.firstName},\n\nWe hope this email finds you well.\n\nBest regards,\nSBS Groups`);
+  const [subject, setSubject] = useState(`Hello ${employee.name}!`);
+  const [body, setBody] = useState(`Dear ${employee.name},\n\nWe hope this email finds you well.\n\nBest regards,\nSBS Groups`);
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl w-full max-w-2xl shadow-xl">

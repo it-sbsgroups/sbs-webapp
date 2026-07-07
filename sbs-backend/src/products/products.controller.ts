@@ -6,6 +6,7 @@ import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as multer from 'multer';
 import { ProductsService } from './products.service';
+import { CataloguePdfService } from './catalogue-pdf.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductsDto } from './dto/query-products.dto';
@@ -13,7 +14,18 @@ import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly cataloguePdfService: CataloguePdfService,
+  ) {}
+
+  // Full catalogue as a real, downloadable PDF — category/subcategory-wise,
+  // one image + name + model + certifications + key features per product.
+  @Public()
+  @Get('catalogue/download')
+  async downloadCatalogue(@Res() res: Response) {
+    await this.cataloguePdfService.streamCatalogue(res);
+  }
 
   @Public()
   @Get()

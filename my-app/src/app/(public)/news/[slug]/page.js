@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import publicNewsApi from "@/lib/news/publicNewsApi";
 import productsApi from "@/lib/productsApi";
-// import breadcrumb from "@/components/shared/Breadcrumb";
+import RichTextRenderer from "@/components/shared/RichTextRenderer";
 
 const fmtDate = (iso) => {
   if (!iso) return "";
@@ -282,7 +282,6 @@ export default function PublicNewsDetailPage() {
 
   return (
     <div className="bg-slate-50 min-h-screen p-4 md:p-12 font-sans text-slate-800 antialiased">
-      {/* <breadcrumb items={[{ label: "News" }]} /> */}
       <div className="max-w-7xl mx-auto">
         {/* ─── NEW: Full-width breadcrumb header with title (5vh) ─── */}
         <div className="relative w-full bg-white border border-slate-200 rounded-xl shadow-sm flex items-center justify-center mb-8"
@@ -325,11 +324,7 @@ export default function PublicNewsDetailPage() {
                 {textBlocks.length > 0 && (
                   <div className="space-y-4">
                     {textBlocks.map((block, index) => (
-                      <p key={index}
-                        style={{ fontFamily: block.style?.fontFamily || "serif", color: block.style?.color || "#1e293b", fontSize: block.style?.fontSize || "16px" }}
-                        className="leading-relaxed whitespace-pre-line">
-                        {block.content}
-                      </p>
+                      <RichTextRenderer key={index} html={block.content} className="whitespace-pre-line" />
                     ))}
                   </div>
                 )}

@@ -142,14 +142,6 @@ const newsApi = {
   },
 
   // ============================================
-  // AD PRODUCTS
-  // ============================================
-  async updateAdProducts(postId, productIds) {
-    const res = await apiClient.put(`/news/posts/${postId}/ad-products`, { productIds });
-    return res?.data || res;
-  },
-
-  // ============================================
   // SETTINGS
   // ============================================
   async getSettings() {

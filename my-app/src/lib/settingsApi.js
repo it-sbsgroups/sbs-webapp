@@ -21,45 +21,6 @@ const settingsApi = {
   },
 
   // ============================================
-  // AD PLACEMENTS
-  // ============================================
-
-  /**
-   * Get all ads
-   */
-  async getAds() {
-    return apiClient.get('/settings/ads');
-  },
-
-  /**
-   * Create a new ad
-   */
-  async createAd(data) {
-    return apiClient.post('/settings/ads', data);
-  },
-
-  /**
-   * Update an ad
-   */
-  async updateAd(id, data) {
-    return apiClient.put(`/settings/ads/${id}`, data);
-  },
-
-  /**
-   * Delete an ad
-   */
-  async deleteAd(id) {
-    return apiClient.delete(`/settings/ads/${id}`);
-  },
-
-  /**
-   * Toggle ad active/inactive
-   */
-  async toggleAd(id) {
-    return apiClient.put(`/settings/ads/${id}/toggle`);
-  },
-
-  // ============================================
   // SUBSCRIBERS (Newsletter)
   // ============================================
 

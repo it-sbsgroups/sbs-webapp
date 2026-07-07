@@ -16,31 +16,6 @@ export class SettingsController {
     return this.settingsService.updateProductSettings(data);
   }
 
-  @Get('ads')
-  getAds() {
-    return this.settingsService.getAds();
-  }
-
-  @Post('ads')
-  createAd(@Body() data: any) {
-    return this.settingsService.createAd(data);
-  }
-
-  @Put('ads/:id')
-  updateAd(@Param('id') id: string, @Body() data: any) {
-    return this.settingsService.updateAd(id, data);
-  }
-
-  @Delete('ads/:id')
-  deleteAd(@Param('id') id: string) {
-    return this.settingsService.deleteAd(id);
-  }
-
-  @Put('ads/:id/toggle')
-  toggleAd(@Param('id') id: string) {
-    return this.settingsService.toggleAd(id);
-  }
-
   @Get('search-logs')
   getSearchLogs(@Query() query: any) {
     return this.settingsService.getSearchLogs(query);

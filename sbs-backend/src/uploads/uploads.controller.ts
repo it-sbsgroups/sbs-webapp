@@ -31,6 +31,8 @@ export class UploadsController {
   async uploadImage(
     @UploadedFile() file: Express.Multer.File,
     @Query('folder') folder?: string,
+    // Pass ?skipCompression=true for assets where fidelity matters more than
+    // file size (site logo, favicon). Everything else stays compressed.
     @Query('skipCompression') skipCompression?: string,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');

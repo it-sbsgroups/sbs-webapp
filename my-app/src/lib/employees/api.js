@@ -87,7 +87,7 @@ export const api = {
       if (!res.ok) throw await parseError(res);
       return res.json();
     } catch {
-      return { total: 0, active: 0, inactive: 0, topStates: [] };
+      return { total: 0, active: 0, inactive: 0, topDepartments: [] };
     }
   },
 

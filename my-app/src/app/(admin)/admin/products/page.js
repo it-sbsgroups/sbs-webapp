@@ -13,6 +13,7 @@ import ProductPreview from "@/components/admin/products/ProductPreview";
 import CategoriesManager from "@/components/admin/products/CategoriesManager";
 import RfqManager from "@/components/admin/products/RfqManager";
 import RfqSettings from "@/components/admin/products/RfqSettings";
+import RfqIntegrationSettings from "@/components/admin/products/RfqIntegrationSettings";
 import productsApi from "@/lib/productsApi";
 import categoriesApi from "@/lib/categoriesApi";
 import brandsApi from "@/lib/brands/Api";
@@ -28,6 +29,7 @@ const tabs = [
   { id: "preview", label: "Preview", icon: RefreshCw },
   { id: "rfq", label: "RFQ Manager", icon: MessageSquare },
   { id: "rfqsettings", label: "RFQ Settings", icon: Settings },
+  { id: "rfqintegrations", label: "RFQ Integrations", icon: Settings },
 ];
 
 export default function ProductsAdminPage() {
@@ -254,6 +256,8 @@ export default function ProductsAdminPage() {
         return <RfqManager />;
       case "rfqsettings":
         return <RfqSettings />;
+      case "rfqintegrations":
+        return <RfqIntegrationSettings />;
       default:
         return null;
     }

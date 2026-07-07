@@ -30,17 +30,49 @@ export class CloudinaryService {
   async uploadBrochure(
     file: Express.Multer.File,
     productId: string,
-  ): Promise<{ url: string; name: string; size: number; format: string }> {
+  ): Promise<{
+    url: string;
+    name: string;
+    size: number;
+    format: string;
+    publicId: string;
+    resourceType: string;
+  }> {
     await this.configureCloudinary();
 
     const isPdf = file.mimetype === 'application/pdf';
+    // "raw" covers anything Cloudinary won't treat as an image/video (pdf, doc, docx, xls, xlsx)
+    const isRaw =
+      isPdf ||
+      file.mimetype === 'application/msword' ||
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      file.mimetype === 'application/vnd.ms-excel' ||
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+    const resourceType = isRaw ? 'raw' : 'auto';
+
+    // Cloudinary treats a "raw" public_id as a literal, opaque string — it does
+    // NOT append the file extension automatically the way it does for images.
+    // Without the extension in the URL, browsers/Cloudinary can't tell it's a
+    // PDF, so it downloads with no extension and won't open as one. Fix: bake
+    // the original extension into the public_id ourselves, but only for raw.
+    const originalExt = (file.originalname.split('.').pop() || '').toLowerCase();
+    const safeBase = file.originalname
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[^a-zA-Z0-9_-]+/g, '_')
+      .slice(0, 60);
+    const uniqueSuffix = Date.now();
+    const publicId = isRaw
+      ? `${safeBase}-${uniqueSuffix}.${originalExt}`
+      : `${safeBase}-${uniqueSuffix}`;
 
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: `sbs-products/brochures/${productId}`,
-          resource_type: isPdf ? 'raw' : 'auto',
-          ...(isPdf ? {} : { quality: 'auto', fetch_format: 'auto' }),
+          public_id: publicId,
+          resource_type: resourceType,
+          ...(isRaw ? {} : { quality: 'auto', fetch_format: 'auto' }),
         },
         (error, result) => {
           if (error) { this.logger.error('Brochure upload error:', error); return reject(error); }
@@ -50,6 +82,8 @@ export class CloudinaryService {
             name: file.originalname,
             size: result.bytes,
             format: result.format || (isPdf ? 'pdf' : result.resource_type),
+            publicId: result.public_id,
+            resourceType: result.resource_type,
           });
         },
       );
@@ -224,11 +258,11 @@ export class CloudinaryService {
     }
   }
 
-  async deleteBrochure(publicId: string): Promise<void> {
+  async deleteBrochure(publicId: string, resourceType: string = 'raw'): Promise<void> {
     await this.configureCloudinary();
     try {
-      const result = await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' });
-      if (result.result === 'not found') {
+      const result = await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+      if (result.result === 'not found' && resourceType !== 'image') {
         await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
       }
     } catch (error) {

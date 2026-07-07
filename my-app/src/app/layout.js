@@ -11,6 +11,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Same fallback shape as DEFAULT_BRANDING in lib/siteConfig/siteConfigApi.js.
 const FALLBACK_BRANDING = {
   companyName: "Superb Bearing Store",
   tagline: "Industrial Solutions",
@@ -19,15 +20,20 @@ const FALLBACK_BRANDING = {
 
 async function fetchBranding() {
   try {
+    // Server-only var (e.g. http://backend:4000/api inside a docker network)
+    // takes priority; falls back to the public var, then localhost for local dev.
     const base =
       process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
     const res = await fetch(`${base}/site/branding`, {
+      // Revalidate every 5 min — dynamic without hitting the backend on every request.
       next: { revalidate: 300 },
     });
     if (!res.ok) return null;
     const json = await res.json();
     return json?.data ?? json ?? null;
   } catch {
+    // Backend unreachable at build/request time — fall back gracefully rather
+    // than breaking the whole site's <head>.
     return null;
   }
 }

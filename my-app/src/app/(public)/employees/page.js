@@ -10,7 +10,6 @@ import {
   isValidLink,
 } from "@/data/employee";
 import { api } from "@/lib/employees/api";
-// import Breadcrumb from "@/components/shared/Breadcrumb";
 
 function toEmpCard(e) {
   const name = e.name || [e.firstName, e.middleName, e.lastName].filter(Boolean).join(" ");
@@ -68,7 +67,6 @@ export default function PublicEmployeesDirectory() {
   return (
     <div className="bg-white min-h-screen p-6 md:p-12 font-sans text-black-900 antialiased selection:bg-blue-500 selection:text-slate-900">
       <div className="max-w-7xl mx-auto space-y-10">
-        {/* <Breadcrumb items={[{ label: "Employees" }]} /> */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-200 pb-8">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -112,17 +110,16 @@ export default function PublicEmployeesDirectory() {
                 {/* 1. UPPER PANEL — avatar */}
                 <div className={`h-64 bg-gradient-to-br ${emp.bgGradient} relative flex items-end justify-center border-b border-slate-200 overflow-hidden`} >
                   <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:20px_20px]"></div>
-                  <img loading="lazy" src={emp.avatar} alt={emp.name} className="h-full w-auto object-cover object-top relative z-[1] group-hover:scale-105 transition-transform duration-500" />
+                  <img loading="lazy" src={emp.image} alt={emp.name} className="h-full w-auto object-cover object-top relative z-[1] group-hover:scale-105 transition-transform duration-500" />
                   <span className="absolute top-4 right-4 z-[2] text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md bg-white/80 border border-slate-200 text-black-600 backdrop-blur-sm">
                     {emp.tag}
                   </span>
                 </div>
                 <div className="p-6 flex flex-col flex-grow space-y-4">
                   <div className="border-b border-slate-200 pb-3 space-y-1">
-                    <h3 className="text-base font-black text-slate-900 tracking-tight truncate">{emp.name}</h3>
-                    <p className="text-[10px] font-extrabold text-black-600 uppercase tracking-wider truncate">{emp.role}</p>
+                    <h3 className="text-base font-black text-slate-900 tracking-tight truncate">Name: {emp.name}</h3>
+                    <p className="text-[10px] font-extrabold text-black-600 uppercase tracking-wider truncate">Role: {emp.designation}</p>
                   </div>
-                  <p className="text-xs text-slate-500 leading-relaxed font-medium line-clamp-3 flex-grow">{emp.description}</p>
                   {/* <Link href={`/employees/${staffSlug}`} className="text-[10px] font-black uppercase text-center tracking-widest text-slate-500 hover:text-cyan-600 transition-colors py-1.5 block bg-slate-50 rounded-lg border border-slate-100" >View Profile ➔</Link> */}
 
                   {/* Full email address with working mailto: link */}

@@ -1,12 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { RfqIntegrationsService } from './rfq-integrations.service';
 
 @Injectable()
 export class RfqService {
   constructor(
     private prisma: PrismaService,
     private mailService: MailService,
+    private integrations: RfqIntegrationsService,
   ) {}
 
   async findAll(params: { page?: number; pageSize?: number; status?: string; search?: string }) {
@@ -71,6 +73,7 @@ export class RfqService {
     companyName?: string;
     email: string;
     mobile: string;
+    address?: string;
     remarks?: string;
     customFields?: any;
     items: { productId: string; quantity: number }[];
@@ -82,6 +85,7 @@ export class RfqService {
         companyName: data.companyName,
         email: data.email,
         mobile: data.mobile,
+        address: data.address,
         remarks: data.remarks,
         customFields: data.customFields as any,
         items: {
@@ -137,6 +141,11 @@ export class RfqService {
     // ✅ Team notification: "New RFQ received..."
     this.mailService.sendTeamNotification(rfqData).catch(err =>
       console.error('Team notification failed:', err.message)
+    );
+
+    // ✅ One-way outbound push: external partner API + Google Sheet (never reads back)
+    this.integrations.pushOnRfqCreated(rfq).catch(err =>
+      console.error('RFQ outbound integrations failed:', err.message)
     );
 
     return rfq;

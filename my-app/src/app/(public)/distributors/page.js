@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { DISTRIBUTORS } from "@/data/distributors";
-// import Breadcrumb from "@/components/shared/Breadcrumb";
 
 /* ============================ DYNAMIC CONFIG ============================== */
 const PAGE_CONFIG = {
@@ -94,7 +93,7 @@ export default function PublicDistributorsDirectoryPage() {
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans text-slate-800 antialiased">
-      {/* <Breadcrumb items={[{ label: "Products" }]} /> */}
+
       {/* ==================== HERO HEADER ==================== */}
       <div className="bg-white border-b border-slate-200">
         <div className={`${PAGE_CONFIG.layout.container} mx-auto px-4 md:px-8 py-8 md:py-10`}>

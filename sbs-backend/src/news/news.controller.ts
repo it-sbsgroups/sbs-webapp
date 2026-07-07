@@ -145,16 +145,12 @@ export class NewsController {
   }
 
   // ============================================
-  // AD PRODUCTS
+  // LATEST NEWS (sidebar widget — replaces old ad-products slot)
   // ============================================
-  @Get('posts/:id/ad-products')
-  getAdProducts(@Param('id') id: string) {
-    return this.newsService.getAdProducts(id);
-  }
-
-  @Put('posts/:id/ad-products')
-  updateAdProducts(@Param('id') id: string, @Body() data: { productIds: string[] }) {
-    return this.newsService.updateAdProducts(id, data.productIds);
+  @Public()
+  @Get('public/latest')
+  getLatestNews(@Query('excludeSlug') excludeSlug?: string, @Query('limit') limit?: string) {
+    return this.newsService.getLatestNews(excludeSlug, Number(limit) || 5);
   }
 
   // ============================================

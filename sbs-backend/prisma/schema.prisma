@@ -133,11 +133,12 @@ model Product {
   specifications  ProductSpecification[] 
   certifications  ProductCertification[] 
   rfqItems        RfqItem[]              
-  ads             AdPlacement[]          
   brochureUrl     String?                @db.Text       // Cloudinary URL for brochure/catalog
   brochureName    String?                // Original file name
   brochureSize    Int?                   // File size in bytes
   brochureFormat  String?                // pdf, doc, etc.
+  brochurePublicId     String?           // Cloudinary public_id (kept verbatim, not re-derived from URL)
+  brochureResourceType String?           // "raw" (pdf/doc/xls) or "image" — needed for correct delete/serve
   // Foreign keys
   // Relations
   // One-to-many
@@ -194,6 +195,7 @@ model RfqRequest {
   companyName  String?    
   email        String     
   mobile       String     
+  address      String?    @db.Text
   remarks      String?    @db.Text
   customFields Json?      
   createdAt    DateTime   @default(now())
@@ -319,21 +321,42 @@ model ProductSettings {
 // AD PLACEMENTS
 // ============================================
 
-model AdPlacement {
-  id         String   @id @default(cuid())
-  title      String   
-  image      String?  @db.Text
-  ctaText    String   @default("Grab Offer")
-  ctaLink    String   @default("/products")
-  isActive   Boolean  @default(true)
-  productIds Json?    
-  categoryId String?  
-  productId  String?  
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  product    Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
-  // Targeting
-  @@map("ad_placements")
+// ============================================
+// RFQ OUTBOUND INTEGRATIONS (external API + Google Sheet push)
+// One-way only: we push out, we never read back. So edits made on the
+// external side (the sheet or the partner API) can never change our data.
+// ============================================
+
+model RfqIntegration {
+  id                       String   @id @default("default")
+  externalApiEnabled       Boolean  @default(false)
+  externalApiUrl           String?  @db.Text
+  externalApiKey           String?  @db.Text
+  externalApiSecret        String?  @db.Text
+  sheetEnabled             Boolean  @default(false)
+  sheetId                  String?  @db.Text
+  sheetTabName             String   @default("RFQs")
+  googleServiceAccountJson String?  @db.LongText
+  updatedAt                DateTime @updatedAt
+  @@map("rfq_integrations")
+}
+
+
+
+// ============================================
+// SCHEDULED NOTIFICATIONS (Products / News — manual send now, or schedule)
+// ============================================
+
+model ScheduledNotification {
+  id          String    @id @default(cuid())
+  type        String    // "PRODUCT" | "NEWS"
+  targetIds   Json
+  scheduledAt DateTime
+  status      String    @default("pending") // pending | sent | failed | cancelled
+  sentAt      DateTime?
+  error       String?   @db.Text
+  createdAt   DateTime  @default(now())
+  @@map("scheduled_notifications")
 }
 
 
@@ -461,7 +484,6 @@ model NewsPost {
   blocks          NewsBlock[]      
   versions        NewsVersion[]    
   comments        NewsComment[]    
-  adProducts      NewsAdProduct[]  
   @@map("news_posts")
 }
 
@@ -535,17 +557,6 @@ enum CommentStatus {
 
 
 
-model NewsAdProduct {
-  id        String   @id @default(cuid())
-  postId    String   
-  productId String   
-  post      NewsPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  @@unique([postId, productId])
-  @@map("news_ad_products")
-}
-
-
-
 model NewsSettings {
   id                      String   @id @default("default")
   cardsPerRow             Int      @default(3)
@@ -558,15 +569,11 @@ model NewsSettings {
   carouselAutoPlay        Boolean  @default(true)
   carouselPauseOnHover    Boolean  @default(true)
   carouselIntervalMs      Int      @default(3000)
-  adsEnabled              Boolean  @default(true)
-  adsMaxProducts          Int      @default(4)
-  adsPlacement            String   @default("sidebar")
   commentsRequireApproval Boolean  @default(true)
   commentsAllowReplies    Boolean  @default(true)
-  productSuggestionMode   String   @default("latest")
-  selectedProductIds      Json?    // Store array of product IDs
+  latestNewsEnabled       Boolean  @default(true)
+  latestNewsCount         Int      @default(5)
   updatedAt               DateTime @updatedAt
-  // ADD THESE NEW FIELDS:
   @@map("news_settings")
 }
 
@@ -574,7 +581,7 @@ model NewsSettings {
 
 model Employee {
   id          String   @id @default(uuid())
-  name   String   @map("first_name") @db.VarChar(149)
+  name        String   @map("first_name") @db.VarChar(149)
   email       String   @unique @db.VarChar(100)
   mobile      String   @db.VarChar(15)
   image       String?  @db.Text

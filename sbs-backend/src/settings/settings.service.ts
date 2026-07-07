@@ -21,31 +21,6 @@ export class SettingsService {
     });
   }
 
-  async getAds() {
-    return this.prisma.adPlacement.findMany({ orderBy: { createdAt: 'desc' } });
-  }
-
-  async createAd(data: any) {
-    return this.prisma.adPlacement.create({ data });
-  }
-
-  async updateAd(id: string, data: any) {
-    return this.prisma.adPlacement.update({ where: { id }, data });
-  }
-
-  async deleteAd(id: string) {
-    return this.prisma.adPlacement.delete({ where: { id } });
-  }
-
-  async toggleAd(id: string) {
-    const ad = await this.prisma.adPlacement.findUnique({ where: { id } });
-    if (!ad) throw new NotFoundException('Ad not found');
-    return this.prisma.adPlacement.update({
-      where: { id },
-      data: { isActive: !ad.isActive },
-    });
-  }
-
   async logSearch(keyword: string, results: number, ipAddress?: string) {
     return this.prisma.searchLog.create({
       data: { keyword, results, ipAddress },

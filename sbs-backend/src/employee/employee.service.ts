@@ -16,11 +16,9 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
 const IMMUTABLE_FIELDS = ['id', 'createdAt', 'updatedAt'] as const;
 
 // Whitelist of columns that are allowed to be sorted on (prevents
-// "Unknown argument" Prisma errors / injection via sortBy).
-const SORTABLE = new Set([
-  'name', 'email', 'mobile', 'createdAt',
-  'updatedAt', 'role', 'designation', 'department',
-]);
+// "Unknown argument" Prisma errors / injection via sortBy). Matches the
+// real Employee columns exactly.
+const SORTABLE = new Set(['name', 'email', 'mobile', 'createdAt', 'updatedAt', 'designation', 'department']);
 
 @Injectable()
 export class EmployeeService {
@@ -32,7 +30,6 @@ export class EmployeeService {
   ) {}
 
   async create(createEmployeeDto: CreateEmployeeDto): Promise<Employee> {
-    // strip immutable fields if a client accidentally sends them
     const data: any = { ...createEmployeeDto };
     for (const f of IMMUTABLE_FIELDS) delete data[f];
 
@@ -51,7 +48,7 @@ export class EmployeeService {
       this.logger.log(`✅ Employee created: ${employee.id}`);
       return employee;
     } catch (error) {
-      // Clean up the just-uploaded Cloudinary image so it doesn't orphan
+      // Clean up the just-uploaded Cloudinary image so it doesn't orphan.
       if (data.image) {
         this.cloudinary.deleteImageByUrl(data.image).catch(() => undefined);
       }
@@ -67,7 +64,7 @@ export class EmployeeService {
   async findAll(queryDto: QueryEmployeeDto) {
     try {
       const {
-        search, state, city, district, role, department, designation,
+        search, department, designation,
         isActive, page = 1, limit = 10,
         sortBy = 'createdAt', sortOrder = SortOrder.DESC,
       } = queryDto;
@@ -124,6 +121,9 @@ export class EmployeeService {
   async update(id: string, updateEmployeeDto: UpdateEmployeeDto): Promise<Employee> {
     const existing = await this.findOne(id); // throws 404 if missing
 
+    // Build a clean data object: drop immutable fields and any keys with
+    // `undefined` value (previously the frontend spread the whole employee
+    // row, including id/timestamps, into the PATCH body → Prisma threw).
     const data: any = {};
     for (const [key, value] of Object.entries(updateEmployeeDto)) {
       if (IMMUTABLE_FIELDS.includes(key as any)) continue;
@@ -206,13 +206,21 @@ export class EmployeeService {
 
   async getStats() {
     try {
-      const [total, active, inactive] = await Promise.all([
+      const [total, active, inactive, departmentStats] = await Promise.all([
         this.prisma.employee.count(),
         this.prisma.employee.count({ where: { isActive: true } }),
         this.prisma.employee.count({ where: { isActive: false } }),
+        this.prisma.employee.groupBy({
+          by: ['department'],
+          _count: { id: true },
+          where: { department: { not: null } },
+          orderBy: { _count: { id: 'desc' } },
+          take: 10,
+        }),
       ]);
       return {
-        total, active, inactive
+        total, active, inactive,
+        topDepartments: departmentStats.map((d) => ({ department: d.department, count: d._count.id })),
       };
     } catch (error) {
       this.logger.error(`❌ Error fetching stats: ${error.message}`, error.stack);

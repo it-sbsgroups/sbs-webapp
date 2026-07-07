@@ -318,18 +318,7 @@ export default function ProductDetailPage() {
         );
         setBrandsMap(
           Object.fromEntries(
-            brands.map((b) => [
-              b.id,
-              {
-                id: b.id,
-                name: b.name,
-                productCount: b.productCount,
-                logo: b.logo,           // ← add this (adjust key if API uses “image”)
-                // optionally also store description, gallery, etc. if needed
-                description: b.description,
-                gallery: b.gallery,
-              },
-            ])
+            brands.map((b) => [b.id, { id: b.id, name: b.name, productCount: b.productCount }])
           )
         );
       })
@@ -384,7 +373,7 @@ export default function ProductDetailPage() {
   const [showFormModal, setShowFormModal] = useState(false);
   const [toast, setToast] = useState(null);
   const [expandedReviews, setExpandedReviews] = useState({});
-  const [formData, setFormData] = useState({ fullName: "", email: "", mobile: "", companyName: "", remarks: "" });
+  const [formData, setFormData] = useState({ fullName: "", email: "", mobile: "", companyName: "", address: "", remarks: "" });
 
   const showToast = (msg) => {
     setToast(msg);
@@ -426,6 +415,7 @@ export default function ProductDetailPage() {
       companyName: formData.companyName || undefined,
       email: formData.email || "",
       mobile: formData.mobile || "",
+      address: formData.address || undefined,
       remarks: formData.remarks || undefined,
       items: rfqCart.map((item) => ({
         productId: item.productId || item.id,
@@ -437,7 +427,7 @@ export default function ProductDetailPage() {
       showToast(`✓ Quote request sent for ${rfqCart.length} item line${rfqCart.length > 1 ? "s" : ""}. We'll reply to ${formData.email}.`);
       setRfqCart([]);
       setShowFormModal(false);
-      setFormData({ fullName: "", email: "", mobile: "", companyName: "", remarks: "" });
+      setFormData({ fullName: "", email: "", mobile: "", companyName: "", address: "", remarks: "" });
     } catch (err) {
       console.error("RFQ submission failed:", err);
       showToast("Submission failed: " + err.message);
@@ -699,20 +689,7 @@ export default function ProductDetailPage() {
               <Card>
                 <Eyebrow>Distributor Brand</Eyebrow>
                 <div className="flex flex-col sm:flex-row gap-5 mt-4">
-                  {brand.logo ? (
-                    <div className="h-9 flex items-center justify-center rounded-lg border border-slate-200 bg-white overflow-hidden shrink-0">
-                      <img
-                        src={brand.logo}
-                        alt={brand.name}
-                        onError={fallbackImg}
-                        className="max-h-full w-auto object-contain block"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-black text-slate-400">
-                      🏷️
-                    </div>
-                  )}
+                  <img loading="lazy" src={brand.logo} alt={brand.name} onError={fallbackImg} className="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-black text-slate-900">{brand.name}</h3>
@@ -1055,6 +1032,14 @@ export default function ProductDetailPage() {
                       placeholder="10-digit mobile number"
                       className="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-950 font-medium" />
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-500 uppercase">Delivery Address (Optional)</label>
+                  <input type="text" value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="Company address for delivery / quotation"
+                    className="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-950 font-medium" />
                 </div>
 
                 <div className="space-y-1">

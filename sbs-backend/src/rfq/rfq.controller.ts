@@ -2,6 +2,7 @@ import {
   Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode, HttpStatus, Headers, UnauthorizedException,
 } from '@nestjs/common';
 import { RfqService } from './rfq.service';
+import { RfqIntegrationsService } from './rfq-integrations.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Public } from '../auth/decorators/public.decorator';
 
@@ -9,8 +10,20 @@ import { Public } from '../auth/decorators/public.decorator';
 export class RfqController {
   constructor(
     private readonly rfqService: RfqService,
+    private readonly rfqIntegrations: RfqIntegrationsService,
     private readonly prisma: PrismaService
   ) {}
+
+  // -------------------- Outbound integrations (external API + Google Sheet) --------------------
+  @Get('integrations')
+  getIntegrationSettings() {
+    return this.rfqIntegrations.getSettings();
+  }
+
+  @Put('integrations')
+  updateIntegrationSettings(@Body() data: any) {
+    return this.rfqIntegrations.updateSettings(data);
+  }
 
   @Get()
   findAll(@Query() query: any) {
