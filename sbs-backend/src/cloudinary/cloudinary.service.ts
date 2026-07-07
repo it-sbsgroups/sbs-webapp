@@ -182,6 +182,37 @@ export class CloudinaryService {
     });
   }
 
+  /**
+   * Uploads an image AS-IS — no resize, no re-encode, no quality reduction.
+   * Use only for assets where pixel fidelity matters more than file size
+   * (site logo, favicon). Everything else should go through
+   * uploadGenericImage/uploadProductImage/etc., which compress.
+   */
+  async uploadImageNoCompression(
+    file: Express.Multer.File,
+    folder = 'misc',
+  ): Promise<{ url: string; bytes: number; width: number; height: number }> {
+    await this.configureCloudinary();
+    const safeFolder = String(folder).replace(/[^a-z0-9/_-]/gi, '').slice(0, 60) || 'misc';
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: `sbs-media/${safeFolder}`, resource_type: 'image' }, // no format/quality transform
+        (error, result) => {
+          if (error) { this.logger.error('Uncompressed image upload error:', error); return reject(error); }
+          if (!result) return reject(new Error('Image upload failed'));
+          resolve({
+            url: result.secure_url,
+            bytes: result.bytes,
+            width: result.width || 0,
+            height: result.height || 0,
+          });
+        },
+      );
+      streamifier.createReadStream(file.buffer).pipe(uploadStream);
+    });
+  }
+
   async deleteImageByUrl(url: string): Promise<void> {
     await this.configureCloudinary();
     const publicId = this.getPublicIdFromUrl(url);

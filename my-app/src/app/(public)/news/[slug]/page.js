@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import publicNewsApi from "@/lib/news/publicNewsApi";
 import productsApi from "@/lib/productsApi";
+// import breadcrumb from "@/components/shared/Breadcrumb";
 
 const fmtDate = (iso) => {
   if (!iso) return "";
@@ -281,6 +282,7 @@ export default function PublicNewsDetailPage() {
 
   return (
     <div className="bg-slate-50 min-h-screen p-4 md:p-12 font-sans text-slate-800 antialiased">
+      {/* <breadcrumb items={[{ label: "News" }]} /> */}
       <div className="max-w-7xl mx-auto">
         {/* ─── NEW: Full-width breadcrumb header with title (5vh) ─── */}
         <div className="relative w-full bg-white border border-slate-200 rounded-xl shadow-sm flex items-center justify-center mb-8"

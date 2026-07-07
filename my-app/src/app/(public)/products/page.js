@@ -7,6 +7,7 @@ import Link from "next/link";
 // ✅ LIVE DATA — fetched from the NestJS backend (no more static dummy data)
 import publicCatalogApi from "@/lib/publicCatalogApi";
 import rfqApi from "@/lib/rfqApi";
+// import Breadcrumb from "@/components/shared/Breadcrumb";
 
 // ✅ SETTINGS — admin-controlled look & behavior (read-only here)
 import {
@@ -317,6 +318,9 @@ function ProductsCatalogContent() {
       className="min-h-screen font-sans antialiased text-slate-800"
       style={{ backgroundColor: layout?.pageBackground || "#f8fafc" }}
     >
+      {/* BREADCRUMB */}
+      {/* <Breadcrumb items={[{ label: "Products" }]} /> */}
+
       {/* HEADER SECTION */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 flex flex-col md:flex-row md:items-center justify-between gap-4">

@@ -566,20 +566,6 @@ function EmployeeFormModal({ employee, onClose, onSubmit }) {
             </div>
           )}
 
-          {currentStep.id === 'address' && (
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Region"><input type="text" name="region" value={formData.region} onChange={handleChange} className={inputClass()} /></Field>
-              <Field label="State"><input type="text" name="state" value={formData.state} onChange={handleChange} className={inputClass()} /></Field>
-              <Field label="District"><input type="text" name="district" value={formData.district} onChange={handleChange} className={inputClass()} /></Field>
-              <Field label="City"><input type="text" name="city" value={formData.city} onChange={handleChange} className={inputClass()} /></Field>
-              <Field label="ZIP Code"><input type="text" name="zipCode" value={formData.zipCode} onChange={handleChange} className={inputClass()} placeholder="400001" maxLength={6} /></Field>
-              <Field label="Landmark"><input type="text" name="landmark" value={formData.landmark} onChange={handleChange} className={inputClass()} /></Field>
-              <Field label="Full Address" className="col-span-2">
-                <textarea name="address" value={formData.address} onChange={handleChange} rows={3} className={`${inputClass()} resize-none`} placeholder="House no., Street, Colony…" />
-              </Field>
-            </div>
-          )}
-
           {currentStep.id === 'bank' && (
             <div className="grid grid-cols-2 gap-4">
               <Field label="Aadhar Number (12 digits)">

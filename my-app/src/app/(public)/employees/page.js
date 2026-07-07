@@ -10,6 +10,7 @@ import {
   isValidLink,
 } from "@/data/employee";
 import { api } from "@/lib/employees/api";
+// import Breadcrumb from "@/components/shared/Breadcrumb";
 
 function toEmpCard(e) {
   const name = e.name || [e.firstName, e.middleName, e.lastName].filter(Boolean).join(" ");
@@ -67,6 +68,7 @@ export default function PublicEmployeesDirectory() {
   return (
     <div className="bg-white min-h-screen p-6 md:p-12 font-sans text-black-900 antialiased selection:bg-blue-500 selection:text-slate-900">
       <div className="max-w-7xl mx-auto space-y-10">
+        {/* <Breadcrumb items={[{ label: "Employees" }]} /> */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-200 pb-8">
           <div className="space-y-2">
             <div className="flex items-center gap-2">

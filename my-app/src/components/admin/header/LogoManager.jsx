@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Upload, Trash2, Building2, ImageIcon, Save } from "lucide-react";
 import { loadHeaderSection, saveHeaderSection } from "@/lib/headerSections";
-import { uploadImage } from "@/lib/uploadApi";
+import { uploadLogo } from "@/lib/uploadApi";
 import toast from "react-hot-toast";
 
 export default function LogoManager() {
@@ -57,7 +57,7 @@ export default function LogoManager() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const url = await uploadImage(file, "header");
+      const url = await uploadLogo(file, "header");
       setLogo(url);
       toast.success("Logo uploaded");
     } catch (err) {
@@ -69,7 +69,7 @@ export default function LogoManager() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const url = await uploadImage(file, "header");
+      const url = await uploadLogo(file, "header");
       setFavicon(url);
       toast.success("Favicon uploaded");
     } catch (err) {

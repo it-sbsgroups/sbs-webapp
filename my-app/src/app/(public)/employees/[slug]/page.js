@@ -6,6 +6,8 @@ import Link from "next/link";
 import { MdArrowBack, MdPhone, MdEmail, MdLocationOn, MdCalendarMonth, MdVerified } from "react-icons/md";
 import { getEmployeeBySlug, generateEmployeeSlug, employees } from "@/data/employee";
 import { api } from "@/lib/employees/api";
+import Breadcrumb from "@/components/shared/Breadcrumb";
+// import Breadcrumb from "@/components/shared/Breadcrumb";
 
 function toEmpCard(e) {
   const name = e.name || [e.firstName, e.middleName, e.lastName].filter(Boolean).join(" ");
@@ -65,6 +67,7 @@ export default function PublicEmployeeProfileDetail() {
 
   return (
     <div className="bg-white min-h-screen p-4 md:p-12 font-sans text-slate-800 antialiased">
+      <Breadcrumb items={[{ label: "Employees"}]} />
       <div className="max-w-3xl mx-auto space-y-6">
 
         <Link href="/employees" className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 hover:text-slate-900 transition-colors">

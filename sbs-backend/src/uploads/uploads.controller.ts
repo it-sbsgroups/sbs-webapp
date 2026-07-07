@@ -31,8 +31,12 @@ export class UploadsController {
   async uploadImage(
     @UploadedFile() file: Express.Multer.File,
     @Query('folder') folder?: string,
+    @Query('skipCompression') skipCompression?: string,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
+    if (skipCompression === 'true') {
+      return this.cloudinarySvc.uploadImageNoCompression(file, folder || 'misc');
+    }
     return this.cloudinarySvc.uploadGenericImage(file, folder || 'misc');
   }
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import brandsApi from "@/lib/brands/Api";
+// import Breadcrumb from "@/components/shared/Breadcrumb";
 
 function toBrandCard(b) {
   return {
@@ -54,6 +55,7 @@ export default function BrandsDirectoryPage() {
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans text-slate-800 antialiased">
+      {/* <Breadcrumb items={[{ label: "Brands" }]} /> */}
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 md:px-8 py-12">
