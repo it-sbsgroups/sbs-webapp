@@ -257,4 +257,26 @@ export class TestimonialsService {
     await this.prisma.testimonial.delete({ where: { id } });
     return { success: true };
   }
+
+  /**
+   * Admin-authored testimonial — no passcode flow, no client/brand request.
+   * Created straight into APPROVED status since an admin is entering it
+   * directly (e.g. from an email, call, or printed letter).
+   */
+  async createManual(dto: {
+    name: string; companyName: string; testimony: string; designation?: string; email?: string;
+  }) {
+    return this.prisma.testimonial.create({
+      data: {
+        name: dto.name,
+        companyName: dto.companyName,
+        testimony: dto.testimony,
+        designation: dto.designation,
+        email: dto.email,
+        status: 'APPROVED',
+        sourceType: 'CLIENT',
+        // clientId/brandId intentionally left unset — this is a standalone entry.
+      },
+    });
+  }
 }

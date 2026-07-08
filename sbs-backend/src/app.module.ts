@@ -32,6 +32,7 @@ import { ContactResponsesModule } from './contacts/contact-responses.module';
 import { IndustryInnovationModule } from './industry-innovation/industry-innovation.module';
 import { EmailTemplatesService } from './mail/email-templates.service';
 import { SubscribersController } from './subscribers/subscribers.controller';
+import { WhyChooseUsModule } from './why-choose-us/why-choose-us.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { SubscribersController } from './subscribers/subscribers.controller';
     ContactsModule,
     ContactResponsesModule,
     IndustryInnovationModule,
+    WhyChooseUsModule,
   ],
   controllers: [AppController, MailController, SubscribersController],
   providers: [AppService, PrismaService, MailService, EmailTemplatesService],

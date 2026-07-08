@@ -32,6 +32,15 @@ export class BrandsService {
       where: { slug },
       include: {
         _count: { select: { products: true } },
+        products: {
+          where: { isActive: true },
+          orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+          take: 8,
+          select: {
+            id: true, sku: true, name: true, slug: true,
+            images: { take: 1, orderBy: { sortOrder: 'asc' } },
+          },
+        },
         testimonials: {
           where: { status: 'APPROVED' },
           orderBy: { createdAt: 'desc' },

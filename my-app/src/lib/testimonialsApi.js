@@ -20,6 +20,11 @@ const testimonialsApi = {
     catch { return []; }
   },
   async issuePasscode(data) { return unwrap(await apiClient.post('/testimonials/passcodes', data)); },
+  // request a testimonial from an existing Client / Brand record
+  async requestForClient(clientId) { return unwrap(await apiClient.post(`/testimonials/request/client/${clientId}`)); },
+  async requestForBrand(brandId) { return unwrap(await apiClient.post(`/testimonials/request/brand/${brandId}`)); },
+  // admin-authored, unlinked testimonial (no passcode flow)
+  async createManual(data) { return unwrap(await apiClient.post('/testimonials/manual', data)); },
   async deletePasscode(id) { return apiClient.delete(`/testimonials/passcodes/${id}`); },
   async verify(code) { return unwrap(await apiClient.get(`/testimonials/verify/${encodeURIComponent(code)}`)); },
   async submit(data) { return unwrap(await apiClient.post('/testimonials/submit', data)); },

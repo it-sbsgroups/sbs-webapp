@@ -108,6 +108,13 @@ function ProductsCatalogContent() {
   // Brand filter
   const [distributorFilter, setDistributorFilter] = useState("ALL");
 
+  // Support ?brand=<id> deep-links (e.g. from a Brand detail page's
+  // "See All Products" CTA) — same underlying filter as the sidebar dropdown.
+  useEffect(() => {
+    const urlBrand = searchParams.get("brand");
+    if (urlBrand) setDistributorFilter(urlBrand);
+  }, [searchParams]);
+
   // Dynamic RFQ form data — keyed by each configured field.key
   const initialFormData = useMemo(() => {
     const o = {};

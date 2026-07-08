@@ -3,7 +3,6 @@
 
 import React, { useState, useEffect } from "react";
 import * as Icons from "lucide-react";
-import whyChooseUsData from "@/data/whyChooseUsData";
 
 /** Safely convert a simple HTML string with <span> tags into React elements */
 function parseHtmlTitle(htmlString) {
@@ -34,7 +33,39 @@ function parseHtmlTitle(htmlString) {
 }
 
 export default function WhyChooseUs() {
-  const [config, setConfig] = useState(whyChooseUsData);
+  const [config, setConfig] = useState({ design: {}, stats: [], title: "", mainDescription: "" });
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const base =
+          process.env.NEXT_PUBLIC_API_URL ||
+          (typeof window !== "undefined"
+            ? `${window.location.protocol}//${window.location.hostname}:4000/api`
+            : "http://localhost:4000/api");
+        const res = await fetch(`${base}/why-choose-us`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!alive) return;
+        setConfig({
+          design: {},
+          title: data.title || "",
+          mainDescription: data.description || "",
+          stats: (data.keys || []).map((k) => ({
+            id: k.id,
+            title: k.title,
+            description: k.description,
+            iconName: k.icon,
+            show: true,
+          })),
+        });
+      } catch {
+        // keep the empty-state defaults on failure
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     const handleUpdate = (e) => {

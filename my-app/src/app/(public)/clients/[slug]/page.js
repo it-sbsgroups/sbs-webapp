@@ -150,15 +150,6 @@ export default function PublicClientDynamicProfileView() {
                   <p className="text-xs md:text-sm text-slate-700 font-medium leading-relaxed">
                     "{t.testimony}"
                   </p>
-                  <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
-                    <span className="text-xs font-bold text-slate-900">
-                      {t.name}
-                      {t.designation && <span className="text-slate-400 font-semibold"> · {t.designation}</span>}
-                    </span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      {fmtDate(t.createdAt)}
-                    </span>
-                  </div>
                 </div>
               ))}
             </div>

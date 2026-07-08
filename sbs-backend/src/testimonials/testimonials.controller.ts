@@ -69,6 +69,14 @@ export class TestimonialsController {
     return this.testimonials.requestForBrand(brandId);
   }
 
+  // ---- Admin: manually add a standalone testimonial (no passcode flow) ----
+  @Post('manual')
+  createManual(
+    @Body() dto: { name: string; companyName: string; testimony: string; designation?: string; email?: string },
+  ) {
+    return this.testimonials.createManual(dto);
+  }
+
   // ---- Admin: moderation ----
 
   @Get()

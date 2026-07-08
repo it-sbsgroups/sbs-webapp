@@ -127,6 +127,57 @@ export default function BrandDetailPage() {
           )}
         </div>
 
+        {/* Featured Products — CTA to filtered catalog */}
+        {products?.length > 0 && (
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 md:p-8 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider">
+                Featured Products
+              </h3>
+              {productCount > products.length && (
+                <span className="text-[10px] font-bold text-slate-400">
+                  Showing {products.length} of {productCount}
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {products.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/products/${p.sku}`}
+                  className="group rounded-xl border border-slate-200 overflow-hidden hover:border-blue-400 hover:shadow-md transition-all"
+                >
+                  <div className="aspect-square bg-slate-50 flex items-center justify-center overflow-hidden">
+                    {p.images?.[0]?.url ? (
+                      <img
+                        src={p.images[0].url}
+                        alt={p.name}
+                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span className="text-3xl opacity-30">📦</span>
+                    )}
+                  </div>
+                  <div className="p-2.5">
+                    <p className="text-[11px] font-bold text-slate-800 line-clamp-2 leading-snug">
+                      {p.name}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <div className="mt-6 text-center">
+              <Link
+                href={`/products?brand=${brand.id}`}
+                className="inline-block rounded-xl bg-blue-950 text-white font-black text-xs uppercase tracking-wider px-6 py-3 hover:bg-blue-900 transition-colors"
+              >
+                See All Products from {name} →
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Testimonials Section — bound to this brand via Testimonial.brandId */}
         <div className="bg-white border border-slate-200/80 rounded-3xl p-6 md:p-8 shadow-sm">
           <div className="flex items-center justify-between mb-4">
@@ -141,15 +192,6 @@ export default function BrandDetailPage() {
                   <p className="text-xs md:text-sm text-slate-700 font-medium leading-relaxed">
                     "{t.testimony}"
                   </p>
-                  <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
-                    <span className="text-xs font-bold text-slate-900">
-                      {t.name}
-                      {t.designation && <span className="text-slate-400 font-semibold"> · {t.designation}</span>}
-                    </span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      {new Date(t.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                    </span>
-                  </div>
                 </div>
               ))}
             </div>
