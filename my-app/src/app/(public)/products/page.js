@@ -6,7 +6,7 @@ import Link from "next/link";
 
 // ✅ LIVE DATA — fetched from the NestJS backend (no more static dummy data)
 import publicCatalogApi from "@/lib/publicCatalogApi";
-import Breadcrumb from "@/components/shared/Breadcrumb";
+// import Breadcrumb from "@/components/shared/Breadcrumb";
 import apiClient from "@/lib/client";
 import rfqApi from "@/lib/rfqApi";
 
@@ -327,34 +327,50 @@ function ProductsCatalogContent() {
       style={{ backgroundColor: layout?.pageBackground || "#f8fafc" }}
     >
       {/* BREADCRUMB */}
-      <Breadcrumb items={[{ label: "Products" }]} />
+      {/* <Breadcrumb items={[{ label: "Products" }]} /> */}
 
       {/* HEADER SECTION */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <span className="text-xs font-black text-blue-900 uppercase tracking-widest">
-              SBS GROUPS PARTNER CATALOG
-            </span>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight mt-0.5">
-              B2B Product Sourcing Hub
-            </h1>
-            <p className="text-xs text-slate-500 font-medium">
-              Browse categories, select items, and request official dispatch quotes instantly.
-            </p>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight mt-0.5">Our Products</h1>
+            <div className="flex items-end gap-3 self-start sm:self-center">
+              {toggles?.showSearch && (
+                <div className="flex flex-col">
+                  <div className="relative">
+                    <input type="text" value={liveSearch} onChange={(e) => setLiveSearch(e.target.value)} placeholder="Type 2+ characters to search..." className="text-xs font-semibold text-slate-800 border border-slate-300 rounded-lg pl-8 pr-7 py-2 bg-white focus:outline-none focus:border-blue-900 min-w-[180px]" />
+                    {liveSearch && (
+                      <button onClick={() => setLiveSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 font-bold text-xs" aria-label="Clear search" >✕</button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {toggles?.showBrandFilter && (
+                <div className="flex flex-col">
+                  <select value={distributorFilter} onChange={(e) => setDistributorFilter(e.target.value)} className="text-xs font-bold text-slate-800 border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-blue-900 min-w-[150px]" >
+                    <option value="ALL">All Brands</option>
+                    {availableDistributors.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {globalSearchQuery && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-900 rounded-xl px-4 py-2 text-xs font-semibold flex items-center gap-2 self-end">
+                  <span>Filter: <b className="font-black">"{globalSearchQuery}"</b></span>
+                  <Link href="/products" className="text-red-500 hover:text-red-700 font-bold ml-2 border-l border-blue-200 pl-2 uppercase tracking-wide text-[10px]">Clear ×</Link>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <a
-              href={`${apiClient.baseUrl}/products/catalogue/download`}
-              className="text-blue-900 font-bold text-xs px-5 py-3 rounded-xl uppercase tracking-wider border-2 border-blue-900 flex items-center gap-2 hover:bg-blue-50 transition-all whitespace-nowrap"
-            >
-              ⬇ Download Catalogue
-            </a>
+            <a href={`${apiClient.baseUrl}/products/catalogue/download`} className="text-blue-900 font-bold text-xs px-5 py-3 rounded-xl uppercase tracking-wider border-2 border-blue-900 flex items-center gap-2 hover:bg-blue-50 transition-all whitespace-nowrap" >⬇ Download Catalogue</a>
 
             {toggles?.showQuoteBucketButton && rfq?.enabled && (
-            <button
-              onClick={() => {
+            <button onClick={() => {
                 if (rfqCart.length === 0) {
                   alert("Your Quote bucket is empty.");
                   return;
@@ -362,13 +378,10 @@ function ProductsCatalogContent() {
                 setShowFormModal(true);
               }}
               className="text-white font-bold text-xs px-5 py-3 rounded-xl uppercase tracking-wider shadow-lg flex items-center space-x-3 hover:opacity-90 transition-all transform active:scale-95 whitespace-nowrap"
-              style={{ backgroundColor: rfq?.buttonColor || "#172554" }}
-            >
+              style={{ backgroundColor: rfq?.buttonColor || "#172554" }} >
               <span>📋</span>
               <span>{rfq?.buttonText || "Quote Bucket"}</span>
-              <span className="bg-lime-400 text-slate-950 rounded-md px-1.5 py-0.5 font-black text-[10px]">
-                {rfqCart.length} Lines
-              </span>
+              <span className="bg-lime-400 text-slate-950 rounded-md px-1.5 py-0.5 font-black text-[10px]">{rfqCart.length} Lines</span>
             </button>
           )}
           </div>
@@ -377,18 +390,11 @@ function ProductsCatalogContent() {
 
       {/* VIEW ENGINE LAYOUT CONTROLLER */}
       {loadingData ? (
-        <div className="p-16 text-center text-xs font-black text-slate-400 uppercase tracking-widest">
-          Loading live catalog…
-        </div>
+        <div className="p-16 text-center text-xs font-black text-slate-400 uppercase tracking-widest">Loading live catalog…</div>
       ) : loadError ? (
         <div className="p-16 text-center">
           <p className="text-sm font-bold text-red-600">{loadError}</p>
-          <button
-            onClick={() => setDataNonce((n) => n + 1)}
-            className="mt-4 text-xs font-black uppercase tracking-wider border border-slate-300 rounded-lg px-4 py-2 hover:bg-slate-50"
-          >
-            Retry
-          </button>
+          <button onClick={() => setDataNonce((n) => n + 1)} className="mt-4 text-xs font-black uppercase tracking-wider border border-slate-300 rounded-lg px-4 py-2 hover:bg-slate-50" >Retry</button>
         </div>
       ) : (
       <div className="flex flex-col md:flex-row gap-0">
@@ -397,9 +403,7 @@ function ProductsCatalogContent() {
           <div className="w-full md:w-80 bg-white border-r border-slate-200 overflow-y-auto max-h-[calc(100vh-140px)] sticky top-24">
             <div className="p-4">
               <div className="mb-4 pb-4 border-b border-slate-200">
-                <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-2">
-                  Categories
-                </h2>
+                <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-2">Categories</h2>
                 <p className="text-[10px] text-slate-500 font-medium">
                   Active Selection Tags:{" "}
                   <span className="font-black text-blue-900">{getSelectedCount()}</span>
@@ -410,49 +414,26 @@ function ProductsCatalogContent() {
                 {categories.map((category) => (
                   <div key={category.id} className="space-y-1">
                     <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={!!selectedItems[category.id]}
-                        onChange={() => handleSelectCategory(category.id)}
-                        className="w-4 h-4 rounded border-slate-300 cursor-pointer accent-blue-900"
-                      />
-                      <button
-                        onClick={() => handleToggleCategory(category.id)}
-                        className="flex-1 text-left flex items-center justify-between hover:text-blue-900 transition-colors"
-                      >
+                      <input type="checkbox" checked={!!selectedItems[category.id]} onChange={() => handleSelectCategory(category.id)} className="w-4 h-4 rounded border-slate-300 cursor-pointer accent-blue-900" />
+                      <button onClick={() => handleToggleCategory(category.id)} className="flex-1 text-left flex items-center justify-between hover:text-blue-900 transition-colors" >
                         <div className="flex items-center gap-2">
                           <span className="text-lg">{category.icon}</span>
-                          <span className="text-xs font-black text-slate-900 uppercase tracking-wide">
-                            {category.name}
-                          </span>
+                          <span className="text-xs font-black text-slate-900 uppercase tracking-wide">{category.name}</span>
                         </div>
-                        <span className="text-xs text-slate-400">
-                          {expandedCategories[category.id] ? "▼" : "▶"}
-                        </span>
+                        <span className="text-xs text-slate-400">{expandedCategories[category.id] ? "▼" : "▶"}</span>
                       </button>
                     </div>
 
                     {expandedCategories[category.id] && (
                       <div className="pl-8 space-y-1">
                         {category.subcategories.map((subcategory) => (
-                          <div
-                            key={subcategory.id}
-                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-blue-50 transition-colors bg-slate-50"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={!!selectedItems[subcategory.id]}
-                              onChange={() =>
+                          <div key={subcategory.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-blue-50 transition-colors bg-slate-50">
+                            <input type="checkbox" checked={!!selectedItems[subcategory.id]} onChange={() =>
                                 handleSelectSubcategory(category.id, subcategory.id)
                               }
-                              className="w-3 h-3 rounded border-slate-300 cursor-pointer accent-blue-900"
-                            />
-                            <span className="flex-1 text-xs font-semibold text-slate-700">
-                              {subcategory.name}
-                            </span>
-                            <span className="text-[9px] text-slate-500 font-medium">
-                              ({subcategory.productCount})
-                            </span>
+                              className="w-3 h-3 rounded border-slate-300 cursor-pointer accent-blue-900" />
+                            <span className="flex-1 text-xs font-semibold text-slate-700">{subcategory.name}</span>
+                            <span className="text-[9px] text-slate-500 font-medium">({subcategory.productCount})</span>
                           </div>
                         ))}
                       </div>
@@ -462,12 +443,7 @@ function ProductsCatalogContent() {
               </div>
 
               {getSelectedCount() > 0 && (
-                <button
-                  onClick={() => setSelectedItems({})}
-                  className="w-full mt-6 text-xs font-bold text-slate-600 hover:text-slate-900 py-2 px-3 rounded-lg border border-slate-300 transition-colors"
-                >
-                  ✕ Clear Selection Filters
-                </button>
+                <button onClick={() => setSelectedItems({})} className="w-full mt-6 text-xs font-bold text-slate-600 hover:text-slate-900 py-2 px-3 rounded-lg border border-slate-300 transition-colors" >✕ Clear Selection Filters</button>
               )}
             </div>
           </div>
@@ -475,83 +451,6 @@ function ProductsCatalogContent() {
 
         {/* MAIN PRODUCT CATALOG REGION */}
         <div className="flex-1 p-4 md:p-8">
-          {/* CRITERIA BAR */}
-          <div className={`${containerWidth} mx-auto mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4`}>
-            <div>
-              <h2 className="text-xl font-black text-slate-900">
-                {finalVisibleProducts.length} Match Line
-                {finalVisibleProducts.length !== 1 ? "s" : ""} Available
-              </h2>
-              <p className="text-xs text-slate-400 font-semibold mt-0.5">
-                Vetted heavy components aligned with selected parameters.
-              </p>
-            </div>
-
-            <div className="flex items-end gap-3 self-start sm:self-center">
-              {toggles?.showSearch && (
-                <div className="flex flex-col">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                    Search
-                  </label>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">
-                      🔍
-                    </span>
-                    <input
-                      type="text"
-                      value={liveSearch}
-                      onChange={(e) => setLiveSearch(e.target.value)}
-                      placeholder="Type 2+ characters..."
-                      className="text-xs font-semibold text-slate-800 border border-slate-300 rounded-lg pl-8 pr-7 py-2 bg-white focus:outline-none focus:border-blue-900 min-w-[180px]"
-                    />
-                    {liveSearch && (
-                      <button
-                        onClick={() => setLiveSearch("")}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 font-bold text-xs"
-                        aria-label="Clear search"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {toggles?.showBrandFilter && (
-                <div className="flex flex-col">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                    Brand
-                  </label>
-                  <select
-                    value={distributorFilter}
-                    onChange={(e) => setDistributorFilter(e.target.value)}
-                    className="text-xs font-bold text-slate-800 border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-blue-900 min-w-[150px]"
-                  >
-                    <option value="ALL">All Brands</option>
-                    {availableDistributors.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {globalSearchQuery && (
-                <div className="bg-blue-50 border border-blue-200 text-blue-900 rounded-xl px-4 py-2 text-xs font-semibold flex items-center gap-2 self-end">
-                  <span>
-                    Filter: <b className="font-black">"{globalSearchQuery}"</b>
-                  </span>
-                  <Link
-                    href="/products"
-                    className="text-red-500 hover:text-red-700 font-bold ml-2 border-l border-blue-200 pl-2 uppercase tracking-wide text-[10px]"
-                  >
-                    Clear ×
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* DYNAMIC FEED GRID */}
           {finalVisibleProducts.length > 0 ? (
@@ -563,21 +462,11 @@ function ProductsCatalogContent() {
                   const imageUrl = getProductImage(product);
 
                   return (
-                    <div
-                      key={product.id}
-                      className={`flex flex-col ${card?.cornerRadius || "rounded-2xl"} ${cardStyleClass} transition-shadow relative overflow-hidden group`}
-                      style={{ backgroundColor: card?.cardBackground || "#ffffff" }}
-                    >
+                    <div key={product.id} className={`flex flex-col ${card?.cornerRadius || "rounded-2xl"} ${cardStyleClass} transition-shadow relative overflow-hidden group`} style={{ backgroundColor: card?.cardBackground || "#ffffff" }} >
                       {/* IMAGE — fit/ratio/bg all admin-controlled */}
-                      <div className={`relative w-full ${imageRatioClass} border-b border-slate-100 flex items-center justify-center p-4`}
-                        style={{ backgroundColor: card?.imageBackground || "#f8fafc" }}>
+                      <div className={`relative w-full ${imageRatioClass} border-b border-slate-100 flex items-center justify-center p-4`} style={{ backgroundColor: card?.imageBackground || "#f8fafc" }}>
                         {imageUrl ? (
-                          <img
-                            src={imageUrl}
-                            alt={product.name}
-                            loading="lazy"
-                            className={`w-full h-full ${imageFitClass}`}
-                          />
+                          <img src={imageUrl} alt={product.name} loading="lazy" className={`w-full h-full ${imageFitClass}`} />
                         ) : (
                           <span className="text-4xl text-slate-300">📦</span>
                         )}
@@ -589,70 +478,27 @@ function ProductsCatalogContent() {
                       </div>
 
                       <div className="p-5 flex flex-col flex-1">
-                        {/* <div className="flex justify-between items-center mb-2">
-                          {card?.showSkuId && (
-                            <span className="text-[10px] font-mono font-bold text-slate-400">
-                              {product.id}
-                            </span>
-                          )}
-                          {card?.showModel && product.model && (
-                            <span className="text-[10px] font-mono font-semibold text-slate-400">
-                              {product.model}
-                            </span>
-                          )}
-                        </div> */}
-                        <h3
-                          className="text-sm font-black text-black-400 tracking-tight transition-colors group-hover:[color:var(--accent)]"
-                          style={{ "--accent": card?.accentColor || "#1e3a8a" }}
-                        >
-                          {product.name}
-                        </h3>
-                        {/* {card?.showKeyFeatures && product.keyFeatures && (
-                          <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed font-medium line-clamp-3">
-                            {product.keyFeatures}
-                          </p>
-                        )} */}
+                        <h3 className="text-sm font-black text-black-400 tracking-tight transition-colors group-hover:[color:var(--accent)]" style={{ "--accent": card?.accentColor || "#1e3a8a" }} >{product.name}</h3>
 
                         <div className="mt-auto pt-4 border-t border-slate-100 flex flex-col space-y-3">
-                          {/* {card?.showPricePill && (
-                            <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                Unit Value:
-                              </span>
-                              <span className="text-xs font-black text-emerald-600 uppercase bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-                                {card?.priceLabel || "Price On Request"}
-                              </span>
-                            </div>
-                          )} */}
 
                           {rfq?.enabled && (
                             <div className="flex items-center gap-2">
                               <div className="w-20 shrink-0">
-                                <input
-                                  type="number"
-                                  min="1"
-                                  value={currentInputQty}
-                                  onChange={(e) => handleQtyChange(product.id, e.target.value)}
-                                  className="w-full text-center font-bold text-xs border border-slate-200 rounded-lg py-2 focus:outline-none focus:border-blue-950 bg-slate-50"
-                                />
+                                <input type="number" min="1" value={currentInputQty} onChange={(e) => handleQtyChange(product.id, e.target.value)} className="w-full text-center font-bold text-xs border border-slate-200 rounded-lg py-2 focus:outline-none focus:border-blue-950 bg-slate-50" />
                               </div>
-                              <button
-                                onClick={() => addToRfqCart(product)}
-                                className={`flex-1 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg transition-colors border ${
+                              <button onClick={() => addToRfqCart(product)} className={`flex-1 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg transition-colors border ${
                                   isAlreadyInCart
                                     ? "bg-lime-500 text-slate-900 border-lime-500"
                                     : "bg-slate-900 text-white hover:bg-slate-800 border-slate-900"
-                                }`}
-                              >
+                                }`} >
                                 {isAlreadyInCart ? "🔄 Update Bulk Units" : "➕ Add to Quote"}
                               </button>
                             </div>
                           )}
 
                           <Link href={`/products/${product.id}`}>
-                            <button className="w-full text-[10px] font-black text-blue-600 uppercase tracking-wider py-2 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors">
-                              View Details
-                            </button>
+                            <button className="w-full text-[10px] font-black text-blue-600 uppercase tracking-wider py-2 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors">View Details</button>
                           </Link>
                         </div>
                       </div>
@@ -678,33 +524,21 @@ function ProductsCatalogContent() {
                   </p>
 
                   <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="text-xs font-black px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
+                    <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="text-xs font-black px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors" >
                       ← Prev
                     </button>
 
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`text-xs font-black w-9 h-9 rounded-lg border transition-colors ${
+                      <button key={pageNum} onClick={() => setCurrentPage(pageNum)} className={`text-xs font-black w-9 h-9 rounded-lg border transition-colors ${
                           pageNum === currentPage
                             ? "bg-blue-950 text-white border-blue-950"
                             : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                        }`}
-                      >
+                        }`} >
                         {pageNum}
                       </button>
                     ))}
 
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      className="text-xs font-black px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
+                    <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="text-xs font-black px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors" >
                       Next →
                     </button>
                   </div>
@@ -714,12 +548,8 @@ function ProductsCatalogContent() {
           ) : (
             <div className="bg-white border border-dashed border-slate-200 rounded-3xl p-12 text-center max-w-md mx-auto mt-12 shadow-sm">
               <span className="text-3xl">📦</span>
-              <h3 className="text-sm font-black text-slate-900 tracking-tight mt-3">
-                No matching items indexed
-              </h3>
-              <p className="text-xs text-slate-400 mt-1 font-medium leading-relaxed">
-                We couldn't locate any catalog entry matching your query criteria.
-              </p>
+              <h3 className="text-sm font-black text-slate-900 tracking-tight mt-3">No matching items indexed</h3>
+              <p className="text-xs text-slate-400 mt-1 font-medium leading-relaxed">We couldn't locate any catalog entry matching your query criteria.</p>
             </div>
           )}
         </div>
@@ -730,42 +560,21 @@ function ProductsCatalogContent() {
       {showFormModal && rfq?.enabled && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
-            <div
-              className="text-white px-6 py-4 flex justify-between items-center shrink-0"
-              style={{ backgroundColor: rfq?.buttonColor || "#172554" }}
-            >
-              <h2 className="text-sm font-black uppercase tracking-wider">
-                Compile Procurement RFQ Slip
-              </h2>
-              <button
-                onClick={() => setShowFormModal(false)}
-                className="text-white/60 hover:text-white font-bold text-sm"
-              >
-                ✕
-              </button>
+            <div className="text-white px-6 py-4 flex justify-between items-center shrink-0" style={{ backgroundColor: rfq?.buttonColor || "#172554" }} >
+              <h2 className="text-sm font-black uppercase tracking-wider">Compile Procurement RFQ Slip</h2>
+              <button onClick={() => setShowFormModal(false)} className="text-white/60 hover:text-white font-bold text-sm" >✕</button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
               <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200/60">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  Items Bundled Inside Order Line ({rfqCart.length})
-                </p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Items Bundled Inside Order Line ({rfqCart.length})</p>
                 <div className="divide-y divide-slate-200/60 max-h-36 overflow-y-auto pr-1">
                   {rfqCart.map((item) => (
                     <div key={item.id} className="py-2 flex justify-between items-center text-xs">
-                      <div className="truncate max-w-sm">
-                        <span className="font-bold text-slate-900">{item.name}</span>
-                      </div>
+                      <div className="truncate max-w-sm"><span className="font-bold text-slate-900">{item.name}</span></div>
                       <div className="flex items-center space-x-3 shrink-0">
-                        <span className="bg-blue-50 text-blue-900 font-black px-2 py-0.5 rounded text-[10px]">
-                          QTY: {item.quantity} Units
-                        </span>
-                        <button
-                          onClick={() => removeFromCart(item.id)}
-                          className="text-rose-500 font-bold text-xs"
-                        >
-                          🗑️
-                        </button>
+                        <span className="bg-blue-50 text-blue-900 font-black px-2 py-0.5 rounded text-[10px]">QTY: {item.quantity} Units</span>
+                        <button onClick={() => removeFromCart(item.id)} className="text-rose-500 font-bold text-xs" >🗑️</button>
                       </div>
                     </div>
                   ))}
@@ -777,41 +586,17 @@ function ProductsCatalogContent() {
                   {(rfq?.fields || [])
                     .filter((f) => f.show && f.type !== "textarea")
                     .map((f) => (
-                      <input
-                        key={f.key}
-                        type={f.type || "text"}
-                        required={!!f.required}
-                        value={formData[f.key] ?? ""}
-                        onChange={(e) =>
-                          setFormData({ ...formData, [f.key]: e.target.value })
-                        }
-                        placeholder={f.label}
-                        className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 font-medium bg-slate-50"
-                      />
+                      <input key={f.key} type={f.type || "text"} required={!!f.required} value={formData[f.key] ?? ""} onChange={(e) => setFormData({ ...formData, [f.key]: e.target.value })} placeholder={f.label} className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 font-medium bg-slate-50" />
                     ))}
                 </div>
 
                 {(rfq?.fields || [])
                   .filter((f) => f.show && f.type === "textarea")
                   .map((f) => (
-                    <textarea
-                      key={f.key}
-                      rows={3}
-                      required={!!f.required}
-                      value={formData[f.key] ?? ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, [f.key]: e.target.value })
-                      }
-                      placeholder={f.label}
-                      className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 font-medium bg-slate-50"
-                    />
+                    <textarea key={f.key} rows={3} required={!!f.required} value={formData[f.key] ?? ""} onChange={(e) => setFormData({ ...formData, [f.key]: e.target.value }) } placeholder={f.label} className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 font-medium bg-slate-50" />
                   ))}
 
-                <button
-                  type="submit"
-                  className="w-full text-white font-black text-xs py-3 rounded-xl uppercase tracking-wider"
-                  style={{ backgroundColor: rfq?.buttonColor || "#172554" }}
-                >
+                <button type="submit" className="w-full text-white font-black text-xs py-3 rounded-xl uppercase tracking-wider" style={{ backgroundColor: rfq?.buttonColor || "#172554" }} >
                   {rfq?.submitText || "🚀 Dispatch Quotation Slip"}
                 </button>
               </form>
@@ -827,9 +612,7 @@ export default function PublicProductsCatalog() {
   return (
     <Suspense
       fallback={
-        <div className="p-12 text-center text-xs font-black text-slate-400 uppercase tracking-widest">
-          Initialising Procurement Data Grid...
-        </div>
+        <div className="p-12 text-center text-xs font-black text-slate-400 uppercase tracking-widest">Initialising Procurement Data Grid...</div>
       }
     >
       <ProductsCatalogContent />
