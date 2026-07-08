@@ -229,7 +229,7 @@ function ProductsCatalogContent() {
     // The form fields are admin-configured (rfq.fields, keyed by f.key). Map the
     // well-known keys onto the backend's fixed columns; everything else is kept
     // in customFields so nothing is lost.
-    const known = ["fullName", "companyName", "email", "mobile", "remarks"];
+    const known = ["fullName", "companyName", "email", "mobile", "address", "remarks"];
     const customFields = {};
     Object.entries(formData || {}).forEach(([k, v]) => {
       if (!known.includes(k) && v !== "" && v != null) customFields[k] = v;
@@ -240,6 +240,7 @@ function ProductsCatalogContent() {
       companyName: formData.companyName || undefined,
       email: formData.email || "",
       mobile: formData.mobile || formData.phone || "",
+      address: formData.address || undefined,
       remarks: formData.remarks || formData.message || undefined,
       customFields: Object.keys(customFields).length ? customFields : undefined,
       items: rfqCart.map((item) => ({
@@ -457,7 +458,7 @@ function ProductsCatalogContent() {
             <>
               <div className={`${containerWidth} mx-auto grid ${gridColsClass} ${gridGapClass}`}>
                 {paginatedProducts.map((product) => {
-                  const currentInputQty = quantities[product.id] || 1;
+                  const currentInputQty = quantities[product.id] || 0;
                   const isAlreadyInCart = rfqCart.some((item) => item.id === product.id);
                   const imageUrl = getProductImage(product);
 

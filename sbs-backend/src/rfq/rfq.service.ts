@@ -91,6 +91,8 @@ export class RfqService {
       rfqReference: rfq.reference,
     };
 
+    // Emails are best-effort and have no downstream business requirement to complete
+    // before we respond, so these stay fire-and-forget.
     this.mailService.sendCustomerAutoReply(rfqData).catch((err) =>
       console.error('Customer auto-reply failed:', err.message),
     );
@@ -98,9 +100,17 @@ export class RfqService {
       console.error('Team notification failed:', err.message),
     );
 
-    this.integrations.pushOnRfqCreated(rfq).catch((err) =>
-      console.error('RFQ outbound integrations failed:', err.message),
-    );
+    // IMPORTANT: this is awaited (unlike the emails above). pushOnRfqCreated() never
+    // throws (internally wrapped in Promise.allSettled), so this adds no error risk to
+    // the response — it only guarantees the outbound call actually runs to completion
+    // before the request lifecycle ends. A pure "fire-and-forget, don't await" call here
+    // works fine on a persistent server, but on serverless/edge hosting (Vercel
+    // Functions, Lambda, Cloud Run, etc.) the runtime can freeze or recycle the instance
+    // the moment the HTTP response is sent, silently killing any promise that wasn't
+    // awaited — which is exactly the "test works, real submit doesn't" pattern.
+    // forwardToExternalApi() already has its own 10s axios timeout, so the worst-case
+    // added latency to the RFQ response is bounded.
+    await this.integrations.pushOnRfqCreated(rfq);
 
     return rfq;
   }

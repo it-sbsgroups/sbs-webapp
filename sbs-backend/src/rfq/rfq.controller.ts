@@ -73,6 +73,13 @@ async testIntegration() {
   return this.rfqIntegrations.testExternalApi();
 }
 
+  // Full backfill: pushes every existing RFQ into the sheet (not just future ones).
+  // Safe to call repeatedly — it always clears and rewrites the data rows.
+  @Post('integrations/sync-sheet')
+  async syncSheet() {
+    return this.rfqIntegrations.syncAllToSheet();
+  }
+
   // -------------------- Existing endpoints --------------------
   @Get()
   findAll(@Query() query: any) {

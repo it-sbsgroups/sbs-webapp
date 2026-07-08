@@ -22,6 +22,7 @@ const defaultRfq = {
     { key: "companyName", label: "Company/Enterprise Entity", placeholder: "e.g. ABC Corp Ltd", type: "text", show: true, required: true },
     { key: "email", label: "Official Email Address", placeholder: "procurement@company.com", type: "email", show: true, required: true },
     { key: "mobile", label: "Mobile Coordinate Number", placeholder: "+91 98765 43210", type: "tel", show: true, required: true },
+    { key: "address", label: "Delivery / Company Address", placeholder: "e.g. Plot 12, Industrial Area, City", type: "textarea", show: true, required: false },
     { key: "remarks", label: "Specific Dispatch Requirements", placeholder: "Any special instructions...", type: "textarea", show: true, required: false },
   ],
 };

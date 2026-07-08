@@ -27,6 +27,7 @@ export default function RfqIntegrationSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -108,6 +109,22 @@ export default function RfqIntegrationSettings() {
     }
   };
 
+  const handleSyncSheet = async () => {
+    setSyncing(true);
+    try {
+      const res = await rfqIntegrationsApi.syncSheet();
+      if (res.success) {
+        toast.success(`✅ ${res.message}`);
+      } else {
+        toast.error(`❌ ${res.message}`);
+      }
+    } catch (error) {
+      toast.error("Sync failed: " + error.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>;
   }
@@ -177,7 +194,10 @@ export default function RfqIntegrationSettings() {
             <div className="h-5 w-9 rounded-full bg-slate-200 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all peer-checked:bg-blue-600 peer-checked:after:translate-x-full" />
           </label>
         </div>
-        <p className="text-xs text-slate-500">...</p>
+        <p className="text-xs text-slate-500">
+          Every new RFQ is appended here automatically. This is strictly one-way: nothing here ever reads the
+          sheet's data back in, so edits made directly in the sheet can never change your website's data.
+        </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-xs font-medium">Sheet ID</label>
@@ -200,6 +220,20 @@ export default function RfqIntegrationSettings() {
             Stored on the server only — never shown to public visitors. Rows are appended in this order:
             RFQ ID, Date, Name, Email, Mobile, Company, Address, Product, Model, Quantity, Remarks.
           </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleSyncSheet}
+            disabled={syncing || !settings.sheetEnabled || !settings.sheetId || !settings.googleServiceAccountJson}
+            className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {syncing ? <span className="animate-spin">⏳</span> : <Sheet size={16} />}
+            {syncing ? "Syncing..." : "Sync All RFQs to Sheet Now"}
+          </button>
+          <span className="text-xs text-slate-400">
+            One-time backfill — writes every RFQ ever submitted into the sheet, so it's fully up to date the moment
+            it's opened. Safe to click again anytime; it never creates duplicates.
+          </span>
         </div>
       </div>
 

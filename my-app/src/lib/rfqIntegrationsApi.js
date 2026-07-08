@@ -12,6 +12,10 @@ const rfqIntegrationsApi = {
   async test() {
     return apiClient.post("/rfq/integrations/test");
   },
+  // 👇 Full backfill: push every existing RFQ into the sheet
+  async syncSheet() {
+    return apiClient.post("/rfq/integrations/sync-sheet");
+  },
 };
 
 export default rfqIntegrationsApi;
