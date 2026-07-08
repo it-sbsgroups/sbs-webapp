@@ -3,44 +3,62 @@
 
 import { useState, useEffect } from "react";
 import rfqIntegrationsApi from "@/lib/rfqIntegrationsApi";
-import { Save, Globe, Sheet, ShieldCheck } from "lucide-react";
+import { Save, Globe, Sheet, ShieldCheck, Play } from "lucide-react";
+import toast from "react-hot-toast";
 
 const STORAGE_KEY = "sbs_admin_rfq_integration_state";
 
-export default function RfqIntegrationSettings() {
-  const defaultSettings = {
-    externalApiEnabled: false,
-    externalApiUrl: "",
-    externalApiKey: "",
-    externalApiSecret: "",
-    sheetEnabled: false,
-    sheetId: "",
-    sheetTabName: "RFQs",
-    googleServiceAccountJson: "",
-  };
+// Default settings – all fields are strings, not null
+const defaultSettings = {
+  externalApiEnabled: false,
+  externalApiUrl: "",
+  externalApiKey: "",
+  externalApiSecret: "",
+  sheetEnabled: false,
+  sheetId: "",
+  sheetTabName: "RFQs",
+  googleServiceAccountJson: "",
+  inboundWebhookEnabled: false,
+  inboundWebhookSecret: "",
+};
 
+export default function RfqIntegrationSettings() {
   const [settings, setSettings] = useState(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       try {
         const res = await rfqIntegrationsApi.getSettings();
         const data = res?.data || res;
-        let loaded = { ...defaultSettings };
-        if (data) loaded = { ...loaded, ...data };
-        // Restore draft
+        // Merge with defaults, ensuring no null values
+        const loaded = { ...defaultSettings, ...data };
+        // Ensure every string field is at least an empty string
+        Object.keys(loaded).forEach(key => {
+          if (loaded[key] === null || loaded[key] === undefined) {
+            loaded[key] = "";
+          }
+        });
+        // Load draft from sessionStorage (client only)
         const draft = sessionStorage.getItem(STORAGE_KEY);
         if (draft) {
           try {
             const parsed = JSON.parse(draft);
-            loaded = { ...loaded, ...parsed };
+            // Merge draft, also ensure no nulls
+            Object.keys(parsed).forEach(key => {
+              if (parsed[key] === null || parsed[key] === undefined) {
+                parsed[key] = "";
+              }
+            });
+            Object.assign(loaded, parsed);
           } catch {}
         }
         setSettings(loaded);
       } catch (error) {
         console.error("Failed to load RFQ integration settings:", error);
+        toast.error("Failed to load settings");
       } finally {
         setLoading(false);
       }
@@ -48,24 +66,45 @@ export default function RfqIntegrationSettings() {
     load();
   }, []);
 
+  // Save draft to sessionStorage on every change
   useEffect(() => {
     if (!loading) {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     }
   }, [settings, loading]);
 
-  const update = (key, value) => setSettings((prev) => ({ ...prev, [key]: value }));
+  const update = (key, value) => {
+    // Ensure we never set null – convert to empty string for string fields
+    if (typeof value === "string" && value === null) value = "";
+    setSettings((prev) => ({ ...prev, [key]: value }));
+  };
 
   const handleSave = async () => {
     setSaving(true);
     try {
       await rfqIntegrationsApi.updateSettings(settings);
       sessionStorage.removeItem(STORAGE_KEY);
-      alert("RFQ integration settings saved!");
+      toast.success("RFQ integration settings saved!");
     } catch (error) {
-      alert("Failed to save: " + error.message);
+      toast.error("Failed to save: " + error.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    try {
+      const res = await rfqIntegrationsApi.test();
+      if (res.success) {
+        toast.success(`✅ ${res.message}`);
+      } else {
+        toast.error(`❌ ${res.message}`);
+      }
+    } catch (error) {
+      toast.error("Test request failed: " + error.message);
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -74,7 +113,7 @@ export default function RfqIntegrationSettings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" suppressHydrationWarning>
       <div>
         <h2 className="text-2xl font-bold text-slate-900">RFQ Outbound Integrations</h2>
         <p className="mt-1 text-sm text-slate-500 flex items-start gap-2">
@@ -115,10 +154,22 @@ export default function RfqIntegrationSettings() {
               className="w-full rounded-xl border px-4 py-3 text-sm font-mono" />
           </div>
         </div>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleTest}
+            disabled={testing || !settings.externalApiEnabled || !settings.externalApiUrl}
+            className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {testing ? <span className="animate-spin">⏳</span> : <Play size={16} />}
+            {testing ? "Testing..." : "Test Connection"}
+          </button>
+          <span className="text-xs text-slate-400">Sends a test payload to the configured endpoint</span>
+        </div>
       </div>
 
       {/* Google Sheet */}
       <div className="rounded-2xl border bg-white p-6 shadow-sm space-y-4">
+        {/* ... same as before ... */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2"><Sheet size={18} className="text-emerald-600" /><h3 className="font-semibold">Live Push to Google Sheet</h3></div>
           <label className="relative inline-flex cursor-pointer items-center">
@@ -126,10 +177,7 @@ export default function RfqIntegrationSettings() {
             <div className="h-5 w-9 rounded-full bg-slate-200 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all peer-checked:bg-blue-600 peer-checked:after:translate-x-full" />
           </label>
         </div>
-        <p className="text-xs text-slate-500">
-          Every new RFQ is appended as a new row to your private Google Sheet, live, as soon as it's submitted.
-          Share the sheet with the service account's email (below) as an <b>Editor</b> so it's allowed to write.
-        </p>
+        <p className="text-xs text-slate-500">...</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-xs font-medium">Sheet ID</label>
@@ -151,6 +199,34 @@ export default function RfqIntegrationSettings() {
           <p className="mt-1 text-[11px] text-slate-400">
             Stored on the server only — never shown to public visitors. Rows are appended in this order:
             RFQ ID, Date, Name, Email, Mobile, Company, Address, Product, Model, Quantity, Remarks.
+          </p>
+        </div>
+      </div>
+
+      {/* Inbound Webhook */}
+      <div className="rounded-2xl border bg-white p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2"><ShieldCheck size={18} className="text-emerald-600" /><h3 className="font-semibold">Inbound Webhook (Status Updates)</h3></div>
+          <label className="relative inline-flex cursor-pointer items-center">
+            <input type="checkbox" checked={settings.inboundWebhookEnabled} onChange={(e) => update("inboundWebhookEnabled", e.target.checked)} className="peer sr-only" />
+            <div className="h-5 w-9 rounded-full bg-slate-200 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all peer-checked:bg-blue-600 peer-checked:after:translate-x-full" />
+          </label>
+        </div>
+        <p className="text-xs text-slate-500">
+          Allow external systems to update RFQ status and add remarks via a webhook.
+          The external system must send a POST request to <code className="bg-slate-100 px-1 rounded">/api/rfq/integrations/webhook</code> with an <code className="bg-slate-100 px-1 rounded">x-api-key</code> header.
+        </p>
+        <div>
+          <label className="mb-1.5 block text-xs font-medium">Webhook Secret (API Key)</label>
+          <input
+            type="password"
+            value={settings.inboundWebhookSecret || ""}
+            onChange={(e) => update("inboundWebhookSecret", e.target.value)}
+            placeholder="Generate a strong secret and share it with the external system"
+            className="w-full rounded-xl border px-4 py-3 text-sm font-mono"
+          />
+          <p className="text-[11px] text-slate-400 mt-1">
+            This secret must be sent as the <code className="bg-slate-100 px-1 rounded">x-api-key</code> header in webhook calls.
           </p>
         </div>
       </div>

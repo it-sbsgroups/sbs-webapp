@@ -338,6 +338,8 @@ model RfqIntegration {
   sheetId                  String?  @db.Text
   sheetTabName             String   @default("RFQs")
   googleServiceAccountJson String?  @db.LongText
+  inboundWebhookEnabled    Boolean  @default(false)
+  inboundWebhookSecret     String?  @db.Text
   updatedAt                DateTime @updatedAt
   @@map("rfq_integrations")
 }

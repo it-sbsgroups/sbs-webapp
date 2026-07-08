@@ -1,20 +1,32 @@
 import {
-  Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode, HttpStatus, Headers, UnauthorizedException,
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  HttpCode,
+  HttpStatus,
+  Headers,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { RfqService } from './rfq.service';
 import { RfqIntegrationsService } from './rfq-integrations.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Public } from '../auth/decorators/public.decorator';
+import { WebhookUpdateDto } from './dto/webhook.dto';
 
 @Controller('rfq')
 export class RfqController {
   constructor(
     private readonly rfqService: RfqService,
     private readonly rfqIntegrations: RfqIntegrationsService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
   ) {}
 
-  // -------------------- Outbound integrations (external API + Google Sheet) --------------------
+  // -------------------- Outbound integrations --------------------
   @Get('integrations')
   getIntegrationSettings() {
     return this.rfqIntegrations.getSettings();
@@ -25,6 +37,43 @@ export class RfqController {
     return this.rfqIntegrations.updateSettings(data);
   }
 
+  // -------------------- Inbound webhook --------------------
+  @Public()
+  @Post('integrations/webhook')
+  async webhookUpdate(@Headers('x-api-key') apiKey: string, @Body() dto: WebhookUpdateDto) {
+    // 1. Verify webhook is enabled and API key matches
+    const settings = await this.rfqIntegrations.getSettings();
+    if (!settings.inboundWebhookEnabled) {
+      throw new UnauthorizedException('Inbound webhook is disabled.');
+    }
+    if (!settings.inboundWebhookSecret || apiKey !== settings.inboundWebhookSecret) {
+      throw new UnauthorizedException('Invalid webhook secret.');
+    }
+
+    // 2. Update status if provided
+    if (dto.status) {
+      await this.rfqService.updateStatus(dto.rfqId, dto.status);
+    }
+
+    // 3. Add remark as a reply (if provided)
+    if (dto.remark) {
+      await this.rfqService.reply(dto.rfqId, {
+        note: dto.remark,
+        sentTo: 'external_system',
+        emailBody: dto.remark,
+      });
+    }
+
+    return { success: true, message: 'RFQ updated successfully' };
+  }
+
+  // Add this endpoint to RfqController
+@Post('integrations/test')
+async testIntegration() {
+  return this.rfqIntegrations.testExternalApi();
+}
+
+  // -------------------- Existing endpoints --------------------
   @Get()
   findAll(@Query() query: any) {
     return this.rfqService.findAll(query);
@@ -101,7 +150,6 @@ export class RfqController {
       throw new UnauthorizedException('API Key is required. Pass it as x-api-key header.');
     }
 
-    // Verify API key
     const key = await this.prisma.apiKey.findUnique({
       where: { key: apiKey },
     });
@@ -110,10 +158,6 @@ export class RfqController {
       throw new UnauthorizedException('Invalid or inactive API Key.');
     }
 
-    // Check if IP is allowed
-    // (IP check can be added here if needed)
-
-    // Update last used and request count
     await this.prisma.apiKey.update({
       where: { id: key.id },
       data: {
@@ -122,7 +166,6 @@ export class RfqController {
       },
     });
 
-    // Return READ-ONLY data
     const pg = Number(page) || 1;
     const ps = Number(pageSize) || 50;
 

@@ -23,7 +23,6 @@ export class RfqService {
     customFields?: any;
     items: { productId: string; quantity: number }[];
   }) {
-    // Generate RFQ reference
     const today = new Date();
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
@@ -69,7 +68,6 @@ export class RfqService {
       },
     });
 
-    // Build product tables
     const productTable = rfq.items
       .map(
         (item, i) =>
@@ -93,7 +91,6 @@ export class RfqService {
       rfqReference: rfq.reference,
     };
 
-    // Fire emails (non‑blocking)
     this.mailService.sendCustomerAutoReply(rfqData).catch((err) =>
       console.error('Customer auto-reply failed:', err.message),
     );
@@ -101,7 +98,6 @@ export class RfqService {
       console.error('Team notification failed:', err.message),
     );
 
-    // Outbound integrations
     this.integrations.pushOnRfqCreated(rfq).catch((err) =>
       console.error('RFQ outbound integrations failed:', err.message),
     );
@@ -109,7 +105,7 @@ export class RfqService {
     return rfq;
   }
 
-  // ========== GET ALL (with pagination, search, filter) ==========
+  // ========== GET ALL ==========
   async findAll(params: {
     page?: number;
     pageSize?: number;
@@ -184,12 +180,11 @@ export class RfqService {
     return rfq;
   }
 
-  // ========== REPLY TO RFQ (with email) ==========
+  // ========== REPLY TO RFQ (with optional email) ==========
   async reply(
     rfqId: string,
     data: { note?: string; emailBody?: string; sentTo?: string; price?: string; discount?: string },
   ) {
-    // Build reply note
     let replyNote = data.note || '';
     if (data.price || data.discount) {
       replyNote = [
@@ -229,7 +224,7 @@ export class RfqService {
       },
     });
 
-    // Send quotation reply email (if recipient provided)
+    // Send email only if sentTo is a valid email address
     if (data.sentTo && data.sentTo.includes('@')) {
       try {
         const productList = updatedRfq.items

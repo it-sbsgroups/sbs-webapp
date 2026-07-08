@@ -3,12 +3,6 @@ import axios from 'axios';
 import { google } from 'googleapis';
 import { PrismaService } from '../prisma/prisma.service';
 
-/**
- * ONE-WAY OUTBOUND ONLY.
- * We only ever POST/append data out. Nothing here ever reads the external
- * API or the Google Sheet back into our database — so edits made on either
- * of those sides can never change our project's data.
- */
 @Injectable()
 export class RfqIntegrationsService {
   private readonly logger = new Logger(RfqIntegrationsService.name);
@@ -33,6 +27,9 @@ export class RfqIntegrationsService {
     if (data.sheetId !== undefined) clean.sheetId = data.sheetId;
     if (data.sheetTabName !== undefined) clean.sheetTabName = data.sheetTabName;
     if (data.googleServiceAccountJson !== undefined) clean.googleServiceAccountJson = data.googleServiceAccountJson;
+    // 👇 New fields
+    if (data.inboundWebhookEnabled !== undefined) clean.inboundWebhookEnabled = !!data.inboundWebhookEnabled;
+    if (data.inboundWebhookSecret !== undefined) clean.inboundWebhookSecret = data.inboundWebhookSecret;
 
     return this.prisma.rfqIntegration.upsert({
       where: { id: 'default' },
@@ -61,7 +58,6 @@ export class RfqIntegrationsService {
       address: rfq.address || '',
       remarks: rfq.remarks || '',
       createdAt: rfq.createdAt,
-      // one row per line-item, since a single RFQ can cover several products
       lineItems: items.map((it: any) => ({
         productName: it.product?.name || '',
         model: it.product?.model || '',
@@ -88,6 +84,47 @@ export class RfqIntegrationsService {
     }
   }
 
+  // Add this method to the RfqIntegrationsService class
+async testExternalApi(): Promise<{ success: boolean; message: string; statusCode?: number }> {
+  const settings = await this.getSettings();
+  if (!settings.externalApiEnabled) {
+    return { success: false, message: 'External API is disabled in settings.' };
+  }
+  if (!settings.externalApiUrl) {
+    return { success: false, message: 'External API URL is not configured.' };
+  }
+
+  const testPayload = {
+    test: true,
+    message: 'This is a test request from SBS Groups RFQ integration.',
+    timestamp: new Date().toISOString(),
+  };
+
+  try {
+    const response = await axios.post(settings.externalApiUrl, testPayload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': settings.externalApiKey || '',
+        'x-api-secret': settings.externalApiSecret || '',
+      },
+      timeout: 10000,
+    });
+    return {
+      success: true,
+      message: `Test successful. Status: ${response.status}`,
+      statusCode: response.status,
+    };
+  } catch (error: any) {
+    const status = error.response?.status || 500;
+    const msg = error.response?.data?.message || error.message || 'Unknown error';
+    return {
+      success: false,
+      message: `Test failed (HTTP ${status}): ${msg}`,
+      statusCode: status,
+    };
+  }
+}
+
   private async pushToGoogleSheet(rfq: any, settings: any) {
     if (!settings.sheetId || !settings.googleServiceAccountJson) return;
     try {
@@ -100,7 +137,6 @@ export class RfqIntegrationsService {
       const tab = settings.sheetTabName || 'RFQs';
       const payload = this.buildFlatPayload(rfq);
 
-      // one row per line item (or one row with blanks if no items)
       const items = payload.lineItems.length ? payload.lineItems : [{ productName: '', model: '', quantity: '' }];
       const rows = items.map((it) => [
         payload.rfqId,
