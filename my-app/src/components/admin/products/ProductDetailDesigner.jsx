@@ -1,11 +1,14 @@
+// src/components/admin/products/ProductDetailDesigner.jsx
 "use client";
 
 import { useState, useEffect } from "react";
 import settingsApi from "@/lib/settingsApi";
-import { Save, Eye, Palette, Image, List, Plus, Trash2, X } from "lucide-react";
+import { Save, Eye, Palette, Image, List } from "lucide-react";
+
+const STORAGE_KEY = "sbs_admin_detail_designer_state";
 
 export default function ProductDetailDesigner() {
-  const [settings, setSettings] = useState({
+  const defaultSettings = {
     recommendMode: "category",
     recommendCount: 4,
     recommendedProductIds: [],
@@ -20,24 +23,31 @@ export default function ProductDetailDesigner() {
     pageBackground: "#ffffff",
     sectionBackground: "#f8fafc",
     accentColor: "#1e3a8a",
-    ads: { enabled: false, placements: [] },
-  });
+  };
+
+  const [settings, setSettings] = useState(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Ad form
-  const [showAdForm, setShowAdForm] = useState(false);
-  const [editingAdIndex, setEditingAdIndex] = useState(null);
-  const [adForm, setAdForm] = useState({ title: "", image: "", productIds: "", categoryId: "", ctaText: "Grab Offer", ctaLink: "/products", active: true });
-
+  // Load from API, then merge with saved draft
   useEffect(() => {
     const load = async () => {
       try {
         const response = await settingsApi.getProductSettings();
         const data = response?.data || response;
+        let loaded = { ...defaultSettings };
         if (data?.detailSettings) {
-          setSettings((prev) => ({ ...prev, ...data.detailSettings }));
+          loaded = { ...loaded, ...data.detailSettings };
         }
+        // Restore draft from sessionStorage (overwrites API data for unsaved changes)
+        const draft = sessionStorage.getItem(STORAGE_KEY);
+        if (draft) {
+          try {
+            const parsed = JSON.parse(draft);
+            loaded = { ...loaded, ...parsed };
+          } catch {}
+        }
+        setSettings(loaded);
       } catch (error) {
         console.error("Failed to load detail settings:", error);
       } finally {
@@ -47,6 +57,13 @@ export default function ProductDetailDesigner() {
     load();
   }, []);
 
+  // Save draft on every change
+  useEffect(() => {
+    if (!loading) {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    }
+  }, [settings, loading]);
+
   const updateSetting = (key, value) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
@@ -55,6 +72,7 @@ export default function ProductDetailDesigner() {
     setSaving(true);
     try {
       await settingsApi.updateProductSettings({ detailSettings: settings });
+      sessionStorage.removeItem(STORAGE_KEY); // clear draft after successful save
       alert("Detail page settings saved!");
     } catch (error) {
       alert("Failed to save: " + error.message);
@@ -63,46 +81,9 @@ export default function ProductDetailDesigner() {
     }
   };
 
-  // Ad CRUD
-  const resetAdForm = () => { setAdForm({ title: "", image: "", productIds: "", categoryId: "", ctaText: "Grab Offer", ctaLink: "/products", active: true }); setEditingAdIndex(null); setShowAdForm(false); };
-
-  const handleAddOrUpdateAd = () => {
-    if (!adForm.title.trim()) return alert("Enter a title");
-    const newPlacement = {
-      id: editingAdIndex !== null ? settings.ads.placements[editingAdIndex]?.id : `AD-${Date.now()}`,
-      title: adForm.title,
-      image: adForm.image,
-      productIds: adForm.productIds ? adForm.productIds.split(",").map((s) => s.trim()).filter(Boolean) : [],
-      categoryId: adForm.categoryId,
-      ctaText: adForm.ctaText,
-      ctaLink: adForm.ctaLink,
-      active: adForm.active,
-    };
-    const placements = [...(settings.ads?.placements || [])];
-    if (editingAdIndex !== null) placements[editingAdIndex] = newPlacement;
-    else placements.push(newPlacement);
-    updateSetting("ads", { ...settings.ads, placements });
-    resetAdForm();
-  };
-
-  const handleEditAd = (index) => {
-    const p = settings.ads?.placements?.[index];
-    if (!p) return;
-    setAdForm({ title: p.title || "", image: p.image || "", productIds: (p.productIds || []).join(", "), categoryId: p.categoryId || "", ctaText: p.ctaText || "Grab Offer", ctaLink: p.ctaLink || "/products", active: p.active !== false });
-    setEditingAdIndex(index);
-    setShowAdForm(true);
-  };
-
-  const handleDeleteAd = (index) => {
-    const placements = settings.ads?.placements?.filter((_, i) => i !== index) || [];
-    updateSetting("ads", { ...settings.ads, placements });
-  };
-
   if (loading) {
     return <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>;
   }
-
-  const placements = settings.ads?.placements || [];
 
   return (
     <div className="space-y-6">
@@ -150,52 +131,6 @@ export default function ProductDetailDesigner() {
               </label>
             </div>
           ))}
-        </div>
-
-        {/* Ads */}
-        <div className="rounded-2xl border bg-white p-6 shadow-sm space-y-4 lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2"><Image size={18} className="text-blue-600" /><h3 className="font-semibold">Ads ({placements.length})</h3></div>
-          </div>
-          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-            <span className="text-sm">Enable Ads</span>
-            <label className="relative inline-flex cursor-pointer items-center">
-              <input type="checkbox" checked={settings.ads?.enabled || false} onChange={(e) => updateSetting("ads", { ...settings.ads, enabled: e.target.checked })} className="peer sr-only" />
-              <div className="h-5 w-9 rounded-full bg-slate-200 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all peer-checked:bg-blue-600 peer-checked:after:translate-x-full" />
-            </label>
-          </div>
-
-          {placements.map((p, i) => (
-            <div key={p?.id || i} className="flex items-center justify-between rounded-xl border p-3">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold truncate">{String(p?.title || "Untitled")}</p>
-                <p className="text-[10px] text-slate-400">{p?.active ? "Active" : "Inactive"}</p>
-              </div>
-              <div className="flex gap-1">
-                <button onClick={() => handleEditAd(i)} className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50">✏️</button>
-                <button onClick={() => handleDeleteAd(i)} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50"><Trash2 size={14} /></button>
-              </div>
-            </div>
-          ))}
-
-          {showAdForm ? (
-            <div className="rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/30 p-4 space-y-3">
-              <input type="text" value={adForm.title} onChange={(e) => setAdForm((p) => ({ ...p, title: e.target.value }))} placeholder="Ad Title" className="w-full rounded-lg border px-3 py-2 text-sm" />
-              <input type="text" value={adForm.image} onChange={(e) => setAdForm((p) => ({ ...p, image: e.target.value }))} placeholder="Image URL" className="w-full rounded-lg border px-3 py-2 text-sm" />
-              <div className="flex gap-2">
-                <input type="text" value={adForm.ctaText} onChange={(e) => setAdForm((p) => ({ ...p, ctaText: e.target.value }))} placeholder="CTA Text" className="flex-1 rounded-lg border px-3 py-2 text-sm" />
-                <input type="text" value={adForm.ctaLink} onChange={(e) => setAdForm((p) => ({ ...p, ctaLink: e.target.value }))} placeholder="CTA Link" className="flex-1 rounded-lg border px-3 py-2 text-sm" />
-              </div>
-              <div className="flex gap-2">
-                <button onClick={handleAddOrUpdateAd} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white">{editingAdIndex !== null ? "Update" : "Add"}</button>
-                <button onClick={resetAdForm} className="rounded-lg border px-4 py-2 text-sm">Cancel</button>
-              </div>
-            </div>
-          ) : (
-            <button onClick={() => setShowAdForm(true)} className="flex items-center gap-2 rounded-xl border-2 border-dashed border-slate-300 px-5 py-3 text-sm text-slate-500 hover:border-blue-400 w-full justify-center">
-              <Plus size={16} /> Add Ad
-            </button>
-          )}
         </div>
 
         {/* Colors */}

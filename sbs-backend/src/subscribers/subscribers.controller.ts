@@ -1,139 +1,41 @@
 // src/subscribers/subscribers.controller.ts
-
-import {
-  Controller,      // You're missing this import!
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  Query,
-  HttpCode,
-  HttpStatus,
-  ParseUUIDPipe,   // For CUID validation (since you're using CUID)
-} from '@nestjs/common';
-
-import { SubscribersService } from './subscribers.service';
-import { CreateSubscriberDto } from './dto/create-subscriber.dto';
-import { UpdateSubscriberDto } from './dto/update-subscriber.dto';
-import { QuerySubscriberDto } from './dto/query-subscriber.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { Controller, Get, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
+import { PrismaService } from '../prisma/prisma.service';
 import { Public } from '../auth/decorators/public.decorator';
 
-@ApiTags('Subscribers')
 @Controller('subscribers')
 export class SubscribersController {
-  constructor(
-    private readonly subscribersService: SubscribersService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   @Public()
-  @Post('subscribe')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Subscribe to newsletter' })
-  @ApiResponse({ status: 201, description: 'Successfully subscribed' })
-  @ApiResponse({ status: 409, description: 'Email already subscribed' })
-  @ApiResponse({ status: 400, description: 'Invalid input' })
-  subscribe(@Body() createSubscriberDto: CreateSubscriberDto) {
-    return this.subscribersService.subscribe(createSubscriberDto);
-  }
+  @Get('unsubscribe')
+  async unsubscribe(@Query('token') token: string, @Res() res: Response) {
+    if (!token) {
+      return res.send('Missing unsubscribe token.');
+    }
 
-  @Get()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get all subscribers' })
-  @ApiResponse({ status: 200, description: 'List of subscribers' })
-  findAll(@Query() query: QuerySubscriberDto) {
-    return this.subscribersService.findAll(query);
-  }
+    const subscriber = await this.prisma.newsletterSubscriber.findUnique({
+      where: { unsubscribeToken: token },
+    });
 
-  @Get(':id')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get subscriber by ID' })
-  @ApiParam({ name: 'id', description: 'Subscriber ID (CUID)', type: String })
-  @ApiResponse({ status: 200, description: 'Subscriber found' })
-  @ApiResponse({ status: 404, description: 'Subscriber not found' })
-  findOne(@Param('id') id: string) {
-    return this.subscribersService.findOne(id);
-  }
+    if (!subscriber) {
+      return res.send('Invalid or expired unsubscribe token.');
+    }
 
-  @Get('email/:email')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get subscriber by email' })
-  @ApiParam({ name: 'email', description: 'Subscriber email', type: String })
-  @ApiResponse({ status: 200, description: 'Subscriber found' })
-  @ApiResponse({ status: 404, description: 'Subscriber not found' })
-  findByEmail(@Param('email') email: string) {
-    return this.subscribersService.findByEmail(email);
-  }
+    await this.prisma.newsletterSubscriber.update({
+      where: { id: subscriber.id },
+      data: { subscribed: false, unsubscribedAt: new Date() },
+    });
 
-  @Patch(':id')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Update subscriber' })
-  @ApiParam({ name: 'id', description: 'Subscriber ID (CUID)', type: String })
-  @ApiResponse({ status: 200, description: 'Subscriber updated' })
-  @ApiResponse({ status: 404, description: 'Subscriber not found' })
-  update(
-    @Param('id') id: string,
-    @Body() updateSubscriberDto: UpdateSubscriberDto,
-  ) {
-    return this.subscribersService.update(id, updateSubscriberDto);
-  }
-
-  @Public()
-  @Post(':id/resubscribe')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Re-subscribe user' })
-  @ApiParam({ name: 'id', description: 'Subscriber ID (CUID)', type: String })
-  @ApiResponse({ status: 200, description: 'Successfully re-subscribed' })
-  @ApiResponse({ status: 400, description: 'Already subscribed' })
-  reSubscribe(@Param('id') id: string) {
-    return this.subscribersService.reSubscribe(id);
-  }
-
-  @Public()
-  @Post(':id/unsubscribe')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Unsubscribe user' })
-  @ApiParam({ name: 'id', description: 'Subscriber ID (CUID)', type: String })
-  @ApiResponse({ status: 200, description: 'Successfully unsubscribed' })
-  @ApiResponse({ status: 400, description: 'Already unsubscribed' })
-  unsubscribe(@Param('id') id: string) {
-    return this.subscribersService.unsubscribe(id);
-  }
-
-  @Public()
-  @Post('unsubscribe-by-email')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Unsubscribe by email' })
-  @ApiResponse({ status: 200, description: 'Successfully unsubscribed' })
-  unsubscribeByEmail(@Body('email') email: string) {
-    return this.subscribersService.unsubscribeByEmail(email);
-  }
-
-  @Delete(':id')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Delete subscriber' })
-  @ApiParam({ name: 'id', description: 'Subscriber ID (CUID)', type: String })
-  @ApiResponse({ status: 200, description: 'Subscriber deleted' })
-  @ApiResponse({ status: 404, description: 'Subscriber not found' })
-  remove(@Param('id') id: string) {
-    return this.subscribersService.remove(id);
-  }
-
-  @Post('bulk-delete')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Bulk delete subscribers' })
-  @ApiResponse({ status: 200, description: 'Subscribers deleted' })
-  removeMany(@Body('ids') ids: string[]) {
-    return this.subscribersService.removeMany(ids);
-  }
-
-  @Get('stats/overview')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get subscription statistics' })
-  @ApiResponse({ status: 200, description: 'Statistics retrieved' })
-  getStatistics() {
-    return this.subscribersService.getStatistics();
+    res.send(`
+      <html>
+        <body style="font-family:Arial;text-align:center;padding:40px;">
+          <h2 style="color:#0f172a;">✅ You have been unsubscribed</h2>
+          <p style="color:#475569;">You will no longer receive marketing emails from SBS Groups.</p>
+          <p><a href="/" style="color:#1e3a8a;">Return to homepage</a></p>
+        </body>
+      </html>
+    `);
   }
 }

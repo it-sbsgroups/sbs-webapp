@@ -1,8 +1,11 @@
+// src/components/admin/products/ProductImportExport.jsx
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import productsApi from "@/lib/productsApi";
 import { Download, Upload, FileSpreadsheet, FileText, CheckCircle, X } from "lucide-react";
+
+const STORAGE_KEY = "sbs_admin_import_state";
 
 export default function ProductImportExport({ products, setProducts }) {
   const fileInputRef = useRef(null);
@@ -10,8 +13,27 @@ export default function ProductImportExport({ products, setProducts }) {
   const [importPreview, setImportPreview] = useState([]);
   const [showPreview, setShowPreview] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [fileName, setFileName] = useState("");
 
-  // Export
+  // Restore from sessionStorage
+  useEffect(() => {
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.importPreview) setImportPreview(parsed.importPreview);
+        if (parsed.showPreview) setShowPreview(parsed.showPreview);
+        if (parsed.fileName) setFileName(parsed.fileName);
+        if (parsed.importStatus) setImportStatus(parsed.importStatus);
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    const state = { importPreview, showPreview, fileName, importStatus };
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }, [importPreview, showPreview, fileName, importStatus]);
+
   const handleExportCSV = async () => {
     try {
       await productsApi.downloadCSV();
@@ -20,7 +42,6 @@ export default function ProductImportExport({ products, setProducts }) {
     }
   };
 
-  // Import
   const parseCSV = (text) => {
     const lines = text.split("\n").filter((line) => line.trim());
     if (lines.length < 2) return [];
@@ -40,6 +61,7 @@ export default function ProductImportExport({ products, setProducts }) {
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setFileName(file.name);
     const reader = new FileReader();
     reader.onload = (event) => {
       const parsed = parseCSV(event.target.result);
@@ -47,6 +69,7 @@ export default function ProductImportExport({ products, setProducts }) {
       setShowPreview(true);
     };
     reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const confirmImport = async () => {
@@ -65,6 +88,8 @@ export default function ProductImportExport({ products, setProducts }) {
       setImportStatus({ type: "success", message: `${result?.success || importPreview.length} products imported!` });
       setShowPreview(false);
       setImportPreview([]);
+      setFileName("");
+      sessionStorage.removeItem(STORAGE_KEY);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       setImportStatus({ type: "error", message: "Import failed: " + error.message });
@@ -94,6 +119,7 @@ export default function ProductImportExport({ products, setProducts }) {
           <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 px-5 py-6 font-medium text-slate-500 hover:border-blue-400 w-full">
             <Upload size={20} /> Upload CSV File
           </button>
+          {fileName && <p className="text-xs text-slate-500 text-center">📄 {fileName}</p>}
         </div>
       </div>
 
@@ -108,7 +134,9 @@ export default function ProductImportExport({ products, setProducts }) {
           <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b px-6 py-4">
               <h3 className="text-lg font-bold">Import Preview ({importPreview.length} products)</h3>
-              <button onClick={() => setShowPreview(false)} className="rounded-lg p-2 hover:bg-slate-100"><X size={20} /></button>
+              <button onClick={() => { setShowPreview(false); setImportPreview([]); setFileName(""); sessionStorage.removeItem(STORAGE_KEY); }} className="rounded-lg p-2 hover:bg-slate-100">
+                <X size={20} />
+              </button>
             </div>
             <div className="max-h-[50vh] overflow-y-auto p-6">
               <table className="min-w-full text-sm">
@@ -121,7 +149,7 @@ export default function ProductImportExport({ products, setProducts }) {
               </table>
             </div>
             <div className="flex items-center justify-end gap-3 border-t px-6 py-4">
-              <button onClick={() => setShowPreview(false)} className="rounded-xl border px-5 py-3 text-sm">Cancel</button>
+              <button onClick={() => { setShowPreview(false); setImportPreview([]); setFileName(""); sessionStorage.removeItem(STORAGE_KEY); }} className="rounded-xl border px-5 py-3 text-sm">Cancel</button>
               <button onClick={confirmImport} disabled={importing} className="rounded-xl bg-green-600 px-6 py-3 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50">
                 {importing ? "Importing..." : `Import ${importPreview.length} Products`}
               </button>

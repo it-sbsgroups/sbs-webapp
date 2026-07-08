@@ -1,3 +1,4 @@
+// src/components/admin/products/ProductNotifications.jsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -6,11 +7,15 @@ import notificationsApi from "@/lib/notificationsApi";
 import productsApi from "@/lib/productsApi";
 import { Save, Bell, Mail, Send, Clock, X, CalendarClock } from "lucide-react";
 
+const STORAGE_KEY = "sbs_admin_notifications_state";
+
 export default function ProductNotifications() {
-  const [settings, setSettings] = useState({
+  const defaultSettings = {
     email: { enabled: false, fromName: "SBS Groups" },
     dailyDigest: { enabled: false, sendAt: "18:00", onlyIfNewProducts: true },
-  });
+  };
+
+  const [settings, setSettings] = useState(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -33,9 +38,19 @@ export default function ProductNotifications() {
           notificationsApi.listScheduled("PRODUCT"),
         ]);
         const data = settingsRes?.data || settingsRes;
+        let loaded = { ...defaultSettings };
         if (data?.notificationSettings) {
-          setSettings((prev) => ({ ...prev, ...data.notificationSettings }));
+          loaded = { ...loaded, ...data.notificationSettings };
         }
+        // Restore draft
+        const draft = sessionStorage.getItem(STORAGE_KEY);
+        if (draft) {
+          try {
+            const parsed = JSON.parse(draft);
+            loaded = { ...loaded, ...parsed };
+          } catch {}
+        }
+        setSettings(loaded);
         setProducts(productsRes?.data || []);
         setScheduled(Array.isArray(scheduledRes) ? scheduledRes : scheduledRes?.data || []);
       } catch (error) {
@@ -46,6 +61,13 @@ export default function ProductNotifications() {
     };
     load();
   }, []);
+
+  // Save draft
+  useEffect(() => {
+    if (!loading) {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    }
+  }, [settings, loading]);
 
   const updateSetting = (path, value) => {
     setSettings((prev) => {
@@ -65,6 +87,7 @@ export default function ProductNotifications() {
     setSaving(true);
     try {
       await settingsApi.updateProductSettings({ notificationSettings: settings });
+      sessionStorage.removeItem(STORAGE_KEY);
       alert("Notification settings saved!");
     } catch (error) {
       alert("Failed to save: " + error.message);

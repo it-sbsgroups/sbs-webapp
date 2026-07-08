@@ -1,3 +1,4 @@
+// src/components/admin/products/ProductFormModal.jsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -6,6 +7,8 @@ import BrochureUploader from "./BrochureUploader";
 import productsApi from "@/lib/productsApi";
 import ProductImageUploader from "./ProductImageUploader";
 import RichTextEditor from "@/components/shared/RichTextEditor";
+
+const STORAGE_KEY_FORM = "sbs_admin_product_form_data";
 
 export default function ProductFormModal({ open, initialData, categories, subcategories, brands, onClose, onSave }) {
   const [form, setForm] = useState({
@@ -18,12 +21,38 @@ export default function ProductFormModal({ open, initialData, categories, subcat
   const [newCert, setNewCert] = useState("");
   const [newSpecKey, setNewSpecKey] = useState("");
   const [newSpecValue, setNewSpecValue] = useState("");
-  // Brochure picked during CREATE (no product id yet) — uploaded after save.
   const [pendingBrochure, setPendingBrochure] = useState(null);
 
+  // --- Load saved draft when modal opens (for new product) ---
+  useEffect(() => {
+    if (open && !initialData) {
+      const saved = sessionStorage.getItem(STORAGE_KEY_FORM);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setForm((prev) => ({ ...prev, ...parsed }));
+        } catch (e) { /* ignore */ }
+      }
+    }
+  }, [open, initialData]);
+
+  // --- Save draft to sessionStorage on every change (new product only) ---
+  useEffect(() => {
+    if (open && !initialData) {
+      sessionStorage.setItem(STORAGE_KEY_FORM, JSON.stringify(form));
+    }
+  }, [form, open, initialData]);
+
+  // --- Clear draft ---
+  const clearDraft = () => {
+    sessionStorage.removeItem(STORAGE_KEY_FORM);
+  };
+
+  // --- Reset form when initialData changes (editing) ---
   useEffect(() => {
     setPendingBrochure(null);
     if (initialData) {
+      clearDraft(); // remove any draft when editing
       const brandObj = (initialData.brand && typeof initialData.brand === "object") ? initialData.brand : null;
       const resolvedBrandId = initialData.brandId || brandObj?.id || initialData.distributorId || "";
       const resolvedBrandName = brandObj?.name || (typeof initialData.brand === "string" ? initialData.brand : "")
@@ -43,6 +72,7 @@ export default function ProductFormModal({ open, initialData, categories, subcat
         certifications: certs,
       });
     } else {
+      // New product defaults
       setForm({
         id: "", categoryId: categories[0]?.id || "", subcategoryId: "", distributorId: brands[0]?.id || "",
         brandId: brands[0]?.id || "",
@@ -114,9 +144,14 @@ export default function ProductFormModal({ open, initialData, categories, subcat
       specifications,
       certifications,
     };
-    // Second arg carries a brochure file chosen during CREATE so the parent
-    // can upload it once the product (and its id) exists.
+    clearDraft(); // clear draft on successful submit
     onSave(payload, pendingBrochure);
+  };
+
+  // --- Handle close with draft clear ---
+  const handleClose = () => {
+    clearDraft();
+    onClose();
   };
 
   if (!open) return null;
@@ -126,14 +161,12 @@ export default function ProductFormModal({ open, initialData, categories, subcat
       <div className="w-full max-w-5xl rounded-3xl bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b px-6 py-4 sticky top-0 bg-white rounded-t-3xl z-10">
           <h2 className="text-xl font-bold">{initialData ? "Edit Product" : "Create Product"}</h2>
-          <button onClick={onClose} className="rounded-lg p-2 hover:bg-slate-100"><X size={20} /></button>
+          <button onClick={handleClose} className="rounded-lg p-2 hover:bg-slate-100"><X size={20} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="max-h-[70vh] overflow-y-auto p-6 space-y-6">
           
-          {/* ============================================ */}
-          {/* 1. BASIC INFORMATION */}
-          {/* ============================================ */}
+          {/* ===== BASIC INFORMATION ===== */}
           <div className="rounded-2xl border p-5">
             <h3 className="text-base font-semibold mb-4">Basic Information</h3>
             <div className="grid gap-4 md:grid-cols-2">
@@ -184,9 +217,7 @@ export default function ProductFormModal({ open, initialData, categories, subcat
             </div>
           </div>
 
-          {/* ============================================ */}
-          {/* 2. BROCHURE UPLOAD */}
-          {/* ============================================ */}
+          {/* ===== BROCHURE UPLOAD ===== */}
           <div className="rounded-2xl border p-5">
             <h3 className="text-base font-semibold mb-4">📄 Product Brochure / Catalog</h3>
             {initialData ? (
@@ -213,8 +244,6 @@ export default function ProductFormModal({ open, initialData, categories, subcat
                 }}
               />
             ) : (
-              /* CREATE mode: no product id yet, so collect the file and upload
-                 it right after the product is created. */
               <PendingBrochurePicker
                 file={pendingBrochure}
                 onPick={setPendingBrochure}
@@ -223,9 +252,7 @@ export default function ProductFormModal({ open, initialData, categories, subcat
             )}
           </div>
 
-          {/* ============================================ */}
-          {/* 3. DESCRIPTION */}
-          {/* ============================================ */}
+          {/* ===== DESCRIPTION ===== */}
           <div className="rounded-2xl border p-5">
             <h3 className="text-base font-semibold mb-4">Product Description</h3>
             <RichTextEditor
@@ -237,9 +264,7 @@ export default function ProductFormModal({ open, initialData, categories, subcat
             />
           </div>
 
-          {/* ============================================ */}
-          {/* 4. SPECIFICATIONS */}
-          {/* ============================================ */}
+          {/* ===== SPECIFICATIONS ===== */}
           <div className="rounded-2xl border p-5">
             <h3 className="text-base font-semibold mb-4">Specifications (Key-Value Pairs)</h3>
             <p className="text-xs text-slate-500 mb-3">Add unlimited custom specifications like Material, Weight, Dimensions, etc.</p>
@@ -266,9 +291,7 @@ export default function ProductFormModal({ open, initialData, categories, subcat
             </div>
           </div>
 
-          {/* ============================================ */}
-          {/* 5. CERTIFICATIONS */}
-          {/* ============================================ */}
+          {/* ===== CERTIFICATIONS ===== */}
           <div className="rounded-2xl border p-5">
             <h3 className="text-base font-semibold mb-4">Certifications</h3>
             <div className="flex gap-2 mb-3">
@@ -288,9 +311,7 @@ export default function ProductFormModal({ open, initialData, categories, subcat
             </div>
           </div>
 
-          {/* ============================================ */}
-          {/* 6. IMAGES */}
-          {/* ============================================ */}
+          {/* ===== IMAGES ===== */}
           <div className="rounded-2xl border p-5">
             <h3 className="text-base font-semibold mb-4">Product Images</h3>
             <ProductImageUploader
@@ -303,7 +324,7 @@ export default function ProductFormModal({ open, initialData, categories, subcat
         </form>
 
         <div className="flex items-center justify-end gap-3 border-t px-6 py-4">
-          <button type="button" onClick={onClose} className="rounded-xl border px-5 py-3 text-sm hover:bg-slate-50">Cancel</button>
+          <button type="button" onClick={handleClose} className="rounded-xl border px-5 py-3 text-sm hover:bg-slate-50">Cancel</button>
           <button type="button" onClick={handleSubmit}
             className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-medium text-white hover:bg-blue-700">
             <Save size={16} /> {initialData ? "Update" : "Create"} Product
@@ -314,11 +335,7 @@ export default function ProductFormModal({ open, initialData, categories, subcat
   );
 }
 
-/**
- * Brochure picker used during CREATE (before a product id exists).
- * It only holds the chosen file in memory; the actual upload happens in the
- * parent page once the product has been created.
- */
+// --- Pending brochure picker (unchanged) ---
 function PendingBrochurePicker({ file, onPick, onClear }) {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef(null);

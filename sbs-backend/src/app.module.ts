@@ -1,7 +1,4 @@
-// FILE: src/app.module.ts  (FULL REPLACEMENT)
-// Changes from original:
-//   + ApiKeysModule  — 3-tier credential fallback (DB → .env → hardcode)
-//   + AiModule       — Gemini chat with real DB tool-calling
+// src/app.module.ts
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -28,26 +25,28 @@ import { TestimonialsModule } from './testimonials/testimonials.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SiteConfigModule } from './site-config/site-config.module';
 import { UploadsModule } from './uploads/uploads.module';
-import { FaqModule } from './faq/faq.module';              // ← NEW
+import { FaqModule } from './faq/faq.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { ContactResponsesModule } from './contacts/contact-responses.module';
 import { IndustryInnovationModule } from './industry-innovation/industry-innovation.module';
+import { EmailTemplatesService } from './mail/email-templates.service';
+import { SubscribersController } from './subscribers/subscribers.controller';
 
 @Module({
   imports: [
     PrismaModule,
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
-    ApiKeysModule,      // ← NEW: register before any module that uses it
-    AuthModule,         // JwtAuthGuard now uses ApiKeysService
+    ApiKeysModule,
+    AuthModule,
     ProductsModule,
     CategoriesModule,
     BrandsModule,
     RfqModule,
     SettingsModule,
     NewsModule,
-    CloudinaryModule,   // CloudinaryService now uses ApiKeysService
+    CloudinaryModule,
     MailModule,
     EmployeeModule,
     SubscribersModule,
@@ -55,14 +54,14 @@ import { IndustryInnovationModule } from './industry-innovation/industry-innovat
     ClientsModule,
     TestimonialsModule,
     NotificationsModule,
-    SiteConfigModule,   // now includes /site-config/:section with cache invalidation
+    SiteConfigModule,
     UploadsModule,
     FaqModule,
     ContactsModule,
     ContactResponsesModule,
-    IndustryInnovationModule,           // ← NEW: Gemini chat with DB tool-calling
+    IndustryInnovationModule,
   ],
-  controllers: [AppController, MailController],
-  providers: [AppService, PrismaService, MailService],
+  controllers: [AppController, MailController, SubscribersController],
+  providers: [AppService, PrismaService, MailService, EmailTemplatesService],
 })
 export class AppModule {}

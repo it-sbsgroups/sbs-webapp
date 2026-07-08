@@ -1,40 +1,61 @@
+// src/components/admin/products/ProductSettings.jsx
 "use client";
 
 import { useState, useEffect } from "react";
 import settingsApi from "@/lib/settingsApi";
 import { Save, Settings2, RefreshCw, Globe } from "lucide-react";
 
+const STORAGE_KEY = "sbs_admin_product_settings_state";
+
 export default function ProductSettings({ autoRefresh, setAutoRefresh }) {
-  const [settings, setSettings] = useState({
+  const defaultSettings = {
     showSearch: true,
     showBrandFilter: true,
     showSidebar: true,
     showPagination: true,
     showQuoteBucketButton: true,
     autoRefreshSeconds: 0,
-  });
+  };
+
+  const [settings, setSettings] = useState(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const loadSettings = async () => {
+    const load = async () => {
       try {
         const response = await settingsApi.getProductSettings();
         const data = response?.data || response;
+        let loaded = { ...defaultSettings };
         if (data && typeof data === 'object') {
-          setSettings((prev) => ({ ...prev, ...data }));
+          loaded = { ...loaded, ...data };
           if (data.autoRefreshSeconds !== undefined) {
             setAutoRefresh(data.autoRefreshSeconds);
           }
         }
+        // Restore draft
+        const draft = sessionStorage.getItem(STORAGE_KEY);
+        if (draft) {
+          try {
+            const parsed = JSON.parse(draft);
+            loaded = { ...loaded, ...parsed };
+          } catch {}
+        }
+        setSettings(loaded);
       } catch (error) {
         console.error("Failed to load settings:", error);
       } finally {
         setLoading(false);
       }
     };
-    loadSettings();
+    load();
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    }
+  }, [settings, loading]);
 
   const updateToggle = (key, value) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -47,6 +68,7 @@ export default function ProductSettings({ autoRefresh, setAutoRefresh }) {
         ...settings,
         autoRefreshSeconds: autoRefresh,
       });
+      sessionStorage.removeItem(STORAGE_KEY);
       alert("Settings saved successfully!");
     } catch (error) {
       alert("Failed to save: " + error.message);

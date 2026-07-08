@@ -1,3 +1,4 @@
+// src/components/admin/products/RfqManager.jsx
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -37,7 +38,7 @@ export default function RfqManager() {
 
   useEffect(() => {
     fetchRfqs();
-  }, [currentPage, statusFilter]);
+  }, [currentPage, statusFilter, searchQuery]);
 
   const handleReply = (rfq) => {
     setSelectedRfq(rfq);
@@ -127,6 +128,16 @@ export default function RfqManager() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+            placeholder="Search by name, company, or reference..."
+            className="w-72 rounded-xl border border-slate-300 py-2 pl-10 pr-4 text-sm"
+          />
+        </div>
         <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
           className="rounded-xl border border-slate-300 px-4 py-2 text-sm">
           <option value="ALL">All Status</option>
@@ -143,6 +154,7 @@ export default function RfqManager() {
         <table className="min-w-full">
           <thead className="bg-slate-50">
             <tr>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase">RFQ Reference</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Client</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Company</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase">Email</th>
@@ -155,6 +167,11 @@ export default function RfqManager() {
           <tbody>
             {Array.isArray(rfqs) && rfqs.map((rfq) => (
               <tr key={rfq?.id} className="border-t hover:bg-slate-50/50">
+                <td className="px-4 py-3">
+                  <span className="font-mono text-xs font-bold text-blue-700">
+                    {rfq?.reference || rfq?.id?.slice(0, 8) || "—"}
+                  </span>
+                </td>
                 <td className="px-4 py-3">
                   <p className="text-sm font-semibold">{String(rfq?.fullName || "—")}</p>
                 </td>
@@ -179,7 +196,7 @@ export default function RfqManager() {
             ))}
             {(!rfqs || rfqs.length === 0) && (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-slate-400">
+                <td colSpan={8} className="py-12 text-center text-slate-400">
                   <Mail className="mx-auto h-8 w-8 mb-2 opacity-40" />
                   <p className="font-semibold">No RFQs found</p>
                 </td>

@@ -1,3 +1,4 @@
+// src/app/(admin)/admin/products/page.js
 "use client";
 
 import { useState, useEffect } from "react";
@@ -18,6 +19,10 @@ import productsApi from "@/lib/productsApi";
 import categoriesApi from "@/lib/categoriesApi";
 import brandsApi from "@/lib/brands/Api";
 
+// STORAGE KEYS
+const STORAGE_KEY_TAB = "sbs_admin_products_tab";
+const STORAGE_KEY_FORM = "sbs_admin_product_form_state";
+
 const tabs = [
   { id: "products", label: "Products", icon: Package },
   { id: "categories", label: "Categories", icon: FolderTree },
@@ -33,7 +38,20 @@ const tabs = [
 ];
 
 export default function ProductsAdminPage() {
-  const [activeTab, setActiveTab] = useState("products");
+  // --- Tab state with persistence ---
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem(STORAGE_KEY_TAB);
+      if (saved && tabs.some((t) => t.id === saved)) return saved;
+    }
+    return "products";
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem(STORAGE_KEY_TAB, activeTab);
+  }, [activeTab]);
+
+  // --- Data states ---
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
@@ -49,7 +67,38 @@ export default function ProductsAdminPage() {
     hasNextPage: false, hasPreviousPage: false
   });
 
-  // Safe data extraction helper
+  // --- Restore form state from sessionStorage ---
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = sessionStorage.getItem(STORAGE_KEY_FORM);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.editingProduct) {
+          setEditingProduct(parsed.editingProduct);
+          setShowProductModal(true);
+        }
+      } catch (e) {
+        sessionStorage.removeItem(STORAGE_KEY_FORM);
+      }
+    }
+  }, []);
+
+  // --- Save form state when modal opens/closes ---
+  const saveFormState = (editing, modalOpen) => {
+    if (typeof window === "undefined") return;
+    if (modalOpen && editing) {
+      sessionStorage.setItem(STORAGE_KEY_FORM, JSON.stringify({ editingProduct: editing }));
+    } else {
+      sessionStorage.removeItem(STORAGE_KEY_FORM);
+    }
+  };
+
+  useEffect(() => {
+    saveFormState(editingProduct, showProductModal);
+  }, [editingProduct, showProductModal]);
+
+  // --- Data fetching ---
   const extractData = (response) => {
     if (!response) return [];
     if (Array.isArray(response)) return response;
@@ -129,6 +178,7 @@ export default function ProductsAdminPage() {
     }
   }, [autoRefresh, pagination.page, pagination.pageSize]);
 
+  // --- Modal handlers ---
   const handleCreateProduct = () => {
     setEditingProduct(null);
     setShowProductModal(true);
@@ -155,6 +205,7 @@ export default function ProductsAdminPage() {
       }
       setShowProductModal(false);
       setEditingProduct(null);
+      sessionStorage.removeItem(STORAGE_KEY_FORM);
       await fetchProducts(pagination.page, pagination.pageSize);
     } catch (error) {
       console.error("Failed to save product:", error);
@@ -332,7 +383,11 @@ export default function ProductsAdminPage() {
           categories={categories}
           subcategories={subcategories}
           brands={brands}
-          onClose={() => { setShowProductModal(false); setEditingProduct(null); }}
+          onClose={() => { 
+            setShowProductModal(false); 
+            setEditingProduct(null);
+            sessionStorage.removeItem(STORAGE_KEY_FORM);
+          }}
           onSave={handleSaveProduct}
         />
       )}

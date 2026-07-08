@@ -1,3 +1,4 @@
+// src/components/admin/products/RfqReplyModal.jsx
 "use client";
 
 import { useState } from "react";
@@ -8,7 +9,7 @@ export default function RfqReplyModal({ open, rfq, onClose, onSave }) {
   const [price, setPrice] = useState("");
   const [discount, setDiscount] = useState("");
   const [replyNote, setReplyNote] = useState("");
-  const [emailSubject, setEmailSubject] = useState(`Re: RFQ ${rfq?.id || ""} - Quotation from SBS Groups`);
+  const [emailSubject, setEmailSubject] = useState(`Re: RFQ ${rfq?.reference || rfq?.id || ""} - Quotation from SBS Groups`);
   const [emailBody, setEmailBody] = useState("");
 
   // Initialize email body when rfq changes
@@ -22,7 +23,7 @@ export default function RfqReplyModal({ open, rfq, onClose, onSave }) {
 
       setEmailBody(
         `Dear ${rfq.fullName || rfq.clientName || "Sir/Madam"},\n\n` +
-        `Thank you for your quotation request (${rfq.id}).\n\n` +
+        `Thank you for your quotation request (${rfq.reference || rfq.id}).\n\n` +
         `We have reviewed your requirements for:\n${productList}\n\n` +
         `Please find our best pricing below:\n` +
         `Price: [Enter Price]\n` +
@@ -41,7 +42,6 @@ export default function RfqReplyModal({ open, rfq, onClose, onSave }) {
       replyNote || '',
     ].filter(Boolean).join(' | ');
 
-    // ✅ Pass all data including emailBody and sentTo
     onSave(rfq.id, note, emailBody, rfq.email);
   };
 
@@ -58,14 +58,10 @@ export default function RfqReplyModal({ open, rfq, onClose, onSave }) {
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4">
           <div>
-            <h3 className="text-lg font-bold">Reply to RFQ {rfq.id}</h3>
-            <p className="text-sm text-slate-500">
-              {rfq.fullName || rfq.clientName} · {rfq.companyName || rfq.company || "—"}
-            </p>
+            <h3 className="text-lg font-bold">Reply to RFQ {rfq.reference || rfq.id}</h3>
+            <p className="text-sm text-slate-500">{rfq.fullName || rfq.clientName} · {rfq.companyName || rfq.company || "—"}</p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-2 hover:bg-slate-100">
-            <X size={20} />
-          </button>
+          <button onClick={onClose} className="rounded-lg p-2 hover:bg-slate-100"><X size={20} /></button>
         </div>
 
         {/* Body */}
@@ -88,6 +84,10 @@ export default function RfqReplyModal({ open, rfq, onClose, onSave }) {
               <span className="text-[10px] font-bold uppercase text-slate-400">Mobile</span>
               <p className="text-sm">{rfq.mobile || "—"}</p>
             </div>
+            <div className="col-span-2">
+              <span className="text-[10px] font-bold uppercase text-slate-400">RFQ Reference</span>
+              <p className="text-sm font-mono font-bold text-blue-700">{rfq.reference || rfq.id}</p>
+            </div>
           </div>
 
           {/* Products */}
@@ -102,9 +102,7 @@ export default function RfqReplyModal({ open, rfq, onClose, onSave }) {
                       <p className="text-sm font-semibold">{product.name || "Product"}</p>
                       <p className="text-[10px] text-slate-400">{product.id || product.sku || ""}</p>
                     </div>
-                    <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
-                      Qty: {item.quantity || 1}
-                    </span>
+                    <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">Qty: {item.quantity || 1}</span>
                   </div>
                 );
               })}
@@ -124,29 +122,15 @@ export default function RfqReplyModal({ open, rfq, onClose, onSave }) {
 
           {/* Price & Discount */}
           <div className="space-y-4 border-t pt-4">
-            <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-              <DollarSign size={16} /> Quotation Details
-            </h4>
+            <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2"><DollarSign size={16} /> Quotation Details</h4>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="mb-1.5 block text-xs font-medium">Price</label>
-                <input
-                  type="text"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="e.g. ₹25,000 per unit"
-                  className="w-full rounded-xl border px-4 py-3 text-sm"
-                />
+                <input type="text" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g. ₹25,000 per unit" className="w-full rounded-xl border px-4 py-3 text-sm" />
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium">Discount</label>
-                <input
-                  type="text"
-                  value={discount}
-                  onChange={(e) => setDiscount(e.target.value)}
-                  placeholder="e.g. 10% bulk discount"
-                  className="w-full rounded-xl border px-4 py-3 text-sm"
-                />
+                <input type="text" value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="e.g. 10% bulk discount" className="w-full rounded-xl border px-4 py-3 text-sm" />
               </div>
             </div>
           </div>
@@ -159,52 +143,33 @@ export default function RfqReplyModal({ open, rfq, onClose, onSave }) {
             <div>
               <label className="mb-1.5 block text-xs font-medium">Subject</label>
               <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={emailSubject}
-                  onChange={(e) => setEmailSubject(e.target.value)}
-                  className="flex-1 rounded-xl border px-4 py-3 text-sm"
-                />
-                <button onClick={() => copyToClipboard(emailSubject)}
-                  className="rounded-xl border px-3 py-3 text-slate-400 hover:bg-slate-50">
+                <input type="text" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="flex-1 rounded-xl border px-4 py-3 text-sm" />
+                <button onClick={() => copyToClipboard(emailSubject)} className="rounded-xl border px-3 py-3 text-slate-400 hover:bg-slate-50">
                   <Copy size={16} />
                 </button>
               </div>
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-medium">Body</label>
-              <textarea
-                rows={10}
-                value={emailBody}
-                onChange={(e) => setEmailBody(e.target.value)}
-                className="w-full rounded-xl border px-4 py-3 text-sm resize-none font-mono"
-              />
+              <textarea rows={10} value={emailBody} onChange={(e) => setEmailBody(e.target.value)} className="w-full rounded-xl border px-4 py-3 text-sm resize-none font-mono" />
             </div>
           </div>
 
           {/* Internal Note */}
           <div>
             <label className="mb-1.5 block text-xs font-medium">Internal Note</label>
-            <textarea
-              rows={2}
-              value={replyNote}
-              onChange={(e) => setReplyNote(e.target.value)}
-              placeholder="Add internal notes about this reply..."
-              className="w-full rounded-xl border px-4 py-3 text-sm resize-none"
-            />
+            <textarea rows={2} value={replyNote} onChange={(e) => setReplyNote(e.target.value)} placeholder="Add internal notes about this reply..." className="w-full rounded-xl border px-4 py-3 text-sm resize-none" />
           </div>
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between border-t px-6 py-4">
-          <button onClick={() => copyToClipboard(`${emailSubject}\n\n${emailBody}`)}
-            className="flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm hover:bg-slate-50">
+          <button onClick={() => copyToClipboard(`${emailSubject}\n\n${emailBody}`)} className="flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm hover:bg-slate-50">
             <Copy size={16} /> Copy Email
           </button>
           <div className="flex gap-3">
             <button onClick={onClose} className="rounded-xl border px-5 py-3 text-sm hover:bg-slate-50">Cancel</button>
-            <button onClick={handleSendReply}
-              className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-medium text-white hover:bg-blue-700">
+            <button onClick={handleSendReply} className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-medium text-white hover:bg-blue-700">
               <Send size={16} /> Send Reply
             </button>
           </div>

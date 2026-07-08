@@ -1,11 +1,14 @@
+// src/components/admin/products/RfqIntegrationSettings.jsx
 "use client";
 
 import { useState, useEffect } from "react";
 import rfqIntegrationsApi from "@/lib/rfqIntegrationsApi";
 import { Save, Globe, Sheet, ShieldCheck } from "lucide-react";
 
+const STORAGE_KEY = "sbs_admin_rfq_integration_state";
+
 export default function RfqIntegrationSettings() {
-  const [settings, setSettings] = useState({
+  const defaultSettings = {
     externalApiEnabled: false,
     externalApiUrl: "",
     externalApiKey: "",
@@ -14,7 +17,9 @@ export default function RfqIntegrationSettings() {
     sheetId: "",
     sheetTabName: "RFQs",
     googleServiceAccountJson: "",
-  });
+  };
+
+  const [settings, setSettings] = useState(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -23,7 +28,17 @@ export default function RfqIntegrationSettings() {
       try {
         const res = await rfqIntegrationsApi.getSettings();
         const data = res?.data || res;
-        if (data) setSettings((prev) => ({ ...prev, ...data }));
+        let loaded = { ...defaultSettings };
+        if (data) loaded = { ...loaded, ...data };
+        // Restore draft
+        const draft = sessionStorage.getItem(STORAGE_KEY);
+        if (draft) {
+          try {
+            const parsed = JSON.parse(draft);
+            loaded = { ...loaded, ...parsed };
+          } catch {}
+        }
+        setSettings(loaded);
       } catch (error) {
         console.error("Failed to load RFQ integration settings:", error);
       } finally {
@@ -33,12 +48,19 @@ export default function RfqIntegrationSettings() {
     load();
   }, []);
 
+  useEffect(() => {
+    if (!loading) {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    }
+  }, [settings, loading]);
+
   const update = (key, value) => setSettings((prev) => ({ ...prev, [key]: value }));
 
   const handleSave = async () => {
     setSaving(true);
     try {
       await rfqIntegrationsApi.updateSettings(settings);
+      sessionStorage.removeItem(STORAGE_KEY);
       alert("RFQ integration settings saved!");
     } catch (error) {
       alert("Failed to save: " + error.message);
@@ -123,7 +145,7 @@ export default function RfqIntegrationSettings() {
         </div>
         <div>
           <label className="mb-1.5 block text-xs font-medium">Google Service Account JSON key</label>
-          <textarea rows="5" value={settings.googleServiceAccountJson} onChange={(e) => update("googleServiceAccountJson", e.target.value)}
+          <textarea rows={5} value={settings.googleServiceAccountJson} onChange={(e) => update("googleServiceAccountJson", e.target.value)}
             placeholder='Paste the full service-account JSON key here (from Google Cloud Console → IAM → Service Accounts → Keys)'
             className="w-full rounded-xl border px-4 py-3 text-xs font-mono" />
           <p className="mt-1 text-[11px] text-slate-400">

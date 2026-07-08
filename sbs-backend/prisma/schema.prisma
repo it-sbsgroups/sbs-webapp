@@ -190,6 +190,7 @@ model ProductCertification {
 
 model RfqRequest {
   id           String     @id @default(cuid())
+  reference    String?    @unique   // ← NEW: human‑readable RFQ ref
   status       RfqStatus  @default(PENDING)
   fullName     String     
   companyName  String?    
@@ -202,12 +203,14 @@ model RfqRequest {
   updatedAt    DateTime   @updatedAt
   items        RfqItem[]  
   replies      RfqReply[] 
-  // Client info
-  // Custom fields (dynamic form data)
   @@map("rfq_requests")
 }
 
-
+model RfqCounter {
+  date        DateTime @id @default(now())  // date as primary key
+  count       Int      @default(0)
+  @@map("rfq_counters")
+}
 
 enum RfqStatus {
   PENDING   
@@ -216,8 +219,6 @@ enum RfqStatus {
   COMPLETED 
   CANCELLED 
 }
-
-
 
 model RfqItem {
   id        String     @id @default(cuid())
@@ -596,19 +597,20 @@ model Employee {
 
 
 model newsletterSubscriber {
-  id             String    @id @default(cuid())
-  firstName      String?   @db.VarChar(50)    //first name
-  middleName     String?   @db.VarChar(50)    //middle name
-  lastName       String?   @db.VarChar(50)    //last name
-  email          String    @unique @db.VarChar(250)
-  mobile         String?   @unique @db.VarChar(13)
-  whatsapp       String?   @db.VarChar(13)
-  subscribed     Boolean   @default(true)
-  notifyProducts Boolean   @default(true)   // receive new-product alerts
-  notifyNews     Boolean   @default(true)   // receive new-news alerts
-  unsubscribedAt DateTime? 
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                  String    @id @default(cuid())
+  firstName           String?   @db.VarChar(50)    //first name
+  middleName          String?   @db.VarChar(50)    //middle name
+  lastName            String?   @db.VarChar(50)    //last name
+  email               String    @unique @db.VarChar(250)
+  mobile              String?   @unique @db.VarChar(13)
+  whatsapp            String?   @db.VarChar(13)
+  subscribed          Boolean   @default(true)
+  notifyProducts      Boolean   @default(true)   // receive new-product alerts
+  notifyNews          Boolean   @default(true)   // receive new-news alerts
+  unsubscribeToken    String?   @unique   // ← NEW: for unsubscribe links
+  unsubscribedAt      DateTime? 
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
   // name with first middle and last name
 }
 

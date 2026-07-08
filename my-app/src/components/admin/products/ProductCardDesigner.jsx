@@ -1,9 +1,11 @@
+// src/components/admin/products/ProductCardDesigner.jsx
 "use client";
 
 import { useState, useEffect } from "react";
 import settingsApi from "@/lib/settingsApi";
 import { Save, Palette, Layout } from "lucide-react";
 
+const STORAGE_KEY = "sbs_admin_card_designer_state";
 const defaultSettings = {
   cardsPerRow: 3,
   gap: "md",
@@ -23,7 +25,6 @@ const defaultSettings = {
   showSkuId: true,
   showPricePill: true,
   priceLabel: "Price On Request",
-  // Brochure settings
   showBrochureButton: true,
   brochureButtonText: "Download Brochure",
   brochureMode: "download",
@@ -34,23 +35,38 @@ export default function ProductCardDesigner() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Load settings from API
   useEffect(() => {
-    const loadSettings = async () => {
+    const load = async () => {
       try {
         const response = await settingsApi.getProductSettings();
         const data = response?.data || response;
+        let loaded = { ...defaultSettings };
         if (data && typeof data === 'object' && !Array.isArray(data)) {
-          setSettings({ ...defaultSettings, ...data });
+          loaded = { ...defaultSettings, ...data };
         }
+        // Restore draft
+        const draft = sessionStorage.getItem(STORAGE_KEY);
+        if (draft) {
+          try {
+            const parsed = JSON.parse(draft);
+            loaded = { ...loaded, ...parsed };
+          } catch {}
+        }
+        setSettings(loaded);
       } catch (error) {
         console.error("Failed to load product settings:", error);
       } finally {
         setLoading(false);
       }
     };
-    loadSettings();
+    load();
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    }
+  }, [settings, loading]);
 
   const updateSetting = (key, value) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -60,6 +76,7 @@ export default function ProductCardDesigner() {
     setSaving(true);
     try {
       await settingsApi.updateProductSettings(settings);
+      sessionStorage.removeItem(STORAGE_KEY);
       alert("Card design settings saved successfully!");
     } catch (error) {
       console.error("Failed to save settings:", error);
@@ -274,9 +291,7 @@ export default function ProductCardDesigner() {
             ))}
           </div>
 
-          {/* ============================================ */}
-          {/* BROCHURE SETTINGS */}
-          {/* ============================================ */}
+          {/* Brochure Settings */}
           <div className="space-y-3 pt-3 border-t">
             <h4 className="text-xs font-bold text-slate-500 uppercase">📄 Brochure / Catalog Settings</h4>
             
