@@ -1,42 +1,36 @@
 "use client";
 
-const clients = [
-  {
-    name: "Northern Coalfields Ltd (NCL)",
-    logo: "https://sbsgroups.co.in/assets/7-gxWNX6DG.webp",
-    url: "https://www.nclcil.in/",
-  },
-  {
-    name: "NTPC Limited",
-    logo: "https://sbsgroups.co.in/assets/6-wlFXflvm.webp",
-    url: "https://www.ntpc.co.in/",
-  },
-  {
-    name: "Hindalco Industries",
-    logo: "https://sbsgroups.co.in/assets/2-BEdwMCg4.webp",
-    url: "https://www.hindalco.com/",
-  },
-  {
-    name: "Coal India Limited",
-    logo: "/logos/coal-india.png",
-    url: "https://www.coalindia.in/",
-  },
-  {
-    name: "Tata Projects",
-    logo: "https://sbsgroups.co.in/assets/9-DiZBQZuz.webp",
-    url: "https://tataprojects.com/",
-  },
-  {
-    name: "Larsen & Toubro (L&T)",
-    logo: "https://sbsgroups.co.in/assets/4-Cm7IJDPQ.webp",
-    url: "https://www.larsentoubro.com/",
-  },
-];
-
-// Duplicate 4 times → enough to cover any viewport width
-const scrollingClients = [...clients, ...clients, ...clients, ...clients];
+import { useEffect, useState } from "react";
+import brandsApi from "@/lib/brands/Api";
 
 export default function ClientSlider() {
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const brands = await brandsApi.getAll();
+      // Only third-party brands we've worked with as clients should show here —
+      // isOwnBrand=true means it's our own product brand, not a client, so it's excluded.
+      const filtered = (Array.isArray(brands) ? brands : [])
+        .filter((b) => b.isActive !== false && b.isOwnBrand === false && !!b.logo)
+        .map((b) => ({ name: b.name, logo: b.logo, url: b.website || undefined }));
+      if (!cancelled) {
+        setClients(filtered);
+        setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Duplicate 4 times → enough to cover any viewport width for the scroll animation
+  const scrollingClients = clients.length ? [...clients, ...clients, ...clients, ...clients] : [];
+
+  if (!loading && clients.length === 0) return null;
+
   return (
     <section className="relative overflow-hidden py-12 bg-white/80 backdrop-blur-xl">
       {/* Heading */}
@@ -47,9 +41,8 @@ export default function ClientSlider() {
       {/* Slider – full viewport width, no fades */}
       <div className="relative flex w-screen overflow-hidden">
         <div className="flex animate-scroll whitespace-nowrap" style={{ willChange: "transform" }} >
-          {scrollingClients.map((client, index) => (
-            <div key={index} className="group relative mx-4" style={{ perspective: "1200px" }} >
-              {/* Glass‑style card without expensive backdrop‑blur */}
+          {scrollingClients.map((client, index) => {
+            const card = (
               <div className="relative flex h-36 w-36 items-center justify-center overflow-hidden rounded-2xl border border-slate-300/40 bg-slate-200/70 transition-[transform,box-shadow] duration-700"
                 style={{
                   transformStyle: "preserve-3d",
@@ -73,17 +66,26 @@ export default function ClientSlider() {
                       "0 0 20px rgba(100,116,139,0.4), 0 0 40px rgba(100,116,139,0.15)",
                   }} />
               </div>
+            );
+            return (
+              <div key={index} className="group relative mx-4" style={{ perspective: "1200px" }} >
+                {client.url ? (
+                  <a href={client.url} target="_blank" rel="noopener noreferrer">{card}</a>
+                ) : (
+                  card
+                )}
 
-              {/* Tooltip with company name */}
-              <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                <div className="rounded-full border border-slate-400/40 bg-slate-800/90 px-3 py-1.5 backdrop-blur-xl shadow-2xl">
-                  <span className="text-[10px] font-semibold text-slate-200 whitespace-nowrap">
-                    {client.name}
-                  </span>
+                {/* Tooltip with company name */}
+                <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                  <div className="rounded-full border border-slate-400/40 bg-slate-800/90 px-3 py-1.5 backdrop-blur-xl shadow-2xl">
+                    <span className="text-[10px] font-semibold text-slate-200 whitespace-nowrap">
+                      {client.name}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

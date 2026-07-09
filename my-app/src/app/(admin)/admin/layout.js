@@ -35,6 +35,7 @@ import {
   Star,
   PenTool,
   Mail,
+  Factory,
 } from "lucide-react";
 
 // ============================================
@@ -155,18 +156,18 @@ const navTree = [
       },
       {
         id: "comp-contact",
-        name: "Contact Page",
+        name: "Contacts Page",
         icon: Contact,
-        href: "/admin/contact-settings",
+        href: "/admin/contacts",
         type: "link",
       },
       {
-        id: "comp-newsletter",
-        name: "Newsletter",
-        icon: Mail,
-        href: "/admin/newsletter",
+        id: "comp-industryinnovation",
+        name: "Industry Innovation",
+        icon: Factory,
+        href: "admin/industry-innovation",
         type: "link",
-      },
+      }
     ],
   },
 
