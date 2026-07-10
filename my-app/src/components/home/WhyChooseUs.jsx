@@ -90,28 +90,16 @@ export default function WhyChooseUs() {
 
   return (
     <section
-      style={{
-        backgroundColor: design?.backgroundColor || "#FFFFFF",
-        fontFamily: design?.fontFamily || "Inter, sans-serif",
-      }}
-      className="py-16 md:py-24 border-b border-gray-100"
-    >
+      style={{ backgroundColor: design?.backgroundColor || "#FFFFFF", fontFamily: design?.fontFamily || "Inter, sans-serif", }} className="py-16 md:py-24 border-b border-gray-100" >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* HEADER */}
         <div className="text-center max-w-2xl mx-auto mb-12 md:mb-16">
           {title && (
-            <h2
-              style={{ color: design?.titleColor || "#1E3A8A" }}
-              className="text-3xl font-black tracking-tight sm:text-4xl uppercase leading-tight"
-            >
-              {parseHtmlTitle(title)}
-            </h2>
+            <h2 className="text-3xl font-extrabold tracking-tight text-blue-950 sm:text-4xl" > Why Choose 
+            <span className="block text-lime-500 mt-1 md:inline md:mt-0"> SBS Group </span>?</h2>
           )}
           {mainDescription && (
-            <div
-              className="mt-4 text-sm text-gray-600 leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: mainDescription }}
-            />
+            <div className="mt-4 text-sm text-gray-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: mainDescription }} />
           )}
         </div>
 
@@ -121,32 +109,14 @@ export default function WhyChooseUs() {
             const DynamicIcon = Icons[item.iconName] || Icons.HelpCircle;
 
             return (
-              <div
-                key={item.id}
-                style={{
-                  backgroundColor: design?.cardBackgroundColor || "#F9FAFB",
-                }}
-                className="
-                  group relative p-6 rounded-2xl border border-gray-100 
-                  transition-all duration-300 ease-in-out
-                  hover:bg-white hover:shadow-xl
-                  hover:scale-[1.05] hover:z-10
-                  text-center
-                "
-              >
+              <div key={item.id} style={{ backgroundColor: design?.cardBackgroundColor || "#F9FAFB", }} className="group relative p-6 rounded-2xl border border-gray-100  transition-all duration-300 ease-in-out hover:bg-white hover:shadow-xl hover:scale-[1.05] hover:z-10 text-center" >
                 {/* Icon – blue‑500 background, white icon, no hover effect */}
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500 text-white mb-4 mx-auto">
-                  <DynamicIcon size={24} />
-                </div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500 text-white mb-4 mx-auto"><DynamicIcon size={24} /></div>
 
                 {/* Content */}
                 <div className="space-y-1.5">
-                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">
-                    {item.title}
-                  </h3>
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    {item.description}
-                  </p>
+                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">{item.title}</h3>
+                  <p className="text-xs text-gray-500 leading-relaxed">{item.description}</p>
                 </div>
               </div>
             );
@@ -157,9 +127,7 @@ export default function WhyChooseUs() {
             <div className="col-span-full py-12 text-center text-gray-400">
               <Icons.Package className="mx-auto h-12 w-12 mb-3 opacity-30" />
               <p className="font-semibold">No features configured</p>
-              <p className="text-sm mt-1">
-                Add features from the admin panel.
-              </p>
+              <p className="text-sm mt-1">Add features from the admin panel.</p>
             </div>
           )}
         </div>

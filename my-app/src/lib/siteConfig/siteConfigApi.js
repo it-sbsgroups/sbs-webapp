@@ -7,6 +7,7 @@ function apiBase() {
     return `${window.location.protocol}//${window.location.hostname}:4000/api`;
   return "http://localhost:4000/api";
 }
+
 async function fetchSection(key) {
   try {
     const r = await apiClient.get(`/site/${key}`);
@@ -96,15 +97,21 @@ const siteConfigApi = {
   getApiKeys:   () => fetchSection("apiKeys"),
   getFounders:  () => fetchSection("founders"),
   getFont:      () => fetchSection("font"),
+  getHomeAbout:    () => fetchSection("homeAbout"),
+  getHomePrinciples:  () => fetchSection("homePrinciples"),
+  getDistributor: () => fetchSection("distributor"),
   getAll:       async () => { try { const r = await apiClient.get("/site"); return r?.data ?? r ?? {}; } catch { return {}; } },
 
-  saveBranding:  (d) => saveSection("branding", d),
-  saveHeader:    (d) => saveSection("header", d),
-  saveContact:   (d) => saveSection("contact", d),
-  saveAbout:     (d) => saveSection("about", d),
-  saveApiKeys:   (d) => saveSection("apiKeys", d),
-  saveFounders:  (d) => saveSection("founders", d),
-  saveFont:      (d) => saveSection("font", d),
+  saveBranding:       (d) => saveSection("branding", d),
+  saveHeader:         (d) => saveSection("header", d),
+  saveContact:        (d) => saveSection("contact", d),
+  saveAbout:          (d) => saveSection("about", d),
+  saveApiKeys:        (d) => saveSection("apiKeys", d),
+  saveFounders:       (d) => saveSection("founders", d),
+  saveFont:           (d) => saveSection("font", d),
+  saveHomeAbout:      (d) => saveSection("homeAbout", d),
+  saveHomePrinciples: (d) => saveSection("homePrinciples", d),
+  saveDistributor:    (d) => saveSection("distributor", d),
 
   uploadLogo:         (file) => uploadUncompressed(file, "branding/logo"),
   uploadFavicon,
@@ -116,7 +123,6 @@ const siteConfigApi = {
 };
 
 export default siteConfigApi;
-
 
 export const DEFAULT_BRANDING = {
   companyName: "SBS Groups",

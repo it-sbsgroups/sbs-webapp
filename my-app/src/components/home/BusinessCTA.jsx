@@ -14,7 +14,7 @@ const dummyCtaData = {
 
 export default function BusinessCTA() {
   return (
-    <section className="relative w-full bg-gradient-to-r from-blue-950 via-blue-900 to-blue-600 py-16 md:py-20 text-white">
+    <section className="relative w-full bg-gradient-to-r from-blue-900 via-blue-800 to-blue-500 py-16 md:py-20 text-white">
       <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8 space-y-6">
         
         {/* Main Section Heading */}

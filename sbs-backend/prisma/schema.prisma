@@ -897,3 +897,23 @@ model ourPrinciple {
 model AuthoriedNetwork {
   id                  String    @id @default(cuid())
 }
+
+model PageSection {
+  id              Int      @id @default(autoincrement())
+  sectionName     String   // e.g., "About_Section_1"
+  heading         String
+  subHeading      String?
+  content         String   @db.Text // Yahan editor ka HTML store hoga
+  imageUrls       String[] // Array of strings (agar multiple images hain)
+  
+  // Repeater data ke liye alag relation
+  items           Item[]   // e.g., Features list ya "Grow Together" list
+}
+
+model Item {
+  id              Int         @id @default(autoincrement())
+  title           String
+  icon            String?     // Icon ka name ya path
+  sectionId       Int
+  section         PageSection @relation(fields: [sectionId], references: [id])
+}

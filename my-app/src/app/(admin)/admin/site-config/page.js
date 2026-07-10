@@ -8,6 +8,9 @@ import siteConfigApi, {
   GOOGLE_FONTS, SOCIAL_PLATFORMS,
 } from "@/lib/siteConfig/siteConfigApi";
 import LocationSelector from "@/components/admin/site-config/LocationSelector";
+import HomeAboutManager from "@/components/admin/home/HomeAboutManager";
+import HomePrinciplesManager from "@/components/admin/home/HomePrinciplesManager";
+import DistributorManager from "@/components/admin/distributorComp/DistributorManager";
 
 // ─── Material Symbol icon helper ──────────────────────────────────────────────
 const Icon = ({ name, className = "text-lg" }) => (
@@ -77,14 +80,17 @@ function AddRemoveList({ items, setItems, renderItem, newItem }) {
 
 // ─── TAB DEFINITIONS ─────────────────────────────────────────────────────────
 const TABS = [
-  { key: "branding",  label: "Branding",       icon: "image"         },
-  { key: "header",    label: "Header & Nav",    icon: "menu"          },
-  { key: "contact",   label: "Contact & Footer",icon: "contact_phone" },
-  { key: "about",     label: "About Us",        icon: "info"          },
-  { key: "apiKeys",   label: "API Keys",        icon: "key"           },
-  { key: "founders",  label: "Founders",        icon: "person"        },
-  { key: "font",      label: "Font",            icon: "text_fields"   },
-  { key: "location",  label: "Location",        icon: "location_on"   },
+  { key: "branding",        label: "Branding"         },
+  { key: "header",          label: "Header & Nav"     },
+  { key: "contact",         label: "Contact & Footer" },
+  { key: "about",           label: "About Us"         },
+  { key: "apiKeys",         label: "API Keys"         },
+  { key: "founders",        label: "Founders"         },
+  { key: "font",            label: "Font"             },
+  { key: "location",        label: "Location"         },
+  { key: "homeAbout",       label: "Home About"       },
+  { key: "homePrinciples",  label: "Home Principles"  },
+  { key: "distributor",     label: "Distributor"      },
 ];
 
 // ─── SECTION: BRANDING (tasks 1, 2) ──────────────────────────────────────────
@@ -143,9 +149,7 @@ function BrandingSection() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-black text-slate-900">Company Logo</h3>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-              Uploaded uncompressed — PNG, SVG, WebP, JPG all accepted. Max 10 MB.
-            </p>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">Uploaded uncompressed — PNG, SVG, WebP, JPG all accepted. Max 10 MB.</p>
           </div>
           <UploadBtn label="Upload Logo" accept="image/*" onFile={handleLogo} loading={logoUpl} icon="add_photo_alternate" />
         </div>
@@ -155,8 +159,7 @@ function BrandingSection() {
             <div className="flex-1">
               <p className="text-xs text-slate-500 font-mono break-all">{data.logoUrl}</p>
             </div>
-            <button onClick={() => set("logoUrl", "")}
-              className="p-1.5 text-red-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
+            <button onClick={() => set("logoUrl", "")} className="p-1.5 text-red-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
               <Icon name="delete" />
             </button>
           </div>
@@ -1036,15 +1039,18 @@ export default function SiteConfigPage() {
 
   const renderSection = () => {
     switch (tab) {
-      case "branding":  return <BrandingSection />;
-      case "header":    return <HeaderSection />;
-      case "contact":   return <ContactSection />;
-      case "about":     return <AboutSection />;
-      case "apiKeys":   return <ApiKeysSection />;
-      case "founders":  return <FoundersSection />;
-      case "font":      return <FontSection />;
-      case "location":  return <LocationSection />;
-      default:          return <BrandingSection />;
+      case "branding":          return <BrandingSection />;
+      case "header":            return <HeaderSection />;
+      case "contact":           return <ContactSection />;
+      case "about":             return <AboutSection />;
+      case "apiKeys":           return <ApiKeysSection />;
+      case "founders":          return <FoundersSection />;
+      case "font":              return <FontSection />;
+      case "location":          return <LocationSection />;
+      case "homeAbout":         return <HomeAboutManager />;
+      case "homePrinciples":    return <HomePrinciplesManager />;
+      case "distributor":       return <DistributorManager />;
+      default:                  return <BrandingSection />;
     }
   };
 
@@ -1067,7 +1073,7 @@ export default function SiteConfigPage() {
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
                   tab === t.key ? "bg-blue-950 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 }`}>
-                <Icon name={t.icon} className="text-base" />
+                {/* <Icon name={t.icon} className="text-base" /> */}
                 {t.label}
               </button>
             ))}
