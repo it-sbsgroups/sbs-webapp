@@ -134,7 +134,7 @@ export default function PartnershipWork() {
         {/* Description */}
         <div>
           <label className="mb-1.5 block text-xs font-medium">Introductory Description</label>
-          <RichTextEditor value={data.description || ""} onChange={(html) => updateField("description", html)} placeholder="Write a short introduction for the section…" uploadFolder="distributor" />
+          <RichTextEditor value={data.description || ""} onChange={(html) => updateField("description", html)} placeholder="Write a short introduction for the section…" uploadFolder="distributor-partnership-work" />
         </div>
 
         {/* Features List */}

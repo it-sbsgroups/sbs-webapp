@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, Upload, Plus, Trash2 } from "lucide-react";
+import { Save, Plus, Trash2 } from "lucide-react";
 import RichTextEditor from "@/components/shared/RichTextEditor";
 import siteConfigApi from "@/lib/siteConfig/siteConfigApi";
 import toast from "react-hot-toast";
@@ -14,14 +14,14 @@ const DEFAULT_DATA = {
   features: [
     {
       id: "f1",
-      icon: "ShieldCheck",
+      icon: "Ribbon",
       title: "Certified Excellence",
       description:
         "All our partnerships are backed by official certifications and quality guarantees from leading manufacturers.",
     },
     {
       id: "f2",
-      icon: "CheckCircle",
+      icon: "Shield",
       title: "Genuine Products",
       description:
         "We guarantee 100% authentic products with full warranty coverage and manufacturer support.",
@@ -35,7 +35,7 @@ const DEFAULT_DATA = {
     },
     {
       id: "f4",
-      icon: "DollarSign",
+      icon: "TrendingUp",
       title: "Competitive Pricing",
       description:
         "Direct manufacturer relationships allow us to offer the most competitive pricing in the market.",
@@ -43,7 +43,7 @@ const DEFAULT_DATA = {
   ],
 };
 
-export default function DistributorManager() {
+export default function AuthorizedNetwork() {
   const [data, setData] = useState(DEFAULT_DATA);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -51,7 +51,7 @@ export default function DistributorManager() {
 
   useEffect(() => {
     siteConfigApi
-      .getDistributor()
+      .getAuthorizedNetwork()
       .then((d) => {
         if (d && Object.keys(d).length > 0) {
           setData((prev) => ({ ...prev, ...d }));
@@ -104,7 +104,7 @@ export default function DistributorManager() {
   const save = async () => {
     setSaving(true);
     try {
-      await siteConfigApi.saveDistributor(data);
+      await siteConfigApi.saveAuthorizedNetwork(data);
       toast.success("Distributor page section saved");
     } catch (e) {
       toast.error(e.message || "Save failed");

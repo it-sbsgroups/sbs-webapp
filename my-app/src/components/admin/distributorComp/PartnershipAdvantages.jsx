@@ -1,67 +1,87 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, Upload, Plus, Trash2, Users, TrendingUp, Ribbon, CircleCheckBig,} from "lucide-react";
+import {
+  Save,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import RichTextEditor from "@/components/shared/RichTextEditor";
 import siteConfigApi from "@/lib/siteConfig/siteConfigApi";
 import toast from "react-hot-toast";
 
 const DEFAULT_DATA = {
-  titlePart1: "Trusted Protection, ",
-  titlePart2: "Proven Result",
-  description: "<p>Our official distributor status ensures you receive authentic products with full manufacturer support.</p>",
+  titlePart1: "Partnership",
+  titlePart2: "Advantages",
+  description:
+    "<p>Our authorized distributor status provides significant advantages that benefit our clients through better pricing, support, and product availability.</p>",
   features: [
     {
       id: "f1",
-      icon: "Users",
-      title: "50+",
-      subtitle: "Happy Clients",
+      icon: "CircleCheckBig",
+      title: "Direct Manufacturer Access",
       description: "Trusted by leading companies worldwide",
     },
     {
       id: "f2",
       icon: "TrendingUp",
-      title: "95%",
-      subtitle: "Client Retention",
+      title: "Expert Technical Support",
       description: "Long-term partnerships built on trust",
     },
     {
       id: "f3",
-      icon: "Ribbon",
-      title: "20+",
-      title: "Years Experience",
+      icon: "Handshake",
+      title: "Exclusive Partnerships",
       description: "Proven track record of excellence",
     },
     {
       id: "f4",
       icon: "CircleCheckBig",
-      title: "99%",
-      subtitle: "Satisfaction Rate",
+      title: "Priority Service",
       description: "Consistently exceeding expectations",
     },
   ],
+  CertificationStandards: [
+    "Authorized distributor agreements with leading manufacturers",
+    "9001:2015 quality management certification",
+    "Comprehensive warranty and support services",
+    "Trained technical support team",
+    "Secure supply chain management",
+    "Regular product training and updates",
+    "Compliance with industry standards",
+    "Financial stability and reliability",
+  ],
 };
 
-export default function ProtectionProven() {
+export default function PartnershipAdvantages() {
   const [data, setData] = useState(DEFAULT_DATA);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [newFeature, setNewFeature] = useState({ title: "", description: "", icon: "Star" });
+  const [newFeature, setNewFeature] = useState({
+    title: "",
+    description: "",
+    icon: "Star",
+  });
+  const [newStandard, setNewStandard] = useState("");
 
   useEffect(() => {
     siteConfigApi
-      .getProtectionProven()
+      .getPartnershipAdvantages()
       .then((d) => {
         if (d && Object.keys(d).length > 0) {
           setData((prev) => ({ ...prev, ...d }));
         }
       })
-      .catch((err) => console.warn("Failed to load Protection Proven data:", err))
+      .catch((err) =>
+        console.warn("Failed to load Partnership Advantages data:", err)
+      )
       .finally(() => setLoading(false));
   }, []);
 
-  const updateField = (key, value) => setData((prev) => ({ ...prev, [key]: value }));
+  const updateField = (key, value) =>
+    setData((prev) => ({ ...prev, [key]: value }));
 
+  // Feature card management
   const addFeature = () => {
     const trimmedTitle = newFeature.title.trim();
     const trimmedDesc = newFeature.description.trim();
@@ -100,11 +120,31 @@ export default function ProtectionProven() {
     }));
   };
 
+  // Certification standards management
+  const addStandard = () => {
+    const trimmed = newStandard.trim();
+    if (!trimmed) return;
+    setData((prev) => ({
+      ...prev,
+      CertificationStandards: [...prev.CertificationStandards, trimmed],
+    }));
+    setNewStandard("");
+  };
+
+  const removeStandard = (index) => {
+    setData((prev) => ({
+      ...prev,
+      CertificationStandards: prev.CertificationStandards.filter(
+        (_, i) => i !== index
+      ),
+    }));
+  };
+
   const save = async () => {
     setSaving(true);
     try {
-      await siteConfigApi.saveProtectionProven(data);
-      toast.success("Clients page section Protection Proven saved");
+      await siteConfigApi.savePartnershipAdvantages(data);
+      toast.success("Distributors page Partnership Advantages content saved");
     } catch (e) {
       toast.error(e.message || "Save failed");
     } finally {
@@ -123,9 +163,11 @@ export default function ProtectionProven() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Clients Page – Protection Proven</h2>
+        <h2 className="text-2xl font-bold text-slate-900">
+          Distributors Page – Partnership Advantages
+        </h2>
         <p className="mt-1 text-sm text-slate-500">
-          Manage the "Protection Proven" section.
+          Manage the "Partnership Advantages" section.
         </p>
       </div>
 
@@ -133,7 +175,9 @@ export default function ProtectionProven() {
         {/* Title Parts */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="mb-1.5 block text-xs font-medium">Title Part 1</label>
+            <label className="mb-1.5 block text-xs font-medium">
+              Title Part 1
+            </label>
             <input
               type="text"
               value={data.titlePart1}
@@ -142,7 +186,9 @@ export default function ProtectionProven() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium">Title Part 2 (highlight)</label>
+            <label className="mb-1.5 block text-xs font-medium">
+              Title Part 2 (highlight)
+            </label>
             <input
               type="text"
               value={data.titlePart2}
@@ -154,12 +200,14 @@ export default function ProtectionProven() {
 
         {/* Description */}
         <div>
-          <label className="mb-1.5 block text-xs font-medium">Introductory Description</label>
+          <label className="mb-1.5 block text-xs font-medium">
+            Introductory Description
+          </label>
           <RichTextEditor
             value={data.description || ""}
             onChange={(html) => updateField("description", html)}
             placeholder="Write a short introduction for the section…"
-            uploadFolder="distributor"
+            uploadFolder="distributor-partnership-advantages"
           />
         </div>
 
@@ -167,14 +215,21 @@ export default function ProtectionProven() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="block text-xs font-medium">Feature Cards</label>
-            <span className="text-xs text-slate-400">{data.features.length} cards</span>
+            <span className="text-xs text-slate-400">
+              {data.features.length} cards
+            </span>
           </div>
 
           <div className="space-y-3">
             {data.features.map((feature, idx) => (
-              <div key={feature.id || idx} className="border rounded-xl p-4 space-y-3">
+              <div
+                key={feature.id || idx}
+                className="border rounded-xl p-4 space-y-3"
+              >
                 <div className="flex justify-between items-start">
-                  <span className="text-xs font-bold text-slate-400">Card #{idx + 1}</span>
+                  <span className="text-xs font-bold text-slate-400">
+                    Card #{idx + 1}
+                  </span>
                   <button
                     onClick={() => removeFeature(idx)}
                     className="text-red-500 hover:text-red-700"
@@ -184,7 +239,9 @@ export default function ProtectionProven() {
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="mb-1 block text-xs font-medium">Icon (Lucide name)</label>
+                    <label className="mb-1 block text-xs font-medium">
+                      Icon (Lucide name)
+                    </label>
                     <input
                       type="text"
                       value={feature.icon}
@@ -194,20 +251,28 @@ export default function ProtectionProven() {
                     />
                   </div>
                   <div className="col-span-2">
-                    <label className="mb-1 block text-xs font-medium">Title</label>
+                    <label className="mb-1 block text-xs font-medium">
+                      Title
+                    </label>
                     <input
                       type="text"
                       value={feature.title}
-                      onChange={(e) => updateFeature(idx, "title", e.target.value)}
+                      onChange={(e) =>
+                        updateFeature(idx, "title", e.target.value)
+                      }
                       className="w-full rounded-xl border px-3 py-2 text-sm"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium">Description</label>
+                  <label className="mb-1 block text-xs font-medium">
+                    Description
+                  </label>
                   <textarea
                     value={feature.description}
-                    onChange={(e) => updateFeature(idx, "description", e.target.value)}
+                    onChange={(e) =>
+                      updateFeature(idx, "description", e.target.value)
+                    }
                     rows={2}
                     className="w-full rounded-xl border px-3 py-2 text-sm resize-none"
                   />
@@ -218,7 +283,9 @@ export default function ProtectionProven() {
 
           {/* Add New Feature Form */}
           <div className="mt-4 border-t pt-4">
-            <p className="text-xs font-bold text-slate-500 mb-3">Add New Card</p>
+            <p className="text-xs font-bold text-slate-500 mb-3">
+              Add New Card
+            </p>
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="mb-1 block text-xs font-medium">Icon</label>
@@ -238,7 +305,10 @@ export default function ProtectionProven() {
                   type="text"
                   value={newFeature.title}
                   onChange={(e) =>
-                    setNewFeature((prev) => ({ ...prev, title: e.target.value }))
+                    setNewFeature((prev) => ({
+                      ...prev,
+                      title: e.target.value,
+                    }))
                   }
                   placeholder="Card title"
                   className="w-full rounded-xl border px-3 py-2 text-sm"
@@ -246,11 +316,16 @@ export default function ProtectionProven() {
               </div>
             </div>
             <div className="mt-2">
-              <label className="mb-1 block text-xs font-medium">Description</label>
+              <label className="mb-1 block text-xs font-medium">
+                Description
+              </label>
               <textarea
                 value={newFeature.description}
                 onChange={(e) =>
-                  setNewFeature((prev) => ({ ...prev, description: e.target.value }))
+                  setNewFeature((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
                 }
                 rows={2}
                 placeholder="Card description"
@@ -262,6 +337,52 @@ export default function ProtectionProven() {
               className="mt-3 flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
             >
               <Plus size={16} /> Add Card
+            </button>
+          </div>
+        </div>
+
+        {/* Certification Standards */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-medium">
+              Certification Standards
+            </label>
+            <span className="text-xs text-slate-400">
+              {data.CertificationStandards.length} items
+            </span>
+          </div>
+          <div className="space-y-2">
+            {data.CertificationStandards.map((standard, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <span className="flex-1 text-sm">{standard}</span>
+                <button
+                  onClick={() => removeStandard(idx)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 mt-2">
+            <input
+              type="text"
+              value={newStandard}
+              onChange={(e) => setNewStandard(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addStandard();
+                }
+              }}
+              placeholder="Add a certification standard…"
+              className="flex-1 rounded-xl border px-4 py-2 text-sm"
+            />
+            <button
+              onClick={addStandard}
+              className="rounded-xl bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+            >
+              <Plus size={16} />
             </button>
           </div>
         </div>

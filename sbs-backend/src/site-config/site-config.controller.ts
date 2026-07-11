@@ -14,7 +14,10 @@ import { Public } from '../auth/decorators/public.decorator';
 const VALID_SECTIONS = new Set([
   'header', 'footer', 'branding', 'navigation',
   'contact', 'about', 'social', 'newsletter',
-  'apiKeys', 'founders', 'font', 'company', 'homeAbout', 'homePrinciples', 'distributor',
+  'apiKeys', 'founders', 'font', 'company', 
+  'homeAbout', 'homePrinciples', 'AuthorizedNetwork',
+  'IndustriesManager', 'ProtectionProven', 'WhyContact', 
+  'PartnershipAdvantages', 'PartnershipWork',
 ]);
 
 @Controller('site-config')

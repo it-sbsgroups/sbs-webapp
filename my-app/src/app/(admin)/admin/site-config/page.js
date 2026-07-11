@@ -1,16 +1,30 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import siteConfigApi, {
-  DEFAULT_BRANDING, DEFAULT_HEADER, DEFAULT_CONTACT, DEFAULT_ABOUT,
-  DEFAULT_API_KEYS, DEFAULT_FOUNDERS, DEFAULT_FONT,
-  GOOGLE_FONTS, SOCIAL_PLATFORMS,
+  DEFAULT_BRANDING,
+  DEFAULT_HEADER,
+  DEFAULT_CONTACT,
+  DEFAULT_API_KEYS,
+  DEFAULT_FOUNDERS,
+  DEFAULT_FONT,
+  GOOGLE_FONTS,
+  SOCIAL_PLATFORMS,
 } from "@/lib/siteConfig/siteConfigApi";
 import LocationSelector from "@/components/admin/site-config/LocationSelector";
 import HomeAboutManager from "@/components/admin/home/HomeAboutManager";
 import HomePrinciplesManager from "@/components/admin/home/HomePrinciplesManager";
-import DistributorManager from "@/components/admin/distributorComp/DistributorManager";
+import AuthorizedNetwork from "@/components/admin/distributorComp/AuthorizedNetwork";
+import IndustriesManager from "@/components/admin/clientsComp/IndustriesManager";
+import ProtectionProven from "@/components/admin/clientsComp/ProtectionProven";
+import WhyContact from "@/components/admin/contactComp/WhyContactUs";
+import PartnershipAdvantages from "@/components/admin/distributorComp/PartnershipAdvantages";
+import PartnershipWork from "@/components/admin/distributorComp/PartnershipWork";
+import AboutManager from "@/components/admin/aboutComp/AboutManager";
+import RichTextEditor from "@/components/shared/RichTextEditor";
+import { uploadImage } from "@/lib/uploadApi";
 
 // ─── Material Symbol icon helper ──────────────────────────────────────────────
 const Icon = ({ name, className = "text-lg" }) => (
@@ -80,17 +94,22 @@ function AddRemoveList({ items, setItems, renderItem, newItem }) {
 
 // ─── TAB DEFINITIONS ─────────────────────────────────────────────────────────
 const TABS = [
-  { key: "branding",        label: "Branding"         },
-  { key: "header",          label: "Header & Nav"     },
-  { key: "contact",         label: "Contact & Footer" },
-  { key: "about",           label: "About Us"         },
-  { key: "apiKeys",         label: "API Keys"         },
-  { key: "founders",        label: "Founders"         },
-  { key: "font",            label: "Font"             },
-  { key: "location",        label: "Location"         },
-  { key: "homeAbout",       label: "Home About"       },
-  { key: "homePrinciples",  label: "Home Principles"  },
-  { key: "distributor",     label: "Distributor"      },
+  { key: "branding",                      label: "Branding"                },
+  { key: "header",                        label: "Header & Nav"            },
+  { key: "contact",                       label: "Contact & Footer"        },
+  { key: "about",                         label: "About Us"                },
+  { key: "apiKeys",                       label: "API Keys"                },
+  { key: "founders",                      label: "Founders"                },
+  { key: "font",                          label: "Font"                    },
+  { key: "location",                      label: "Location"                },
+  { key: "homeAbout",                     label: "Home About"              },
+  { key: "homePrinciples",                label: "Home Principles"         },
+  { key: "AuthorizedNetwork",             label: "Authorized Network"      },
+  { key: "IndustriesManager",             label: "Industries Manager"      },
+  { key: "ProtectionProven",              label: "Protection Proven"       },
+  { key: "WhyContact",                    label: "Why Contact"             },
+  { key: "PartnershipAdvantages",         label: "Partnership Advantages"  },
+  { key: "PartnershipWork",               label: "Partnership Work"        },
 ];
 
 // ─── SECTION: BRANDING (tasks 1, 2) ──────────────────────────────────────────
@@ -533,202 +552,6 @@ function ContactSection() {
   );
 }
 
-// ─── SECTION: ABOUT US (tasks 12-15) ─────────────────────────────────────────
-function AboutSection() {
-  const [data,      setData]      = useState(DEFAULT_ABOUT);
-  const [saving,    setSaving]    = useState(false);
-  const [journeyUpl, setJourneyUpl] = useState(false);
-  const MAX_CORE_VALUES = (data.coreValues?.length || 0) < 5 ? 5 :
-    Math.ceil((data.coreValues?.length || 5) / 5) * 5;
-
-  useEffect(() => {
-    siteConfigApi.getAbout().then((d) => setData({ ...DEFAULT_ABOUT, ...d }));
-  }, []);
-
-  const addJourneyImage = async (file) => {
-    setJourneyUpl(true);
-    try {
-      const url = await siteConfigApi.uploadJourney(file);
-      const img = { url, caption: "", year: new Date().getFullYear().toString() };
-      setData((p) => ({ ...p, journey: { images: [...(p.journey?.images || []), img] } }));
-      toast.success("Journey image uploaded (uncompressed)");
-    } catch (e) { toast.error(e.message); } finally { setJourneyUpl(false); }
-  };
-
-  const canAddCoreValue = (data.coreValues?.length || 0) < MAX_CORE_VALUES;
-
-  const save = async () => {
-    setSaving(true);
-    try { await siteConfigApi.saveAbout(data); toast.success("About Us saved"); }
-    catch (e) { toast.error(e.message); } finally { setSaving(false); }
-  };
-
-  return (
-    <div className="space-y-5">
-      {/* 12 — Rich text content (text only, no images) */}
-      <div className={cardCls}>
-        <div>
-          <h3 className="text-sm font-black text-slate-900">About Us — Main Content</h3>
-          <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-            Plain or HTML text only — no image blocks here. No word limit.
-          </p>
-        </div>
-        <textarea
-          className={`${inputCls} min-h-[200px] resize-y`}
-          value={data.richContent || ""}
-          onChange={(e) => setData((p) => ({ ...p, richContent: e.target.value }))}
-          placeholder="Write your About Us content here. HTML is supported for formatting (bold, italic, headings, lists)…"
-        />
-        <p className="text-[10px] text-slate-400">
-          {(data.richContent || "").length} characters
-        </p>
-      </div>
-
-      {/* 13 — Our Journey images (uncompressed) */}
-      <div className={cardCls}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-black text-slate-900">Our Journey</h3>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-              Upload timeline/journey images without compression. Like the PNG on your current site.
-            </p>
-          </div>
-          <UploadBtn label="Upload Image" accept="image/*" onFile={addJourneyImage} loading={journeyUpl} icon="add_photo_alternate" />
-        </div>
-
-        <div className="space-y-3">
-          {(data.journey?.images || []).map((img, i) => (
-            <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-              <img src={img.url} alt="" className="w-20 h-16 object-cover rounded-lg border border-slate-200 shrink-0" onError={(e) => { e.currentTarget.style.opacity = "0.3"; }} />
-              <div className="flex-1 grid grid-cols-2 gap-2">
-                <input className={inputCls} placeholder="Caption" value={img.caption || ""}
-                  onChange={(e) => { const imgs = [...data.journey.images]; imgs[i] = { ...img, caption: e.target.value }; setData((p) => ({ ...p, journey: { images: imgs } })); }} />
-                <input className={inputCls} placeholder="Year (e.g. 2018)" value={img.year || ""}
-                  onChange={(e) => { const imgs = [...data.journey.images]; imgs[i] = { ...img, year: e.target.value }; setData((p) => ({ ...p, journey: { images: imgs } })); }} />
-              </div>
-              <button onClick={() => { const imgs = data.journey.images.filter((_, j) => j !== i); setData((p) => ({ ...p, journey: { images: imgs } })); }}
-                className="p-1.5 text-red-400 hover:text-red-700 hover:bg-red-50 rounded-lg"><Icon name="delete" /></button>
-            </div>
-          ))}
-          {(data.journey?.images || []).length === 0 && (
-            <p className="text-xs text-slate-400 font-medium text-center py-4">No journey images yet. Upload one above.</p>
-          )}
-        </div>
-      </div>
-
-      {/* 14 — Vision & Mission */}
-      <div className={cardCls}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-black text-slate-900">Vision & Mission</h3>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-              Select type, pick a Material Symbol icon, add a heading + description. Max 250 chars per description point.
-            </p>
-          </div>
-          <button onClick={() => setData((p) => ({ ...p, visionMission: [...(p.visionMission || []), { type: "vision", icon: "visibility", points: [{ heading: "", description: "" }] }] }))}
-            className="flex items-center gap-1.5 text-xs font-black px-3 py-2 bg-blue-950 text-white rounded-xl hover:bg-blue-900">
-            <Icon name="add" /> Add
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          {(data.visionMission || []).map((vm, vi) => (
-            <div key={vi} className="border border-slate-200 rounded-xl p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <select className={`${inputCls} w-32`} value={vm.type}
-                  onChange={(e) => { const arr = [...data.visionMission]; arr[vi] = { ...vm, type: e.target.value }; setData((p) => ({ ...p, visionMission: arr })); }}>
-                  <option value="vision">Vision</option>
-                  <option value="mission">Mission</option>
-                </select>
-                <div className="flex items-center gap-2 flex-1">
-                  <span className="material-symbols-outlined text-blue-700" style={{ fontSize: "22px" }}>{vm.icon || "star"}</span>
-                  <input className={`${inputCls} flex-1`} placeholder="Material Symbol icon name (e.g. visibility, flag, rocket_launch)" value={vm.icon || ""}
-                    onChange={(e) => { const arr = [...data.visionMission]; arr[vi] = { ...vm, icon: e.target.value }; setData((p) => ({ ...p, visionMission: arr })); }} />
-                </div>
-                <button onClick={() => setData((p) => ({ ...p, visionMission: p.visionMission.filter((_, j) => j !== vi) }))}
-                  className="p-1.5 text-red-400 hover:text-red-700 hover:bg-red-50 rounded-lg"><Icon name="delete" /></button>
-              </div>
-
-              <div className="space-y-2">
-                <p className={labelCls}>Points</p>
-                {(vm.points || []).map((pt, pi) => (
-                  <div key={pi} className="flex items-start gap-2">
-                    <div className="flex-1 space-y-1.5">
-                      <input className={inputCls} placeholder="Heading (optional)" value={pt.heading || ""}
-                        onChange={(e) => { const arr = [...data.visionMission]; arr[vi].points[pi] = { ...pt, heading: e.target.value }; setData((p) => ({ ...p, visionMission: arr })); }} />
-                      <div className="relative">
-                        <textarea className={`${inputCls} min-h-[60px] resize-none`} placeholder="Description (max 250 chars)" maxLength={250} value={pt.description || ""}
-                          onChange={(e) => { const arr = [...data.visionMission]; arr[vi].points[pi] = { ...pt, description: e.target.value }; setData((p) => ({ ...p, visionMission: arr })); }} />
-                        <span className={`absolute bottom-2 right-2 text-[10px] font-mono ${(pt.description || "").length > 220 ? "text-amber-600" : "text-slate-300"}`}>
-                          {(pt.description || "").length}/250
-                        </span>
-                      </div>
-                    </div>
-                    <button onClick={() => { const arr = [...data.visionMission]; arr[vi].points = arr[vi].points.filter((_, k) => k !== pi); setData((p) => ({ ...p, visionMission: arr })); }}
-                      className="p-1.5 mt-1 text-red-400 hover:text-red-700 hover:bg-red-50 rounded-lg"><Icon name="close" className="text-sm" /></button>
-                  </div>
-                ))}
-                <button onClick={() => { const arr = [...data.visionMission]; arr[vi].points = [...(arr[vi].points || []), { heading: "", description: "" }]; setData((p) => ({ ...p, visionMission: arr })); }}
-                  className="text-[10px] font-black text-blue-800 hover:text-blue-950 flex items-center gap-1">
-                  <Icon name="add_circle" className="text-sm" /> Add Point
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 15 — Core Values (max 5, extendable by 3 or 5) */}
-      <div className={cardCls}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-black text-slate-900">Core Values</h3>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-              Max {MAX_CORE_VALUES} values. Extend in batches of +3 or +5.
-              {(data.coreValues?.length || 0) >= MAX_CORE_VALUES && " Increase limit below to add more."}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {(data.coreValues?.length || 0) >= MAX_CORE_VALUES && (
-              <>
-                <button onClick={() => setData((p) => ({ ...p, _maxCoreValues: (p._maxCoreValues || 5) + 3 }))}
-                  className="text-[10px] font-black px-2 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">+3 slots</button>
-                <button onClick={() => setData((p) => ({ ...p, _maxCoreValues: (p._maxCoreValues || 5) + 5 }))}
-                  className="text-[10px] font-black px-2 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">+5 slots</button>
-              </>
-            )}
-            {(data.coreValues?.length || 0) < (data._maxCoreValues || 5) && (
-              <button onClick={() => setData((p) => ({ ...p, coreValues: [...(p.coreValues || []), { title: "", description: "" }] }))}
-                className="flex items-center gap-1.5 text-xs font-black px-3 py-2 bg-blue-950 text-white rounded-xl hover:bg-blue-900">
-                <Icon name="add" /> Add Value
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {(data.coreValues || []).map((cv, i) => (
-            <div key={i} className="border border-slate-200 rounded-xl p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-slate-400 uppercase">Value {i + 1}</span>
-                <button onClick={() => setData((p) => ({ ...p, coreValues: p.coreValues.filter((_, j) => j !== i) }))}
-                  className="p-1 text-red-400 hover:text-red-700"><Icon name="close" className="text-sm" /></button>
-              </div>
-              <input className={inputCls} placeholder="Title (e.g. Integrity)" value={cv.title || ""}
-                onChange={(e) => { const arr = [...data.coreValues]; arr[i] = { ...cv, title: e.target.value }; setData((p) => ({ ...p, coreValues: arr })); }} />
-              <textarea className={`${inputCls} min-h-[80px] resize-none`} placeholder="Description — supports headings, bullets, bold, etc."
-                value={cv.description || ""}
-                onChange={(e) => { const arr = [...data.coreValues]; arr[i] = { ...cv, description: e.target.value }; setData((p) => ({ ...p, coreValues: arr })); }} />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex justify-end"><SaveBtn saving={saving} onClick={save} /></div>
-    </div>
-  );
-}
-
 // ─── SECTION: API KEYS (task 16) ──────────────────────────────────────────────
 function ApiKeysSection() {
   const [data,   setData]   = useState(DEFAULT_API_KEYS);
@@ -829,94 +652,259 @@ function ApiKeysSection() {
   );
 }
 
-// ─── SECTION: FOUNDERS (task 17) ─────────────────────────────────────────────
+// ─── FOUNDER CARD COMPONENT (stable, outside of FoundersSection) ──────────────
+function FounderCard({ who, title, data, setF, uploading, handlePhoto, handleAdditionalPhoto }) {
+  const f = data[who] || {};
+  return (
+    <div className={cardCls}>
+      <h3 className="text-sm font-black text-slate-900">{title}</h3>
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* ─── Images column ─── */}
+        <div className="shrink-0 space-y-4">
+          {/* Main Photo */}
+          <div>
+            <p className={labelCls}>Photo</p>
+            <div className="relative">
+              {f.photoUrl ? (
+                <img
+                  src={f.photoUrl}
+                  alt={who}
+                  className="w-32 h-36 object-cover rounded-xl border"
+                />
+              ) : (
+                <div className="w-32 h-36 bg-slate-100 rounded-xl border border-dashed border-slate-300 flex items-center justify-center">
+                  <Icon name="person" className="text-3xl text-slate-400" />
+                </div>
+              )}
+            </div>
+            <div className="mt-1 flex flex-col gap-1">
+              <UploadBtn
+                label="Upload Photo"
+                accept="image/*"
+                onFile={(file) => handlePhoto(who, file)}
+                loading={uploading[who]}
+                icon="add_photo_alternate"
+              />
+              {f.photoUrl && (
+                <button
+                  onClick={() => setF(who, "photoUrl", "")}
+                  className="text-[10px] text-red-500 font-bold hover:text-red-700"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Additional PNG Image */}
+          <div>
+            <p className={labelCls}>Additional Image (PNG)</p>
+            <div className="relative">
+              {f.additionalImageUrl ? (
+                <img
+                  src={f.additionalImageUrl}
+                  alt="Additional"
+                  className="w-32 h-36 object-cover rounded-xl border"
+                />
+              ) : (
+                <div className="w-32 h-36 bg-slate-100 rounded-xl border border-dashed border-slate-300 flex items-center justify-center">
+                  <Icon name="image" className="text-3xl text-slate-400" />
+                </div>
+              )}
+            </div>
+            <div className="mt-1 flex flex-col gap-1">
+              <UploadBtn
+                label="Upload PNG"
+                accept="image/png"
+                onFile={(file) => handleAdditionalPhoto(who, file)}
+                loading={uploading[who + "Add"]}
+                icon="add_photo_alternate"
+              />
+              {f.additionalImageUrl && (
+                <button
+                  onClick={() => setF(who, "additionalImageUrl", "")}
+                  className="text-[10px] text-red-500 font-bold hover:text-red-700"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ─── Details column ─── */}
+        <div className="flex-1 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Full Name">
+              <input
+                className={inputCls}
+                value={f.name || ""}
+                onChange={(e) => setF(who, "name", e.target.value)}
+              />
+            </Field>
+            <Field label="Designation">
+              <input
+                className={inputCls}
+                value={f.designation || ""}
+                onChange={(e) => setF(who, "designation", e.target.value)}
+              />
+            </Field>
+          </div>
+
+          {/* Message */}
+          <div>
+            <label className={labelCls}>Message / Quote</label>
+            <textarea
+              className={`${inputCls} min-h-[100px] resize-none`}
+              placeholder="A personal message or quote from the founder"
+              value={f.message || ""}
+              onChange={(e) => setF(who, "message", e.target.value)}
+            />
+          </div>
+
+          {/* Phone Numbers */}
+          <div>
+            <p className={labelCls}>Phone Numbers</p>
+            <AddRemoveList
+              items={f.phones || []}
+              setItems={(phones) => setF(who, "phones", phones)}
+              newItem={() => ({ value: "" })}
+              renderItem={(item, i, upd) => (
+                <input
+                  className={inputCls}
+                  value={item.value || ""}
+                  placeholder="+91 9876543210"
+                  onChange={(e) => upd({ value: e.target.value })}
+                />
+              )}
+            />
+          </div>
+
+          {/* Email Addresses */}
+          <div>
+            <p className={labelCls}>Email Addresses</p>
+            <AddRemoveList
+              items={f.emails || []}
+              setItems={(emails) => setF(who, "emails", emails)}
+              newItem={() => ({ value: "" })}
+              renderItem={(item, i, upd) => (
+                <input
+                  className={inputCls}
+                  value={item.value || ""}
+                  placeholder="founder@company.com"
+                  onChange={(e) => upd({ value: e.target.value })}
+                />
+              )}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── SECTION: FOUNDERS (improved, stable) ─────────────────────────────────────
 function FoundersSection() {
-  const [data,     setData]     = useState(DEFAULT_FOUNDERS);
-  const [saving,   setSaving]   = useState(false);
-  const [uploading, setUploading] = useState({ founder: false, coFounder: false });
+  const [data, setData] = useState(DEFAULT_FOUNDERS);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState({
+    founder: false,
+    coFounder: false,
+    founderAdd: false,
+    coFounderAdd: false,
+  });
 
   useEffect(() => {
-    siteConfigApi.getFounders().then((d) => setData({ ...DEFAULT_FOUNDERS, ...d }));
+    siteConfigApi.getFounders().then((d) => {
+      const normalize = (person) => ({
+        ...person,
+        phones: (person.phones || []).map((p) =>
+          typeof p === "string" ? { value: p } : p
+        ),
+        emails: (person.emails || []).map((e) =>
+          typeof e === "string" ? { value: e } : e
+        ),
+      });
+      setData({
+        ...DEFAULT_FOUNDERS,
+        ...d,
+        founder: normalize({ ...DEFAULT_FOUNDERS.founder, ...(d.founder || {}) }),
+        coFounder: normalize({ ...DEFAULT_FOUNDERS.coFounder, ...(d.coFounder || {}) }),
+      });
+    }).catch(console.warn);
   }, []);
 
-  const setF = (who, k, v) => setData((p) => ({ ...p, [who]: { ...p[who], [k]: v } }));
+  const setF = (who, k, v) =>
+    setData((p) => ({ ...p, [who]: { ...p[who], [k]: v } }));
 
   const handlePhoto = async (who, file) => {
     setUploading((p) => ({ ...p, [who]: true }));
     try {
-      const url = who === "founder" ? await siteConfigApi.uploadFounder(file) : await siteConfigApi.uploadCoFounder(file);
+      const url = await siteConfigApi.uploadFounder(file);
       setF(who, "photoUrl", url);
-      toast.success("Photo uploaded (uncompressed)");
-    } catch (e) { toast.error(e.message); } finally { setUploading((p) => ({ ...p, [who]: false })); }
+      toast.success("Photo uploaded");
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setUploading((p) => ({ ...p, [who]: false }));
+    }
+  };
+
+  const handleAdditionalPhoto = async (who, file) => {
+    const key = who + "Add";
+    setUploading((p) => ({ ...p, [key]: true }));
+    try {
+      const url = await uploadImage(file, "founder-additional");
+      setF(who, "additionalImageUrl", url);
+      toast.success("Additional image uploaded");
+    } catch (e) {
+      toast.error(e.message || "Upload failed");
+    } finally {
+      setUploading((p) => ({ ...p, [key]: false }));
+    }
   };
 
   const save = async () => {
     setSaving(true);
-    try { await siteConfigApi.saveFounders(data); toast.success("Founder details saved"); }
-    catch (e) { toast.error(e.message); } finally { setSaving(false); }
-  };
-
-  const FounderCard = ({ who, title }) => {
-    const f = data[who] || {};
-    return (
-      <div className={cardCls}>
-        <h3 className="text-sm font-black text-slate-900">{title}</h3>
-        <div className="flex items-start gap-4">
-          {/* Photo */}
-          <div className="shrink-0">
-            {f.photoUrl ? (
-              <img src={f.photoUrl} alt={who} className="w-24 h-28 object-cover rounded-xl border border-slate-200" />
-            ) : (
-              <div className="w-24 h-28 bg-slate-100 rounded-xl border border-dashed border-slate-300 flex items-center justify-center">
-                <Icon name="person" className="text-3xl text-slate-400" />
-              </div>
-            )}
-            <div className="mt-2 flex flex-col gap-1">
-              <UploadBtn label="Upload Photo" accept="image/*" onFile={(file) => handlePhoto(who, file)} loading={uploading[who]} icon="add_photo_alternate" />
-              {f.photoUrl && <button onClick={() => setF(who, "photoUrl", "")} className="text-[10px] text-red-500 font-bold text-center hover:text-red-700">Remove</button>}
-            </div>
-          </div>
-
-          <div className="flex-1 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Full Name"><input className={inputCls} value={f.name || ""} onChange={(e) => setF(who, "name", e.target.value)} /></Field>
-              <Field label="Designation"><input className={inputCls} value={f.designation || ""} onChange={(e) => setF(who, "designation", e.target.value)} /></Field>
-            </div>
-            {/* Phones */}
-            <div>
-              <p className={`${labelCls} mb-1.5`}>Phone Numbers</p>
-              <AddRemoveList
-                items={f.phones || []}
-                setItems={(phones) => setF(who, "phones", phones)}
-                newItem={() => ""}
-                renderItem={(item, i, upd) => (
-                  <input className={inputCls} value={item || ""} placeholder="+91 9876543210" onChange={(e) => upd(e.target.value)} />
-                )}
-              />
-            </div>
-            {/* Emails */}
-            <div>
-              <p className={`${labelCls} mb-1.5`}>Email Addresses</p>
-              <AddRemoveList
-                items={f.emails || []}
-                setItems={(emails) => setF(who, "emails", emails)}
-                newItem={() => ""}
-                renderItem={(item, i, upd) => (
-                  <input className={inputCls} value={item || ""} placeholder="founder@company.com" onChange={(e) => upd(e.target.value)} />
-                )}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    try {
+      await siteConfigApi.saveFounders(data);
+      toast.success("Founder details saved");
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div className="space-y-5">
-      <FounderCard who="founder" title="👤 Founder" />
-      <FounderCard who="coFounder" title="👤 Co-Founder" />
-      <div className="flex justify-end"><SaveBtn saving={saving} onClick={save} /></div>
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900">Founders</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Manage founder and co‑founder details.
+        </p>
+      </div>
+      <FounderCard
+        who="founder"
+        title="👤 Founder"
+        data={data}
+        setF={setF}
+        uploading={uploading}
+        handlePhoto={handlePhoto}
+        handleAdditionalPhoto={handleAdditionalPhoto}
+      />
+      <FounderCard
+        who="coFounder"
+        title="👤 Co-Founder"
+        data={data}
+        setF={setF}
+        uploading={uploading}
+        handlePhoto={handlePhoto}
+        handleAdditionalPhoto={handleAdditionalPhoto}
+      />
+      <div className="flex justify-end">
+        <SaveBtn saving={saving} onClick={save} />
+      </div>
     </div>
   );
 }
@@ -1035,22 +1023,59 @@ const [address, setAddress] = useState({});
 
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function SiteConfigPage() {
-  const [tab, setTab] = useState("branding");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get tab from URL or default to 'branding'
+  const initialTab = searchParams.get("tab") || "branding";
+  const validTabs = TABS.map((t) => t.key);
+  const currentTab = validTabs.includes(initialTab) ? initialTab : "branding";
+
+  // Function to change tab (updates URL and local state)
+  const changeTab = useCallback(
+    (newTab) => {
+      const params = new URLSearchParams(searchParams);
+      params.set("tab", newTab);
+      router.push(`?${params.toString()}`, { scroll: false });
+    },
+    [router, searchParams]
+  );
+
+  // Keyboard navigation: Ctrl + Tab (forward), Ctrl + Shift + Tab (backward)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.key === "Tab") {
+        e.preventDefault();
+        const currentIndex = validTabs.indexOf(currentTab);
+        const direction = e.shiftKey ? -1 : 1;
+        const newIndex =
+          (currentIndex + direction + validTabs.length) % validTabs.length;
+        changeTab(validTabs[newIndex]);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [currentTab, validTabs, changeTab]);
 
   const renderSection = () => {
-    switch (tab) {
-      case "branding":          return <BrandingSection />;
-      case "header":            return <HeaderSection />;
-      case "contact":           return <ContactSection />;
-      case "about":             return <AboutSection />;
-      case "apiKeys":           return <ApiKeysSection />;
-      case "founders":          return <FoundersSection />;
-      case "font":              return <FontSection />;
-      case "location":          return <LocationSection />;
-      case "homeAbout":         return <HomeAboutManager />;
-      case "homePrinciples":    return <HomePrinciplesManager />;
-      case "distributor":       return <DistributorManager />;
-      default:                  return <BrandingSection />;
+    switch (currentTab) {
+      case "branding":                     return <BrandingSection />;
+      case "header":                       return <HeaderSection />;
+      case "contact":                      return <ContactSection />;
+      case "about":                        return <AboutManager />;
+      case "apiKeys":                      return <ApiKeysSection />;
+      case "founders":                     return <FoundersSection />;
+      case "font":                         return <FontSection />;
+      case "location":                     return <LocationSection />;
+      case "homeAbout":                    return <HomeAboutManager />;
+      case "homePrinciples":               return <HomePrinciplesManager />;
+      case "AuthorizedNetwork":            return <AuthorizedNetwork />;
+      case "IndustriesManager":            return <IndustriesManager />;
+      case "ProtectionProven":             return <ProtectionProven />;
+      case "WhyContact":                   return <WhyContact />;
+      case "PartnershipAdvantages":        return <PartnershipAdvantages />;
+      case "PartnershipWork":              return <PartnershipWork />;
+      default:                             return <BrandingSection />;
     }
   };
 
@@ -1069,11 +1094,10 @@ export default function SiteConfigPage() {
         <aside className="w-full lg:w-56 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 shrink-0">
           <nav className="p-3 space-y-0.5">
             {TABS.map((t) => (
-              <button key={t.key} onClick={() => setTab(t.key)}
+              <button key={t.key} onClick={() => changeTab(t.key)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-black transition-all text-left ${
-                  tab === t.key ? "bg-blue-950 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  currentTab === t.key ? "bg-blue-950 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 }`}>
-                {/* <Icon name={t.icon} className="text-base" /> */}
                 {t.label}
               </button>
             ))}

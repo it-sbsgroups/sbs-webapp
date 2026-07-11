@@ -20,7 +20,9 @@ import * as multer from 'multer';
  
 const VALID_KEYS = new Set([
   'branding', 'header', 'contact', 'about', 'apiKeys', 'founders', 'font',
-  'company', 'footer', 'homeAbout', 'homePrinciples', 'distributor',
+  'company', 'footer', 'homeAbout', 'homePrinciples', 'AuthorizedNetwork', 
+  'IndustriesManager', 'ProtectionProven', 'WhyContact', 'PartnershipAdvantages', 
+  'PartnershipWork',
 ]);
  
 @Controller('site')

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, Upload, Plus, Trash2, AlarmClockCheck, Zap, } from "lucide-react";
+import { Save, Plus, Trash2,} from "lucide-react";
 import RichTextEditor from "@/components/shared/RichTextEditor";
 import siteConfigApi from "@/lib/siteConfig/siteConfigApi";
 import toast from "react-hot-toast";
@@ -32,7 +32,7 @@ const DEFAULT_DATA = {
     },
     {
       id: "f4",
-      icon: "UserRoundSearch ",
+      icon: "UserRoundSearch",
       title: "Multiple Contact Options",
       description: "Reach us via phone, email, or contact form",
     },
@@ -140,7 +140,7 @@ export default function WhyContact() {
         {/* Description */}
         <div>
           <label className="mb-1.5 block text-xs font-medium">Introductory Description</label>
-          <RichTextEditor value={data.description || ""} onChange={(html) => updateField("description", html)} placeholder="Write a short introduction for the section…" uploadFolder="distributor" />
+          <RichTextEditor value={data.description || ""} onChange={(html) => updateField("description", html)} placeholder="Write a short introduction for the section…" uploadFolder="contact-why" />
         </div>
 
         {/* Features List */}
