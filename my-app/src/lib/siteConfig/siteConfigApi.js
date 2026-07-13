@@ -91,7 +91,6 @@ const location = {
 
 const siteConfigApi = {
   getBranding:  () => fetchSection("branding"),
-  getHeader:    () => fetchSection("header"),
   getContact:   () => fetchSection("contact"),
   getAbout:     () => fetchSection("about"),
   getApiKeys:   () => fetchSection("apiKeys"),
@@ -108,7 +107,6 @@ const siteConfigApi = {
   getAll:       async () => { try { const r = await apiClient.get("/site"); return r?.data ?? r ?? {}; } catch { return {}; } },
 
   saveBranding:       (d) => saveSection("branding", d),
-  saveHeader:         (d) => saveSection("header", d),
   saveContact:        (d) => saveSection("contact", d),
   saveAbout:          (d) => saveSection("about", d),
   saveApiKeys:        (d) => saveSection("apiKeys", d),

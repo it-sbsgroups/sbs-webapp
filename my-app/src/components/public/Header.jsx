@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { searchAll, TYPE_META } from "@/lib/searchIndex";
@@ -9,7 +10,6 @@ import { searchAll, TYPE_META } from "@/lib/searchIndex";
 // Import dummy data (replace with API call later)
 import headerDummyData from "@/data/headerData";
 import headerApi from "@/lib/headerApi";
-import companyApi from "@/lib/company/companyApi";
 import categoriesApi from "@/lib/categoriesApi";
 
 export default function Header() {
@@ -67,21 +67,14 @@ export default function Header() {
     return () => { active = false; };
   }, []);
 
-  // Single logo source: company details override the header's own logo.
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const c = await companyApi.get();
-        if (active && c?.logo) {
-          setHeaderData((prev) => ({ ...prev, branding: { ...prev.branding, logoUrl: c.logo } }));
-        }
-      } catch {
-        /* ignore */
-      }
-    })();
-    return () => { active = false; };
-  }, []);
+  // NOTE (audit fix): this used to also fetch companyApi.get() and override
+  // branding.logoUrl from the separate top-level "branding" site-config key.
+  // That created two competing places to set the header logo — one wired to
+  // the sidebar-linked admin UI, one wired to the (previously unlinked)
+  // /admin/header Logo tab — which could silently disagree. headerData.branding
+  // (from the "navigation" key, above) is now the single source of truth for
+  // the header's logo/company name/tagline; see the Header & Nav tab audit
+  // note in app/(admin)/admin/site-config/page.js.
 
   // ===== AUTH CHECK removed — login button no longer shown on public header =====
 
@@ -193,17 +186,20 @@ export default function Header() {
         {/* ===== DYNAMIC LOGO ===== */}
         <div className="flex shrink-0 items-center">
           <Link href="/" className="flex items-center gap-3 group focus:outline-none">
-            {branding.logoUrl ? (
-              <img 
-                src={branding.logoUrl} 
-                alt={`${branding.companyName} Logo`}
+            {/* {branding.logoUrl ? (
+              <Image
+                src={branding.logoUrl}
+                alt={`${branding.companyName || "SBS Groups"} Logo`}
+                width={160}
+                height={56}
+                priority
                 className="h-12 md:h-14 w-auto object-contain transition-transform group-hover:scale-105"
-                onError={(e) => { 
-                  e.currentTarget.style.display = "none"; 
-                  e.currentTarget.nextSibling.style.display = "flex"; 
-                }} 
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                  e.currentTarget.nextSibling.style.display = "flex";
+                }}
               />
-            ) : null}
+            ) : null} */}
             <div className={`flex-col ${branding.logoUrl ? "hidden" : "flex"}`}>
               <span className="text-lg font-black tracking-tighter text-blue-950 group-hover:text-blue-900 transition-colors">
                 {branding.companyName}

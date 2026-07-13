@@ -4,8 +4,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import siteConfigApi, {
-  DEFAULT_BRANDING,
-  DEFAULT_HEADER,
   DEFAULT_CONTACT,
   DEFAULT_API_KEYS,
   DEFAULT_FOUNDERS,
@@ -14,6 +12,11 @@ import siteConfigApi, {
   SOCIAL_PLATFORMS,
 } from "@/lib/siteConfig/siteConfigApi";
 import LocationSelector from "@/components/admin/site-config/LocationSelector";
+// Reuse the components that already correctly read/write the "navigation"
+// site-config key — see the audit note above HeaderSection() below.
+import LogoManager from "@/components/admin/header/LogoManager";
+import NavigationManager from "@/components/admin/header/NavigationManager";
+import LoginManager from "@/components/admin/header/LoginManager";
 import HomeAboutManager from "@/components/admin/home/HomeAboutManager";
 import HomePrinciplesManager from "@/components/admin/home/HomePrinciplesManager";
 import AuthorizedNetwork from "@/components/admin/distributorComp/AuthorizedNetwork";
@@ -92,9 +95,8 @@ function AddRemoveList({ items, setItems, renderItem, newItem }) {
   );
 }
 
-// ─── TAB DEFINITIONS ─────────────────────────────────────────────────────────
+// ─── TAB DEFINITIONS (Branding removed) ─────────────────────────────────────
 const TABS = [
-  { key: "branding",                      label: "Branding"                },
   { key: "header",                        label: "Header & Nav"            },
   { key: "contact",                       label: "Contact & Footer"        },
   { key: "about",                         label: "About Us"                },
@@ -112,273 +114,50 @@ const TABS = [
   { key: "PartnershipWork",               label: "Partnership Work"        },
 ];
 
-// ─── SECTION: BRANDING (tasks 1, 2) ──────────────────────────────────────────
-function BrandingSection() {
-  const [data,    setData]    = useState(DEFAULT_BRANDING);
-  const [saving,  setSaving]  = useState(false);
-  const [logoUpl, setLogoUpl] = useState(false);
-  const [favUpl,  setFavUpl]  = useState(false);
+// ─── SECTION: HEADER & NAVIGATION ──────────────────────────────────────────
+// NOTE (audit fix): this used to be a hand-rolled editor that read/wrote the
+// "header" site-config key via siteConfigApi.getHeader()/saveHeader(). That
+// key was never read anywhere else in the app — the public Header.jsx (and
+// the previously-unlinked /admin/header route) actually read/write the
+// "navigation" key via headerApi. The two editors could silently disagree:
+// changes made here never appeared on the live site. Fix: reuse the exact
+// components that already write to the correct key, so there is a single
+// source of truth and this tab (which IS linked in the sidebar) actually
+// works.
+function HeaderSection() {
+  const [subTab, setSubTab] = useState("logo");
 
-  useEffect(() => {
-    siteConfigApi.getBranding().then((d) => setData({ ...DEFAULT_BRANDING, ...d }));
-  }, []);
-
-  const set = (k, v) => setData((p) => ({ ...p, [k]: v }));
-
-  const handleLogo = async (file) => {
-    setLogoUpl(true);
-    try {
-      const url = await siteConfigApi.uploadLogo(file);
-      set("logoUrl", url);
-      toast.success("Logo uploaded (uncompressed)");
-    } catch (e) { toast.error(e.message); } finally { setLogoUpl(false); }
-  };
-
-  const handleFavicon = async (file) => {
-    setFavUpl(true);
-    try {
-      const url = await siteConfigApi.uploadFavicon(file);
-      set("faviconUrl", url);
-      toast.success("Favicon uploaded");
-    } catch (e) { toast.error(e.message); } finally { setFavUpl(false); }
-  };
-
-  const save = async () => {
-    setSaving(true);
-    try { await siteConfigApi.saveBranding(data); toast.success("Branding saved"); }
-    catch (e) { toast.error(e.message); } finally { setSaving(false); }
-  };
+  const subTabs = [
+    { id: "logo", label: "Logo & Branding" },
+    { id: "navigation", label: "Navigation Items" },
+    { id: "login", label: "Login Button" },
+  ];
 
   return (
     <div className="space-y-5">
-      <div className={cardCls}>
-        <h3 className="text-sm font-black text-slate-900">Company Identity</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Company Name">
-            <input className={inputCls} value={data.companyName} onChange={(e) => set("companyName", e.target.value)} placeholder="SBS Groups" />
-          </Field>
-          <Field label="Tagline">
-            <input className={inputCls} value={data.tagline} onChange={(e) => set("tagline", e.target.value)} placeholder="Industrial Solutions" />
-          </Field>
-        </div>
-      </div>
-
-      {/* Logo */}
-      <div className={cardCls}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-black text-slate-900">Company Logo</h3>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">Uploaded uncompressed — PNG, SVG, WebP, JPG all accepted. Max 10 MB.</p>
-          </div>
-          <UploadBtn label="Upload Logo" accept="image/*" onFile={handleLogo} loading={logoUpl} icon="add_photo_alternate" />
-        </div>
-        {data.logoUrl && (
-          <div className="mt-3 bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-center gap-4">
-            <img src={data.logoUrl} alt="logo" className="max-h-16 max-w-[180px] object-contain" />
-            <div className="flex-1">
-              <p className="text-xs text-slate-500 font-mono break-all">{data.logoUrl}</p>
-            </div>
-            <button onClick={() => set("logoUrl", "")} className="p-1.5 text-red-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
-              <Icon name="delete" />
-            </button>
-          </div>
-        )}
-        <Field label="Or paste logo URL">
-          <input className={inputCls} value={data.logoUrl} onChange={(e) => set("logoUrl", e.target.value)} placeholder="https://res.cloudinary.com/…" />
-        </Field>
-      </div>
-
-      {/* Favicon */}
-      <div className={cardCls}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-black text-slate-900">Favicon</h3>
-            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-              <span className="text-amber-700 font-bold">.ico files only.</span>{" "}
-              Convert at <a href="https://favicon.io/favicon-converter/" target="_blank" rel="noopener noreferrer" className="text-blue-700 underline">favicon.io</a> or <a href="https://convertio.co/png-ico/" target="_blank" rel="noopener noreferrer" className="text-blue-700 underline">convertio.co</a>. Max 1 MB.
-            </p>
-          </div>
-          <UploadBtn label="Upload .ico" accept=".ico,image/x-icon,image/vnd.microsoft.icon" onFile={handleFavicon} loading={favUpl} icon="add_photo_alternate" />
-        </div>
-        {data.faviconUrl && (
-          <div className="mt-3 flex items-center gap-3 bg-slate-50 rounded-xl p-3 border border-slate-100">
-            <img src={data.faviconUrl} alt="favicon" className="w-10 h-10 object-contain" onError={(e) => { e.currentTarget.style.opacity = "0.3"; }} />
-            <p className="text-xs text-slate-500 font-mono break-all flex-1">{data.faviconUrl}</p>
-            <button onClick={() => set("faviconUrl", "")} className="p-1.5 text-red-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
-              <Icon name="delete" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="flex justify-end"><SaveBtn saving={saving} onClick={save} /></div>
-    </div>
-  );
-}
-
-// ─── SECTION: HEADER & NAVIGATION (tasks 3) ───────────────────────────────────
-function HeaderSection({ categories = [] }) {
-  const [data,   setData]   = useState(DEFAULT_HEADER);
-  const [saving, setSaving] = useState(false);
-  const [editIdx, setEditIdx] = useState(null);
-
-  useEffect(() => {
-    siteConfigApi.getHeader().then((d) => setData({ ...DEFAULT_HEADER, navs: [], ...d }));
-  }, []);
-
-  const setNavs = (navs) => setData((p) => ({ ...p, navs }));
-
-  const blankNav = () => ({
-    id: Date.now(), name: "", link: "/", enabled: true,
-    hasDropdown: false, dropdownType: "custom", dropdownItems: [],
-  });
-
-  const addNav = () => setNavs([...data.navs, blankNav()]);
-  const removeNav = (i) => setNavs(data.navs.filter((_, j) => j !== i));
-  const updateNav = (i, patch) => setNavs(data.navs.map((n, j) => j === i ? { ...n, ...patch } : n));
-  const moveNav = (i, dir) => {
-    const arr = [...data.navs];
-    const to = i + dir;
-    if (to < 0 || to >= arr.length) return;
-    [arr[i], arr[to]] = [arr[to], arr[i]];
-    setNavs(arr);
-  };
-
-  const save = async () => {
-    setSaving(true);
-    try { await siteConfigApi.saveHeader(data); toast.success("Header saved"); }
-    catch (e) { toast.error(e.message); } finally { setSaving(false); }
-  };
-
-  return (
-    <div className="space-y-5">
-      {/* Login button toggle */}
-      <div className={cardCls}>
-        <h3 className="text-sm font-black text-slate-900">Login Button</h3>
-        <label className="flex items-center gap-3 cursor-pointer">
-          <div onClick={() => setData((p) => ({ ...p, loginButton: { ...p.loginButton, enabled: !p.loginButton?.enabled } }))}
-            className={`relative w-10 h-5.5 rounded-full transition-colors cursor-pointer ${data.loginButton?.enabled ? "bg-blue-950" : "bg-slate-300"}`}>
-            <span className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 bg-white rounded-full shadow transition-transform ${data.loginButton?.enabled ? "translate-x-4.5" : ""}`} />
-          </div>
-          <span className="text-sm font-semibold text-slate-700">
-            {data.loginButton?.enabled ? "Login button is shown in header" : "Login button is hidden"}
-          </span>
-        </label>
-        {data.loginButton?.enabled && (
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <Field label="Button Label">
-              <input className={inputCls} value={data.loginButton?.label || "Login"}
-                onChange={(e) => setData((p) => ({ ...p, loginButton: { ...p.loginButton, label: e.target.value } }))} />
-            </Field>
-            <Field label="Button Link">
-              <input className={inputCls} value={data.loginButton?.link || "/login"}
-                onChange={(e) => setData((p) => ({ ...p, loginButton: { ...p.loginButton, link: e.target.value } }))} />
-            </Field>
-          </div>
-        )}
-      </div>
-
-      {/* Navigation items */}
-      <div className={cardCls}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-black text-slate-900">Navigation Items ({data.navs.length})</h3>
-          <button onClick={addNav}
-            className="flex items-center gap-1.5 text-xs font-black px-3 py-2 bg-blue-950 text-white rounded-xl hover:bg-blue-900">
-            <Icon name="add" /> Add Nav
+      <div className="flex gap-1.5 border-b border-slate-200 pb-3">
+        {subTabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setSubTab(t.id)}
+            className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all ${
+              subTab === t.id
+                ? "bg-blue-950 text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            {t.label}
           </button>
-        </div>
-
-        <div className="space-y-3">
-          {data.navs.map((nav, i) => (
-            <div key={nav.id || i} className="border border-slate-200 rounded-xl overflow-hidden">
-              {/* Nav row header */}
-              <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50">
-                <div className="flex flex-col gap-0.5">
-                  <button onClick={() => moveNav(i, -1)} disabled={i === 0}
-                    className="text-slate-400 hover:text-slate-700 disabled:opacity-30 leading-none text-xs">▲</button>
-                  <button onClick={() => moveNav(i, 1)} disabled={i === data.navs.length - 1}
-                    className="text-slate-400 hover:text-slate-700 disabled:opacity-30 leading-none text-xs">▼</button>
-                </div>
-                <input className="flex-1 text-xs font-black bg-transparent border-none outline-none text-slate-800"
-                  placeholder="Nav name (e.g. Products)" value={nav.name}
-                  onChange={(e) => updateNav(i, { name: e.target.value })} />
-                <input className="w-40 text-xs bg-transparent border border-slate-200 rounded-lg px-2 py-1 outline-none text-slate-600"
-                  placeholder="/link" value={nav.link}
-                  onChange={(e) => updateNav(i, { link: e.target.value })} />
-                {/* Enable/disable toggle */}
-                <button onClick={() => updateNav(i, { enabled: !nav.enabled })}
-                  className={`text-[10px] font-black px-2 py-1 rounded-md ${nav.enabled ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-500"}`}>
-                  {nav.enabled ? "ON" : "OFF"}
-                </button>
-                {/* Dropdown toggle */}
-                <button onClick={() => updateNav(i, { hasDropdown: !nav.hasDropdown })}
-                  className={`flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-md ${nav.hasDropdown ? "bg-blue-100 text-blue-800" : "bg-slate-100 text-slate-500"}`}>
-                  <Icon name="arrow_drop_down" className="text-sm" />
-                  {nav.hasDropdown ? "Dropdown ON" : "Dropdown"}
-                </button>
-                <button onClick={() => setEditIdx(editIdx === i ? null : i)}
-                  className="text-[10px] font-black px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">
-                  {editIdx === i ? "Close" : "Edit"}
-                </button>
-                <button onClick={() => removeNav(i)}
-                  className="p-1.5 text-red-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
-                  <Icon name="delete" className="text-base" />
-                </button>
-              </div>
-
-              {/* Expanded dropdown editor */}
-              {editIdx === i && nav.hasDropdown && (
-                <div className="px-4 py-3 border-t border-slate-100 bg-white space-y-3">
-                  <Field label="Dropdown Type">
-                    <select className={inputCls} value={nav.dropdownType || "custom"}
-                      onChange={(e) => updateNav(i, { dropdownType: e.target.value })}>
-                      <option value="custom">Custom Links</option>
-                      <option value="categories">Product Categories (auto from DB)</option>
-                    </select>
-                  </Field>
-
-                  {(nav.dropdownType || "custom") === "custom" && (
-                    <div className="space-y-2">
-                      <p className={labelCls}>Dropdown Items</p>
-                      {(nav.dropdownItems || []).map((item, di) => (
-                        <div key={di} className="flex items-center gap-2">
-                          <input className={`${inputCls} flex-1`} placeholder="Label" value={item.name || ""}
-                            onChange={(e) => { const items = [...nav.dropdownItems]; items[di] = { ...item, name: e.target.value }; updateNav(i, { dropdownItems: items }); }} />
-                          <input className={`${inputCls} flex-1`} placeholder="/link" value={item.link || ""}
-                            onChange={(e) => { const items = [...nav.dropdownItems]; items[di] = { ...item, link: e.target.value }; updateNav(i, { dropdownItems: items }); }} />
-                          <button onClick={() => updateNav(i, { dropdownItems: nav.dropdownItems.filter((_, k) => k !== di) })}
-                            className="p-1.5 text-red-400 hover:text-red-700"><Icon name="close" className="text-sm" /></button>
-                        </div>
-                      ))}
-                      <button onClick={() => updateNav(i, { dropdownItems: [...(nav.dropdownItems || []), { name: "", link: "" }] })}
-                        className="text-[10px] font-black text-blue-800 hover:text-blue-950 flex items-center gap-1">
-                        <Icon name="add_circle" className="text-sm" /> Add Link
-                      </button>
-                    </div>
-                  )}
-
-                  {(nav.dropdownType) === "categories" && (
-                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
-                      <p className="text-[11px] text-blue-800 font-semibold">
-                        This dropdown will auto-populate from your product categories and their subcategories.
-                        No manual links needed — the frontend renders them dynamically.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-          {data.navs.length === 0 && (
-            <p className="text-xs text-slate-400 font-medium py-4 text-center">No navigation items yet. Click "Add Nav" to create one.</p>
-          )}
-        </div>
+        ))}
       </div>
 
-      <div className="flex justify-end"><SaveBtn saving={saving} onClick={save} /></div>
+      {subTab === "logo" && <LogoManager />}
+      {subTab === "navigation" && <NavigationManager />}
+      {subTab === "login" && <LoginManager />}
     </div>
   );
 }
+
 
 // ─── SECTION: CONTACT & FOOTER (tasks 4-11) ──────────────────────────────────
 function ContactSection() {
@@ -1026,12 +805,11 @@ export default function SiteConfigPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Get tab from URL or default to 'branding'
-  const initialTab = searchParams.get("tab") || "branding";
+  // Default tab is now "header" (branding removed)
+  const initialTab = searchParams.get("tab") || "header";
   const validTabs = TABS.map((t) => t.key);
-  const currentTab = validTabs.includes(initialTab) ? initialTab : "branding";
+  const currentTab = validTabs.includes(initialTab) ? initialTab : "header";
 
-  // Function to change tab (updates URL and local state)
   const changeTab = useCallback(
     (newTab) => {
       const params = new URLSearchParams(searchParams);
@@ -1059,7 +837,6 @@ export default function SiteConfigPage() {
 
   const renderSection = () => {
     switch (currentTab) {
-      case "branding":                     return <BrandingSection />;
       case "header":                       return <HeaderSection />;
       case "contact":                      return <ContactSection />;
       case "about":                        return <AboutManager />;
@@ -1075,7 +852,7 @@ export default function SiteConfigPage() {
       case "WhyContact":                   return <WhyContact />;
       case "PartnershipAdvantages":        return <PartnershipAdvantages />;
       case "PartnershipWork":              return <PartnershipWork />;
-      default:                             return <BrandingSection />;
+      default:                             return <HeaderSection />;
     }
   };
 
@@ -1085,7 +862,7 @@ export default function SiteConfigPage() {
       <div className="bg-white border-b border-slate-200 px-6 py-5">
         <h1 className="text-lg font-black text-slate-900 tracking-tight">⚙️ Central Site Configuration</h1>
         <p className="text-xs text-slate-500 font-medium mt-0.5">
-          Branding · Navigation · Contact · About Us · API Keys · Founders · Font · Location
+          Header & Nav · Contact · About Us · API Keys · Founders · Font · Location
         </p>
       </div>
 
