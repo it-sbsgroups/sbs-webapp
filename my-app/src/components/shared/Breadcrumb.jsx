@@ -1,42 +1,9 @@
 "use client";
 
-// =============================================================================
-// FILE: src/components/shared/Breadcrumb.jsx
-// Reusable page-header breadcrumb strip. Drop it at the top of any internal
-// page (products, brands, clients, employees, news, etc.).
-//
-// USAGE:
-//   <Breadcrumb
-//     title="Bearings"
-//     items={[{ label: "Products", href: "/products" }, { label: "Bearings" }]}
-//   />
-//
-//   // with a background image instead of the default gradient:
-//   <Breadcrumb
-//     title="About Us"
-//     items={[{ label: "About Us" }]}
-//     backgroundImage="https://res.cloudinary.com/.../about-hero.jpg"
-//   />
-//
-//   // with a custom gradient:
-//   <Breadcrumb
-//     title="Our Brands"
-//     items={[{ label: "Brands" }]}
-//     gradient="from-emerald-950 via-emerald-900 to-slate-900"
-//   />
-// =============================================================================
-
 import Link from "next/link";
 import { ChevronRight, Home } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
-/**
- * @param {{label: string, href?: string}[]} items - Trail after Home. Last item is treated as the current page (non-clickable) even if it has an href.
- * @param {string} [title] - Optional large page title shown above the trail.
- * @param {string} [gradient] - Tailwind gradient stop classes (e.g. "from-blue-950 via-blue-900 to-slate-900"). Ignored if backgroundImage is set.
- * @param {string} [backgroundImage] - Image URL. When set, takes priority over `gradient`.
- * @param {number} [overlayOpacity] - Dark overlay strength (0-1) over backgroundImage, for text legibility.
- * @param {string} [className]
- */
 export default function Breadcrumb({
   items = [],
   title,
@@ -44,9 +11,97 @@ export default function Breadcrumb({
   backgroundImage,
   overlayOpacity = 0.55,
   className = "",
+  enableDotGrid = false,
+  animateDots = false,          // ← new prop
+  dotColor = "rgba(255,255,255,0.2)",
+  dotSpacing = 20,
+  dotBaseSize = 4,
+  dotCenterScale = 1.5,
+  dotHoverScale = 1.8,
 }) {
+  const containerRef = useRef(null);
+  const [dots, setDots] = useState([]);
+  const animFrameRef = useRef(null);
+  const startTimeRef = useRef(null);
+
+  // ── Recalculate grid positions on resize ──────────────────────────
+  useEffect(() => {
+    if (!enableDotGrid || !containerRef.current) return;
+
+    const updateGrid = () => {
+      const rect = containerRef.current.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      if (w === 0 || h === 0) return;
+
+      const cols = Math.floor(w / dotSpacing);
+      const rows = Math.floor(h / dotSpacing);
+      const offsetX = (w - cols * dotSpacing) / 2 + dotSpacing / 2;
+      const offsetY = (h - rows * dotSpacing) / 2 + dotSpacing / 2;
+      const centerX = w / 2;
+      const centerY = h / 2;
+      const maxDist = Math.sqrt(centerX ** 2 + centerY ** 2);
+
+      const newDots = [];
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const baseX = offsetX + c * dotSpacing;
+          const baseY = offsetY + r * dotSpacing;
+          const dist = Math.sqrt((baseX - centerX) ** 2 + (baseY - centerY) ** 2);
+          const t = 1 - Math.min(dist / maxDist, 1);
+          const baseScale = 1 + t * dotCenterScale;
+          newDots.push({ baseX, baseY, baseScale });
+        }
+      }
+      setDots(newDots);
+    };
+
+    updateGrid();
+    const observer = new ResizeObserver(updateGrid);
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [enableDotGrid, dotSpacing, dotCenterScale]);
+
+  // ── Animation loop (zig‑zag wave) ─────────────────────────────────
+  useEffect(() => {
+    if (!enableDotGrid || !animateDots) {
+      cancelAnimationFrame(animFrameRef.current);
+      // Remove dynamic offsets when animation stops
+      if (!animateDots) {
+        setDots(prev => prev.map(d => ({ ...d, offsetX: 0, offsetY: 0 })));
+      }
+      return;
+    }
+
+    const speed = 0.0015;          // wave speed
+    const amplitude = dotSpacing * 0.45; // how far dots move
+    const wavelengthX = dotSpacing * 6;
+    const wavelengthY = dotSpacing * 6;
+
+    const animate = (timestamp) => {
+      if (!startTimeRef.current) startTimeRef.current = timestamp;
+      const elapsed = timestamp - startTimeRef.current;
+
+      setDots(prev =>
+        prev.map(dot => {
+          // Zig‑zag pattern: combine two perpendicular sine waves
+          const offsetX = amplitude * Math.sin((dot.baseX / wavelengthX) - elapsed * speed * 2);
+          const offsetY = amplitude * Math.cos((dot.baseY / wavelengthY) - elapsed * speed);
+          return { ...dot, offsetX, offsetY };
+        })
+      );
+
+      animFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    animFrameRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animFrameRef.current);
+  }, [enableDotGrid, animateDots, dotSpacing]);
+
+  // ── Render ────────────────────────────────────────────────────────
   return (
-    <div className={`relative overflow-hidden ${className}`}>
+    <div ref={containerRef} className={`relative overflow-hidden ${className}`}>
+      {/* Background */}
       {backgroundImage ? (
         <>
           <img
@@ -61,9 +116,38 @@ export default function Breadcrumb({
         <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
       )}
 
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+      {/* Dot grid (animated or static) */}
+      {enableDotGrid && (
+        <div className="absolute inset-0 z-[1] pointer-events-none" aria-hidden="true">
+          {dots.map((dot, idx) => {
+            // Use base position + dynamic offset (0 when not animated)
+            const left = dot.baseX + (dot.offsetX ?? 0);
+            const top = dot.baseY + (dot.offsetY ?? 0);
+            const size = dotBaseSize * dot.baseScale;
+
+            return (
+              <span
+                key={idx}
+                className="absolute rounded-full transition-transform duration-200 hover:scale-[--hover-scale] pointer-events-auto"
+                style={{
+                  left,
+                  top,
+                  width: size,
+                  height: size,
+                  backgroundColor: dotColor,
+                  transform: "translate(-50%, -50%)",
+                  "--hover-scale": dotHoverScale,
+                }}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {/* Breadcrumb content */}
+      <div className="relative z-[2] mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-25 md:py-20">
         {title && (
-          <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-3">
+          <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-3 text-center">
             {title}
           </h1>
         )}

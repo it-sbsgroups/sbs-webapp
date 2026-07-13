@@ -3,19 +3,21 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class SiteConfigService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) {}
 
-  async get(key: string): Promise<Record<string, any>> {
-    const row = await this.prisma.siteConfig.findUnique({ where: { key } });
-    return (row?.data as Record<string, any>) ?? {};
+  async get(key: string): Promise<any> {
+    const record = await this.prisma.siteConfig.findUnique({
+      where: { key },
+    });
+    return record?.data || {};
   }
 
-  async set(key: string, data: Record<string, any>) {
-    const saved = await this.prisma.siteConfig.upsert({
+  async save(key: string, data: any): Promise<any> {
+    const record = await this.prisma.siteConfig.upsert({
       where: { key },
-      create: { key, data: data as any },
-      update: { data: data as any },
+      update: { data },
+      create: { key, data },
     });
-    return saved.data;
+    return record.data;
   }
 }

@@ -1,56 +1,80 @@
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  Get,
-  Param,
-  Put,
-} from '@nestjs/common';
+import { Controller, Get, Put, Body, Param } from '@nestjs/common';
 import { SiteConfigService } from './site-config.service';
-import { ApiKeysService } from '../api-keys/api-keys.service';
-import { Public } from '../auth/decorators/public.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 
-// Allowlist — the admin panel may only write to known config sections.
-const VALID_SECTIONS = new Set([
-  'header', 'footer', 'branding', 'navigation',
-  'contact', 'about', 'social', 'newsletter',
-  'apiKeys', 'founders', 'font', 'company', 
-  'homeAbout', 'homePrinciples', 'AuthorizedNetwork',
-  'IndustriesManager', 'ProtectionProven', 'WhyContact', 
-  'PartnershipAdvantages', 'PartnershipWork',
-]);
-
-@Controller('site-config')
+@Controller('site')
 export class SiteConfigController {
-  constructor(
-    private readonly siteConfig: SiteConfigService,
-    private readonly apiKeys: ApiKeysService,
-  ) {}
+  constructor(private readonly siteConfig: SiteConfigService) {}
 
-  @Public()
-  @Get(':section')
-  async get(@Param('section') section: string) {
-    if (!VALID_SECTIONS.has(section)) {
-      throw new BadRequestException(`Unknown config section: "${section}"`);
-    }
-    return this.siteConfig.get(section);
+  // ─── Branding ─────────────────────────────────────────────────
+  @Get('branding')
+  getBranding() {
+    return this.siteConfig.get('branding');
   }
 
-  @Put(':section')
-  async save(
-    @Param('section') section: string,
-    @Body() body: Record<string, any>,
-  ) {
-    if (!VALID_SECTIONS.has(section)) {
-      throw new BadRequestException(`Unknown config section: "${section}"`);
-    }
+  @Put('branding')
+  @Roles('ADMIN', 'FOUNDER', 'COFOUNDER')
+  saveBranding(@Body() data: any) {
+    return this.siteConfig.save('branding', data);
+  }
 
-    const result = await this.siteConfig.set(section, body);
+  // ─── Contact ──────────────────────────────────────────────────
+  @Get('contact')
+  getContact() {
+    return this.siteConfig.get('contact');
+  }
 
-    if (section === 'apiKeys') {
-      this.apiKeys.invalidate();
-    }
+  @Put('contact')
+  @Roles('ADMIN', 'FOUNDER', 'COFOUNDER')
+  saveContact(@Body() data: any) {
+    return this.siteConfig.save('contact', data);
+  }
 
-    return result;
+  // ─── About ────────────────────────────────────────────────────
+  @Get('about')
+  getAbout() {
+    return this.siteConfig.get('about');
+  }
+
+  @Put('about')
+  @Roles('ADMIN', 'FOUNDER', 'COFOUNDER')
+  saveAbout(@Body() data: any) {
+    return this.siteConfig.save('about', data);
+  }
+
+  // ─── Founders ─────────────────────────────────────────────────
+  @Get('founders')
+  getFounders() {
+    return this.siteConfig.get('founders');
+  }
+
+  @Put('founders')
+  @Roles('ADMIN', 'FOUNDER', 'COFOUNDER')
+  saveFounders(@Body() data: any) {
+    return this.siteConfig.save('founders', data);
+  }
+
+  // ─── Home About ───────────────────────────────────────────────
+  @Get('homeAbout')
+  getHomeAbout() {
+    return this.siteConfig.get('homeAbout');
+  }
+
+  @Put('homeAbout')
+  @Roles('ADMIN', 'FOUNDER', 'COFOUNDER')
+  saveHomeAbout(@Body() data: any) {
+    return this.siteConfig.save('homeAbout', data);
+  }
+
+  // ─── Home Principles ──────────────────────────────────────────
+  @Get('homePrinciples')
+  getHomePrinciples() {
+    return this.siteConfig.get('homePrinciples');
+  }
+
+  @Put('homePrinciples')
+  @Roles('ADMIN', 'FOUNDER', 'COFOUNDER')
+  saveHomePrinciples(@Body() data: any) {
+    return this.siteConfig.save('homePrinciples', data);
   }
 }
