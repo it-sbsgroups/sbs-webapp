@@ -36,7 +36,7 @@ const headerDummyData = {
       dropdownItems: [],
     },
     {
-      id: 3,
+      id: 2,
       name: "About Us",
       link: "/about",
       order: 2,
