@@ -1,3 +1,4 @@
+// src/site-config/site-config.service.ts
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -5,19 +6,21 @@ import { PrismaService } from '../prisma/prisma.service';
 export class SiteConfigService {
   constructor(private prisma: PrismaService) {}
 
-  async get(key: string): Promise<any> {
-    const record = await this.prisma.siteConfig.findUnique({
-      where: { key },
-    });
-    return record?.data || {};
+  async get(key: string) {
+    const record = await this.prisma.siteConfig.findUnique({ where: { key } });
+    return record?.data ?? null;
   }
 
-  async save(key: string, data: any): Promise<any> {
-    const record = await this.prisma.siteConfig.upsert({
+  async set(key: string, data: any) {
+    return this.prisma.siteConfig.upsert({
       where: { key },
       update: { data },
       create: { key, data },
     });
-    return record.data;
+  }
+
+  // Alias for `set` – used by site-config.controller.ts
+  async save(key: string, data: any) {
+    return this.set(key, data);
   }
 }
