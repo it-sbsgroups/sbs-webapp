@@ -12,6 +12,16 @@ const nextConfig = {
         hostname: "res.cloudinary.com",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "sbsgroups.co.in",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "www.sbsgroups.co.in",
+        pathname: "/**",
+      },
     ],
   },
 };

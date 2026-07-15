@@ -4,6 +4,7 @@ import HeroCarousel from "@/components/home/HeroCarousel";
 import ClientSlider from "@/components/home/ClientCarousel";
 import WhyChooseUs from "@/components/home/WhyChooseUs";
 import AboutIntro from "@/components/home/AboutIntro";
+import IndustryInnovation from "@/components/home/IndustryInnovation";
 import BusinessCTA from "@/components/home/BusinessCTA";
 import PrinciplesSection from "@/components/home/PrinciplesSection";
 import OurSolutionsGrid from "@/components/home/OurSolutionsGrid";
@@ -19,6 +20,8 @@ export default function HomePage() {
       <WhyChooseUs />
 
       <AboutIntro />
+
+      <IndustryInnovation />
 
       <BusinessCTA />
 

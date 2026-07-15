@@ -186,7 +186,7 @@ export default function Header() {
         {/* ===== DYNAMIC LOGO ===== */}
         <div className="flex shrink-0 items-center">
           <Link href="/" className="flex items-center gap-3 group focus:outline-none">
-            {/* {branding.logoUrl ? (
+            {branding.logoUrl ? (
               <Image
                 src={branding.logoUrl}
                 alt={`${branding.companyName || "SBS Groups"} Logo`}
@@ -199,7 +199,7 @@ export default function Header() {
                   e.currentTarget.nextSibling.style.display = "flex";
                 }}
               />
-            ) : null} */}
+            ) : null}
             <div className={`flex-col ${branding.logoUrl ? "hidden" : "flex"}`}>
               <span className="text-lg font-black tracking-tighter text-blue-950 group-hover:text-blue-900 transition-colors">
                 {branding.companyName}
