@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import testimonialsApi from "@/lib/testimonialsApi";
 import toast from "react-hot-toast";
+import TableExportImport from "@/components/admin/shared/TableExportImport";
 
 const STATUS_TABS = ["PENDING", "APPROVED", "REJECTED", "REWRITE"];
 const STATUS_STYLES = {
@@ -11,6 +12,14 @@ const STATUS_STYLES = {
   REJECTED: "bg-red-100 text-red-700",
   REWRITE: "bg-blue-100 text-blue-700",
 };
+
+const TESTIMONIAL_EXPORT_COLUMNS = [
+  { key: "name", label: "Name" },
+  { key: "companyName", label: "Company Name" },
+  { key: "designation", label: "Designation" },
+  { key: "testimony", label: "Testimony" },
+  { key: "status", label: "Status" },
+];
 
 export default function AdminTestimonialsControlPanel() {
   const [items, setItems] = useState([]);
@@ -130,6 +139,25 @@ export default function AdminTestimonialsControlPanel() {
           <h1 className="text-3xl font-bold text-slate-900">Testimonials</h1>
           <p className="mt-1 text-slate-500">Moderate submissions and issue secure submission links.</p>
         </div>
+
+        <TableExportImport
+          data={items}
+          columns={TESTIMONIAL_EXPORT_COLUMNS}
+          filenamePrefix={`testimonials-${filter.toLowerCase()}`}
+          onImportRow={async (row) => {
+            const name = row["Name"]?.trim();
+            const companyName = row["Company Name"]?.trim();
+            const testimony = row["Testimony"]?.trim();
+            if (!name || !testimony) throw new Error("Name and Testimony are required");
+            await testimonialsApi.createManual({
+              name,
+              companyName: companyName || undefined,
+              designation: row["Designation"]?.trim() || undefined,
+              testimony,
+            });
+          }}
+          onImported={load}
+        />
 
         {/* Passcode issuer */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

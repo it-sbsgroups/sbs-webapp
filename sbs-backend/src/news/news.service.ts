@@ -10,6 +10,24 @@ export class NewsService {
   ) {}
 
   // ============================================
+  // LIST-VIEW HELPERS
+  // ============================================
+  // Derives a plain-text excerpt + cover image from the block content so the
+  // list/card endpoints never need to select full block content (which can
+  // be large `@db.LongText`). Kept in sync on every create/update.
+  private deriveListMeta(blocks: any[] = []) {
+    const textBlock = blocks.find((b) => b?.type === 'text' && b?.content);
+    const imageBlock = blocks.find((b) => b?.type === 'imageRow' && b?.images?.length);
+    const plainText = textBlock?.content
+      ? String(textBlock.content).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+      : '';
+    return {
+      excerpt: plainText ? plainText.slice(0, 280) : null,
+      coverImage: imageBlock?.images?.[0]?.src || null,
+    };
+  }
+
+  // ============================================
   // CATEGORIES
   // ============================================
   async getCategories() {
@@ -59,16 +77,18 @@ export class NewsService {
   // ============================================
   // POSTS
   // ============================================
-  async getPosts(params: { page?: number; pageSize?: number; categoryId?: string; status?: string; search?: string }) {
+  async getPosts(params: { page?: number; pageSize?: number; categoryId?: string; subcategoryId?: string; status?: string; search?: string }) {
     // Convert to numbers
     const page = Number(params.page) || 1;
     const pageSize = Number(params.pageSize) || 20;
     const categoryId = params.categoryId;
+    const subcategoryId = params.subcategoryId;
     const status = params.status;
     const search = params.search;
     
     const where: any = {};
     if (categoryId) where.categoryId = categoryId;
+    if (subcategoryId) where.subcategoryId = subcategoryId;
     if (status) where.status = status;
     if (search) {
       where.OR = [
@@ -79,15 +99,30 @@ export class NewsService {
 
     const skip = (page - 1) * pageSize;
 
+    // List/card view only ever needs the denormalized excerpt + coverImage —
+    // never the full `blocks` relation (which carries @db.LongText content
+    // and can be large). This is the single biggest win for news list speed,
+    // on both the admin table and the public news grid.
     const [posts, total] = await Promise.all([
       this.prisma.newsPost.findMany({
         skip: skip,        // ✅ Number
         take: pageSize,    // ✅ Number
         where,
-        include: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          status: true,
+          isFeatured: true,
+          categoryId: true,
+          subcategoryId: true,
+          excerpt: true,
+          coverImage: true,
+          publishedAt: true,
+          createdAt: true,
+          updatedAt: true,
           category: { select: { id: true, name: true } },
           subcategory: { select: { id: true, name: true } },
-          blocks: { orderBy: { sortOrder: 'asc' } },
           _count: { select: { comments: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -143,6 +178,7 @@ export class NewsService {
     blocks?: any[];
   }) {
     const slug = data.title.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+    const { excerpt, coverImage } = this.deriveListMeta(data.blocks || []);
     
     return this.prisma.newsPost.create({
       data: {
@@ -151,6 +187,8 @@ export class NewsService {
         categoryId: data.categoryId,
         subcategoryId: data.subcategoryId,
         allowVersioning: data.allowVersioning ?? true,
+        excerpt,
+        coverImage,
         blocks: data.blocks?.length ? {
           create: data.blocks.map((block, i) => ({
             type: block.type || 'text',
@@ -200,6 +238,9 @@ export class NewsService {
     if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured;
 
     if (data.blocks?.length) {
+      const { excerpt, coverImage } = this.deriveListMeta(data.blocks);
+      updateData.excerpt = excerpt;
+      updateData.coverImage = coverImage;
       updateData.blocks = {
         create: data.blocks.map((block, i) => ({
           type: block.type || 'text',
@@ -339,12 +380,8 @@ export class NewsService {
         title: true,
         slug: true,
         publishedAt: true,
+        coverImage: true,
         category: { select: { name: true } },
-        blocks: {
-          where: { type: 'imageRow' },
-          take: 1,
-          orderBy: { sortOrder: 'asc' },
-        },
       },
     });
   }

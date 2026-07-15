@@ -2,8 +2,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, Save, X, FolderTree, FolderOpen, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Edit, Trash2, Save, X, FolderTree, FolderOpen } from "lucide-react";
 import categoriesApi from "@/lib/categoriesApi";
+import AdminDataTable from "@/components/admin/shared/AdminDataTable";
 
 const STORAGE_KEY = "sbs_admin_categories_state";
 
@@ -148,23 +149,12 @@ export default function CategoriesManager() {
 
   return (
     <div className="space-y-6">
-      <div className="relative">
-        <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => { setSearchQuery(e.target.value); setCatPage(1); }}
-          placeholder="Search categories..."
-          className="w-full rounded-xl border border-slate-300 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none"
-        />
-      </div>
-
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Categories */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <FolderTree size={18} /> Categories ({filteredCategories.length})
+              <FolderTree size={18} /> Categories ({categories.length})
             </h3>
             <button
               onClick={() => { resetCatForm(); setShowCatForm(true); }}
@@ -231,45 +221,61 @@ export default function CategoriesManager() {
             </div>
           )}
 
-          <div className="space-y-1 max-h-[400px] overflow-y-auto">
-            {paginatedCats.map((cat) => (
-              <div key={cat?.id} className="flex items-center justify-between rounded-lg border bg-white p-2.5 hover:bg-slate-50">
-                <div className="flex items-center gap-2 min-w-0">
-                  <img src={`${String(cat?.image || "")}`} alt="" className="h-10 w-10 rounded object-cover" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold truncate">{String(cat?.name || "")}</p>
-                    <div className="flex gap-2">
-                      <span className="text-[10px] text-slate-400">Active: {String(cat?.isActive ? "Yes" : "No")}</span>
-                      <span className="text-[10px] text-slate-400">Sort: {String(cat?.sortOrder || 0)}</span>
-                    </div>
+          <AdminDataTable
+            data={categories}
+            keyField="id"
+            searchPlaceholder="Search categories..."
+            searchKeys={["name"]}
+            exportFilenamePrefix="categories"
+            pageSize={6}
+            emptyMessage="No categories yet"
+            columns={[
+              {
+                key: "name", label: "Category", sortable: true,
+                render: (cat) => (
+                  <div className="flex items-center gap-2 min-w-0">
+                    <img src={String(cat?.image || "")} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
+                    <p className="font-semibold truncate">{String(cat?.name || "")}</p>
                   </div>
-                </div>
-                <div className="flex gap-1 shrink-0">
-                  <button
-                    onClick={() => { setEditingCat(cat?.id); setCatForm({ name: cat?.name || "", image: cat?.image || "", sortOrder: cat?.sortOrder || 0, isActive: cat?.isActive ?? true }); setShowCatForm(true); }}
-                    className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
-                  >
-                    <Edit size={13} />
-                  </button>
-                  <button onClick={() => handleDeleteCategory(cat?.id)} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600">
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {catTotalPages > 1 && (
-            <div className="flex justify-center gap-1">
-              <button onClick={() => setCatPage((p) => Math.max(1, p - 1))} disabled={catPage === 1} className="rounded border p-1.5 disabled:opacity-40">
-                <ChevronLeft size={14} />
-              </button>
-              <span className="text-xs px-3 py-1.5">{catPage}/{catTotalPages}</span>
-              <button onClick={() => setCatPage((p) => Math.min(catTotalPages, p + 1))} disabled={catPage === catTotalPages} className="rounded border p-1.5 disabled:opacity-40">
-                <ChevronRight size={14} />
-              </button>
-            </div>
-          )}
+                ),
+              },
+              {
+                key: "isActive", label: "Active", sortable: true, filterType: "select",
+                filterOptions: ["Yes", "No"],
+                exportValue: (cat) => (cat.isActive ? "Yes" : "No"),
+                render: (cat) => (
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${cat.isActive ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-500"}`}>
+                    {cat.isActive ? "Yes" : "No"}
+                  </span>
+                ),
+              },
+              { key: "sortOrder", label: "Sort", sortable: true, align: "center", render: (cat) => cat.sortOrder || 0 },
+            ]}
+            rowActions={(cat) => (
+              <>
+                <button
+                  onClick={() => { setEditingCat(cat?.id); setCatForm({ name: cat?.name || "", image: cat?.image || "", sortOrder: cat?.sortOrder || 0, isActive: cat?.isActive ?? true }); setShowCatForm(true); }}
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  <Edit size={13} />
+                </button>
+                <button onClick={() => handleDeleteCategory(cat?.id)} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600">
+                  <Trash2 size={13} />
+                </button>
+              </>
+            )}
+            onImportRow={async (row) => {
+              const name = row["Category"]?.trim() || row["name"]?.trim();
+              if (!name) throw new Error("Category name is required");
+              await categoriesApi.create({
+                name,
+                image: row["image"]?.trim() || "",
+                sortOrder: Number(row["Sort"]) || 0,
+                isActive: (row["Active"] || "Yes").trim().toLowerCase() !== "no",
+              });
+            }}
+            onImported={fetchData}
+          />
         </div>
 
         {/* Subcategories */}
@@ -351,33 +357,71 @@ export default function CategoriesManager() {
             </div>
           )}
 
-          <div className="space-y-1 max-h-[400px] overflow-y-auto">
-            {subcategories.map((sub) => (
-              <div key={sub?.id} className="flex items-center justify-between rounded-lg border bg-white p-2.5 hover:bg-slate-50">
-                <div className="flex items-center gap-2 min-w-0">
-                  <img src={`${String(sub?.image || "")}`} alt="" className="h-10 w-10 rounded object-cover" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold truncate">{String(sub?.name || "")}</p>
-                    <div className="flex gap-2">
-                      <span className="text-[10px] text-slate-400">Active: {String(sub?.isActive ? "Yes" : "No")}</span>
-                      <span className="text-[10px] text-slate-400">Sort: {String(sub?.sortOrder || 0)}</span>
-                    </div>
+          <AdminDataTable
+            data={subcategories}
+            keyField="id"
+            searchPlaceholder="Search subcategories..."
+            searchKeys={["name"]}
+            exportFilenamePrefix="subcategories"
+            pageSize={6}
+            emptyMessage="No subcategories yet"
+            columns={[
+              {
+                key: "name", label: "Subcategory", sortable: true,
+                render: (sub) => (
+                  <div className="flex items-center gap-2 min-w-0">
+                    <img src={String(sub?.image || "")} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
+                    <p className="font-semibold truncate">{String(sub?.name || "")}</p>
                   </div>
-                </div>
-                <div className="flex gap-1 shrink-0">
-                  <button
-                    onClick={() => { setEditingSub(sub?.id); setSubForm({ name: sub?.name || "", categoryId: sub?.categoryId || "", image: sub?.image || "", sortOrder: sub?.sortOrder || 0, isActive: sub?.isActive ?? true }); setShowSubForm(true); }}
-                    className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
-                  >
-                    <Edit size={13} />
-                  </button>
-                  <button onClick={() => handleDeleteSubcategory(sub?.id)} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600">
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+                ),
+              },
+              {
+                key: "categoryId", label: "Category", sortable: true, filterType: "select",
+                filterOptions: categories.map((c) => c.name),
+                exportValue: (sub) => categories.find((c) => c.id === sub.categoryId)?.name || "",
+                render: (sub) => categories.find((c) => c.id === sub.categoryId)?.name || "—",
+              },
+              {
+                key: "isActive", label: "Active", sortable: true, filterType: "select",
+                filterOptions: ["Yes", "No"],
+                exportValue: (sub) => (sub.isActive ? "Yes" : "No"),
+                render: (sub) => (
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${sub.isActive ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-500"}`}>
+                    {sub.isActive ? "Yes" : "No"}
+                  </span>
+                ),
+              },
+              { key: "sortOrder", label: "Sort", sortable: true, align: "center", render: (sub) => sub.sortOrder || 0 },
+            ]}
+            rowActions={(sub) => (
+              <>
+                <button
+                  onClick={() => { setEditingSub(sub?.id); setSubForm({ name: sub?.name || "", categoryId: sub?.categoryId || "", image: sub?.image || "", sortOrder: sub?.sortOrder || 0, isActive: sub?.isActive ?? true }); setShowSubForm(true); }}
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  <Edit size={13} />
+                </button>
+                <button onClick={() => handleDeleteSubcategory(sub?.id)} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600">
+                  <Trash2 size={13} />
+                </button>
+              </>
+            )}
+            onImportRow={async (row) => {
+              const name = row["Subcategory"]?.trim() || row["name"]?.trim();
+              const categoryName = row["Category"]?.trim();
+              const category = categories.find((c) => c.name.toLowerCase() === (categoryName || "").toLowerCase());
+              if (!name) throw new Error("Subcategory name is required");
+              if (!category) throw new Error(`Category "${categoryName}" not found`);
+              await categoriesApi.createSubcategory({
+                name,
+                categoryId: category.id,
+                image: row["image"]?.trim() || "",
+                sortOrder: Number(row["Sort"]) || 0,
+                isActive: (row["Active"] || "Yes").trim().toLowerCase() !== "no",
+              });
+            }}
+            onImported={fetchData}
+          />
         </div>
       </div>
     </div>

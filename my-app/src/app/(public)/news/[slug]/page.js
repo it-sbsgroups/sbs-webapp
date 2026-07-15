@@ -4,17 +4,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import publicNewsApi from "@/lib/news/publicNewsApi";
-import productsApi from "@/lib/productsApi";
 import RichTextRenderer from "@/components/shared/RichTextRenderer";
+import LazyCacheImage from "@/components/shared/LazyCacheImage";
+import { MessageCircle, Share2, AtSign, Briefcase, Mail, Link2, Check } from "lucide-react";
 
 const fmtDate = (iso) => {
   if (!iso) return "";
   return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-};
-
-const firstProductImage = (p) => {
-  const img = Array.isArray(p?.images) ? p.images.find((i) => i?.url) : null;
-  return img?.url || "";
 };
 
 // ─── Lightbox for full-size gallery viewing ───────────────────────────────────
@@ -29,7 +25,7 @@ function Lightbox({ images, index, onClose, onNav }) {
           className="absolute left-3 sm:left-6 text-white/60 hover:text-white text-3xl font-bold px-2">‹</button>
       )}
       <div className="max-w-4xl max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
-        <img loading="lazy" src={img.src} alt={img.caption || ""} className="max-h-[80vh] max-w-full object-contain rounded-lg mx-auto" />
+        <LazyCacheImage src={img.src} alt={img.caption || ""} className="max-h-[80vh] max-w-full object-contain rounded-lg mx-auto" containerClassName="max-h-[80vh]" />
         {img.caption && <p className="text-white/80 text-sm text-center mt-3 font-medium">{img.caption}</p>}
         <p className="text-white/40 text-xs text-center mt-1">{index + 1} / {images.length}</p>
       </div>
@@ -45,24 +41,39 @@ function Lightbox({ images, index, onClose, onNav }) {
 function ShareBar({ title, url }) {
   const encodedUrl = encodeURIComponent(url);
   const encodedTitle = encodeURIComponent(title);
+  const [copied, setCopied] = useState(false);
 
   const links = [
-    { name: "WhatsApp", icon: "💬", href: `https://wa.me/?text=${encodedTitle}%20-%20${encodedUrl}`, color: "hover:bg-green-50 hover:text-green-700 hover:border-green-200" },
-    { name: "Facebook", icon: "📘", href: `https://www.facebook.com/sharer.php?u=${encodedUrl}`, color: "hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200" },
-    { name: "Twitter / X", icon: "🐦", href: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`, color: "hover:bg-slate-100 hover:text-slate-900 hover:border-slate-300" },
-    { name: "LinkedIn", icon: "💼", href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`, color: "hover:bg-blue-50 hover:text-blue-800 hover:border-blue-200" },
-    { name: "Email", icon: "✉️", href: `mailto:?subject=${encodedTitle}&body=Check this out: ${encodedUrl}`, color: "hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200" },
+    { name: "WhatsApp", Icon: MessageCircle, href: `https://wa.me/?text=${encodedTitle}%20-%20${encodedUrl}`, color: "hover:bg-green-50 hover:text-green-700 hover:border-green-200" },
+    { name: "Facebook", Icon: Share2, href: `https://www.facebook.com/sharer.php?u=${encodedUrl}`, color: "hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200" },
+    { name: "X / Twitter", Icon: AtSign, href: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`, color: "hover:bg-slate-100 hover:text-slate-900 hover:border-slate-300" },
+    { name: "LinkedIn", Icon: Briefcase, href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`, color: "hover:bg-blue-50 hover:text-blue-800 hover:border-blue-200" },
+    { name: "Email", Icon: Mail, href: `mailto:?subject=${encodedTitle}&body=Check this out: ${encodedUrl}`, color: "hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200" },
   ];
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard unavailable — ignore */
+    }
+  };
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest mr-1">Share:</span>
-      {links.map((l) => (
-        <a key={l.name} href={l.href} target="_blank" rel="noopener noreferrer" title={`Share on ${l.name}`}
-          className={`w-9 h-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-sm transition-all ${l.color}`}>
-          {l.icon}
+      {links.map(({ name, Icon, href, color }) => (
+        <a key={name} href={href} target="_blank" rel="noopener noreferrer" title={`Share on ${name}`}
+          className={`w-9 h-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center transition-all text-slate-500 ${color}`}>
+          <Icon size={16} strokeWidth={2.25} />
         </a>
       ))}
+      <button type="button" onClick={copyLink} title="Copy link"
+        className="w-9 h-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center transition-all text-slate-500 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200">
+        {copied ? <Check size={16} strokeWidth={2.25} /> : <Link2 size={16} strokeWidth={2.25} />}
+      </button>
     </div>
   );
 }
@@ -107,7 +118,7 @@ export default function PublicNewsDetailPage() {
   const [article, setArticle] = useState(null);
   const [comments, setComments] = useState([]);
   const [settings, setSettings] = useState({});
-  const [adProducts, setAdProducts] = useState([]);
+  const [suggestedNews, setSuggestedNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [form, setForm] = useState({ name: "", email: "", body: "" });
@@ -125,10 +136,9 @@ export default function PublicNewsDetailPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [articleData, settingsData, productsRes] = await Promise.all([
+        const [articleData, settingsData] = await Promise.all([
           publicNewsApi.getPostBySlug(slug),
           publicNewsApi.getSettings(),
-          productsApi.getAll({ pageSize: 500 }),
         ]);
 
         setArticle(articleData);
@@ -141,18 +151,10 @@ export default function PublicNewsDetailPage() {
           setForm(saved);
         }
 
-        if (settingsData) {
-          setSettings(settingsData);
-          if (settingsData.productSuggestionMode === "selected" && settingsData.selectedProductIds) {
-            const products = (productsRes?.data || []).filter((p) => settingsData.selectedProductIds.includes(p.id));
-            setAdProducts(products.slice(0, settingsData.adsMaxProducts || 4));
-          } else if (settingsData.productSuggestionMode === "random") {
-            const shuffled = [...(productsRes?.data || [])].sort(() => 0.5 - Math.random());
-            setAdProducts(shuffled.slice(0, settingsData.adsMaxProducts || 4));
-          } else {
-            setAdProducts((productsRes?.data || []).slice(0, settingsData.adsMaxProducts || 4));
-          }
-        }
+        if (settingsData) setSettings(settingsData);
+
+        // Suggested-reading sidebar (replaces the old sponsored-products slot)
+        publicNewsApi.getLatestNews(slug, 5).then(setSuggestedNews).catch(() => {});
       } catch (error) {
         console.error("Failed to load article:", error);
       } finally {
@@ -283,16 +285,24 @@ export default function PublicNewsDetailPage() {
   return (
     <div className="bg-slate-50 min-h-screen p-4 md:p-12 font-sans text-slate-800 antialiased">
       <div className="max-w-7xl mx-auto">
-        {/* ─── NEW: Full-width breadcrumb header with title (5vh) ─── */}
-        <div className="relative w-full bg-white border border-slate-200 rounded-xl shadow-sm flex items-center justify-center mb-8"
-             style={{ minHeight: "30vh", backgroundImage: "linear-gradient(135deg, #042058, #0070f0)" }}>
+        {/* ─── Full-width breadcrumb header with title, using the article's
+             head image as a background (dark overlay for text contrast) ─── */}
+        <div
+          className="relative w-full overflow-hidden border border-slate-200 rounded-xl shadow-sm flex items-center justify-center mb-8 bg-center bg-cover"
+          style={{
+            minHeight: "30vh",
+            backgroundImage: headImage
+              ? `linear-gradient(rgba(4,32,88,0.72), rgba(0,112,240,0.72)), url(${headImage})`
+              : "linear-gradient(135deg, #042058, #0070f0)",
+          }}
+        >
           {/* Breadcrumb navigation at left-bottom corner */}
           <div className="absolute bottom-5 left-5 text-xs text-white font-medium">
-            <Link href="/news" className="font-bold text-white hover:text-blue-900">Newsroom</Link>
+            <Link href="/news" className="font-bold text-white hover:text-blue-200">Newsroom</Link>
             {" ➔ "}{category?.name || "News"}
           </div>
           {/* Centered article title */}
-          <h1 className="text-lg md:text-xl font-bold text-white tracking-tight px-6 py-4 text-center leading-tight">
+          <h1 className="text-lg md:text-xl font-bold text-white tracking-tight px-6 py-4 text-center leading-tight drop-shadow-md">
             {article.title}
           </h1>
         </div>
@@ -305,7 +315,12 @@ export default function PublicNewsDetailPage() {
               {/* ── HEAD IMAGE (Udyogi-style large banner) ──────────────────── */}
               {headImage && (
                 <div className="w-full">
-                  <img loading="lazy" src={headImage} alt={article.title} className="w-full max-h-[480px] object-cover" />
+                  <LazyCacheImage
+                    src={headImage}
+                    alt={article.title}
+                    className="w-full max-h-[480px] object-cover"
+                    containerClassName="w-full"
+                  />
                 </div>
               )}
 
@@ -342,7 +357,7 @@ export default function PublicNewsDetailPage() {
                           onClick={() => setLightboxIdx(i)}
                           className="group relative aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100"
                         >
-                          <img loading="lazy" src={img.src} alt={img.caption || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          <LazyCacheImage src={img.src} alt={img.caption || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
                             <span className="opacity-0 group-hover:opacity-100 text-white text-lg transition-opacity">🔍</span>
                           </div>
@@ -395,20 +410,22 @@ export default function PublicNewsDetailPage() {
             </section>
           </div>
 
-          {/* AD PRODUCTS SIDEBAR */}
-          {adProducts.length > 0 && settings.adsEnabled && (
+          {/* SUGGESTED NEWS SIDEBAR (replaces the old, now-retired sponsored-products slot) */}
+          {suggestedNews.length > 0 && (
             <aside className="space-y-4">
               <div className="bg-white border border-slate-200 rounded-2xl p-4 sticky top-6">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Sponsored Products</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">You Might Also Like</p>
                 <div className="space-y-3">
-                  {adProducts.map((p) => (
-                    <Link key={p.id} href={`/products/${p.id}`} className="flex gap-3 items-center p-2 rounded-xl border hover:border-blue-300 hover:shadow-sm transition-all group">
-                      <div className="w-14 h-14 shrink-0 bg-slate-50 rounded-lg border flex items-center justify-center p-1">
-                        {firstProductImage(p) ? <img loading="lazy" src={firstProductImage(p)} alt={p.name} className="max-w-full max-h-full object-contain" /> : <span className="text-xl">📦</span>}
+                  {suggestedNews.map((n) => (
+                    <Link key={n.id} href={`/news/${n.slug}`} className="flex gap-3 items-center p-2 rounded-xl border hover:border-blue-300 hover:shadow-sm transition-all group">
+                      <div className="w-14 h-14 shrink-0 bg-slate-50 rounded-lg border flex items-center justify-center p-1 overflow-hidden">
+                        {n.coverImage ? (
+                          <LazyCacheImage src={n.coverImage} alt={n.title} className="w-full h-full object-cover" />
+                        ) : (<span className="text-xl">📰</span>)}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[11px] font-black text-slate-900 line-clamp-2 group-hover:text-blue-900">{p.name}</p>
-                        <span className="text-[9px] font-bold text-blue-600 uppercase">View →</span>
+                        <p className="text-[11px] font-black text-slate-900 line-clamp-2 group-hover:text-blue-900">{n.title}</p>
+                        <span className="text-[9px] font-bold text-blue-600 uppercase">Read →</span>
                       </div>
                     </Link>
                   ))}

@@ -9,6 +9,7 @@ import publicCatalogApi from "@/lib/publicCatalogApi";
 // import Breadcrumb from "@/components/shared/Breadcrumb";
 import apiClient from "@/lib/client";
 import rfqApi from "@/lib/rfqApi";
+import LazyCacheImage from "@/components/shared/LazyCacheImage";
 
 // ✅ SETTINGS — admin-controlled look & behavior (read-only here)
 import {
@@ -467,7 +468,7 @@ function ProductsCatalogContent() {
                       {/* IMAGE — fit/ratio/bg all admin-controlled */}
                       <div className={`relative w-full ${imageRatioClass} border-b border-slate-100 flex items-center justify-center p-4`} style={{ backgroundColor: card?.imageBackground || "#f8fafc" }}>
                         {imageUrl ? (
-                          <img src={imageUrl} alt={product.name} loading="lazy" className={`w-full h-full ${imageFitClass}`} />
+                          <LazyCacheImage src={imageUrl} alt={product.name} className={`w-full h-full ${imageFitClass}`} />
                         ) : (
                           <span className="text-4xl text-slate-300">📦</span>
                         )}

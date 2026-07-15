@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 // ✅ LIVE DATA — fetched from the NestJS backend (no more static dummy data)
 import publicCatalogApi from "@/lib/publicCatalogApi";
 import rfqApi from "@/lib/rfqApi";
+import LazyCacheImage from "@/components/shared/LazyCacheImage";
 
 // ✅ SETTINGS — admin-controlled recommendation mode (all / category / selected)
 import {
@@ -227,8 +228,7 @@ function ImageGallery({ images, productName }) {
     <div className="space-y-3">
       {/* Main image */}
       <div className={`relative ${UI.galleryAspects[PAGE_CONFIG.gallery.aspect]} bg-slate-50 ${UI.radii[PAGE_CONFIG.card.radius]} overflow-hidden border border-slate-200/80 group flex items-center justify-center p-4`}>
-        <img
-          loading="lazy"
+        <LazyCacheImage
           src={img.url}
           alt={`${productName} — ${img.angle || "view"}`}
           onError={fallbackImg}
@@ -257,7 +257,7 @@ function ImageGallery({ images, productName }) {
                 i === active ? "border-blue-900 ring-2 ring-blue-900/20" : "border-slate-200 hover:border-slate-400 opacity-70 hover:opacity-100"
               }`}
             >
-              <img loading="lazy" src={im.url} alt={im.angle || `view ${i + 1}`} onError={fallbackImg} className="w-full h-full object-contain bg-slate-50 p-1" />
+              <LazyCacheImage src={im.url} alt={im.angle || `view ${i + 1}`} onError={fallbackImg} className="w-full h-full object-contain bg-slate-50 p-1" />
             </button>
           ))}
         </div>
@@ -558,7 +558,7 @@ export default function ProductDetailPage() {
                     {/* Brand chip (brand allocation) */}
                     {brand && (
                       <div className="flex items-center gap-3 mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200/60 w-fit">
-                        <img loading="lazy" src={brand.logo} alt={brand.name} onError={fallbackImg} className="w-9 h-9 rounded-lg object-cover border border-slate-200" />
+                        <LazyCacheImage src={brand.logo} alt={brand.name} onError={fallbackImg} className="w-9 h-9 rounded-lg object-cover border border-slate-200" />
                         <div>
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Brand</p>
                           <p className="text-sm font-black text-slate-900">{brand.name}</p>
@@ -689,7 +689,7 @@ export default function ProductDetailPage() {
               <Card>
                 <Eyebrow>Distributor Brand</Eyebrow>
                 <div className="flex flex-col sm:flex-row gap-5 mt-4">
-                  <img loading="lazy" src={brand.logo} alt={brand.name} onError={fallbackImg} className="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0" />
+                  <LazyCacheImage src={brand.logo} alt={brand.name} onError={fallbackImg} className="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-black text-slate-900">{brand.name}</h3>
@@ -723,8 +723,8 @@ export default function ProductDetailPage() {
                     {brand.gallery?.length > 0 && (
                       <div className="flex gap-2 mt-4 overflow-x-auto custom-scrollbar pb-1">
                         {brand.gallery.map((g, i) => (
-                          <img loading="lazy" key={i} src={g} alt={`${brand.name} gallery ${i + 1}`} onError={fallbackImg}
-                            className="h-20 rounded-lg object-cover border border-slate-200 shrink-0" />
+                          <LazyCacheImage key={i} src={g} alt={`${brand.name} gallery ${i + 1}`} onError={fallbackImg}
+                            className="h-20 rounded-lg object-cover border border-slate-200 shrink-0" containerClassName="h-20 shrink-0" />
                         ))}
                       </div>
                     )}
@@ -755,8 +755,8 @@ export default function ProductDetailPage() {
                       <div key={client.id} className="border border-slate-200/80 rounded-xl p-4 md:p-5 bg-slate-50/50">
                         {/* client header */}
                         <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                          <img loading="lazy" src={client.logo} alt={client.company} onError={fallbackImg}
-                            className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0" />
+                          <LazyCacheImage src={client.logo} alt={client.company} onError={fallbackImg}
+                            className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0" containerClassName="shrink-0" />
                           <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                               <h4 className="text-sm font-black text-slate-900">{client.company}</h4>
@@ -802,8 +802,8 @@ export default function ProductDetailPage() {
                             {client.gallery?.length > 0 && (
                               <div className="flex gap-2 mt-3 overflow-x-auto custom-scrollbar pb-1">
                                 {client.gallery.map((g, i) => (
-                                  <img loading="lazy" key={i} src={g} alt={`${client.company} site ${i + 1}`} onError={fallbackImg}
-                                    className="h-16 rounded-lg object-cover border border-slate-200 shrink-0" />
+                                  <LazyCacheImage key={i} src={g} alt={`${client.company} site ${i + 1}`} onError={fallbackImg}
+                                    className="h-16 rounded-lg object-cover border border-slate-200 shrink-0" containerClassName="h-16 shrink-0" />
                                 ))}
                               </div>
                             )}
@@ -852,7 +852,7 @@ export default function ProductDetailPage() {
                     <Link key={rp.id} href={`/products/${rp.id}`} className="group">
                       <div className="border border-slate-200/80 rounded-xl overflow-hidden bg-white hover:shadow-md hover:border-blue-300 transition-all h-full flex flex-col">
                         <div className="aspect-square bg-slate-50 overflow-hidden flex items-center justify-center p-3">
-                          <img loading="lazy" src={rp.images?.[0]?.url} alt={rp.name} onError={fallbackImg}
+                          <LazyCacheImage src={rp.images?.[0]?.url} alt={rp.name} onError={fallbackImg}
                             className="max-w-full max-h-full w-auto h-auto object-contain group-hover:scale-105 transition-transform duration-300" />
                         </div>
                         <div className="p-3.5 flex flex-col flex-1">

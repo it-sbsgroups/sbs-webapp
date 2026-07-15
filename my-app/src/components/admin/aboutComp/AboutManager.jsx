@@ -11,6 +11,27 @@ import OurJourneyManager from "@/components/admin/aboutComp/OurJourneyManager";
 import VisionMissionManager from "@/components/admin/aboutComp/VisionMissionManager";
 import CoreValuesManager from "@/components/admin/aboutComp/CoreValuesManager";
 
+const DEFAULT_VISION_MISSION = [
+  {
+    type: "vision",
+    icon: "Eye",
+    iconSize: 90,
+    iconColor: "#7ccf00",
+    title: "Our Vision",
+    description:
+      "<p>Quality product with prompt service is our principle. We initiated to serve towards the growing concern for safety needs in the present industrial scenario at the power capital of India.</p>",
+  },
+  {
+    type: "mission",
+    icon: "Goal",
+    iconSize: 90,
+    iconColor: "#7ccf00",
+    title: "Our Mission",
+    description:
+      "<p>To deliver quality industrial products and prompt service, creating value not just commercially but also by respecting and fulfilling our commitments to customers, partners, and stakeholders.</p>",
+  },
+];
+
 const DEFAULT_ABOUT_DATA = {
   richContent: "",
   keyDetails: [],
@@ -59,7 +80,10 @@ export default function AboutManager() {
           ...d,
           keyDetails: d.keyDetails || [],
           journey: { images: d.journey?.images || [] },
-          visionMission: d.visionMission || [],
+          visionMission:
+            d.visionMission && d.visionMission.length > 0
+              ? d.visionMission
+              : DEFAULT_VISION_MISSION,
           coreValues: d.coreValues || [],
         }))
       )

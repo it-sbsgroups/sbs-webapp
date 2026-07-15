@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import clientsApi from "@/lib/clientsApi";
 import testimonialsApi from "@/lib/testimonialsApi";
+import TableExportImport from "@/components/admin/shared/TableExportImport";
 import toast from "react-hot-toast";
 import {
   Plus, Edit, Trash2, X, Save, Search, Building2, Mail, Phone,
@@ -26,6 +27,17 @@ const BLANK_FORM = {
   isActive: true,
   order: 0,
 };
+
+const CLIENT_EXPORT_COLUMNS = [
+  { key: "companyName", label: "Company Name" },
+  { key: "contactName", label: "Contact Name" },
+  { key: "email", label: "Email" },
+  { key: "phone", label: "Phone" },
+  { key: "companyAddress", label: "Address" },
+  { key: "website", label: "Website" },
+  { key: "logo", label: "Logo URL" },
+  { key: "isActive", label: "Active", exportValue: (r) => (r.isActive ? "Yes" : "No") },
+];
 
 export default function AdminClientsManagementDashboard() {
   const [clientsList, setClientsList] = useState([]);
@@ -177,6 +189,32 @@ export default function AdminClientsManagementDashboard() {
           <Plus size={14} /> Add Client
         </button>
       </div>
+
+      <TableExportImport
+        data={filtered}
+        columns={CLIENT_EXPORT_COLUMNS}
+        filenamePrefix="clients"
+        onImportRow={async (row) => {
+          const companyName = row["Company Name"]?.trim();
+          const contactName = row["Contact Name"]?.trim();
+          const email = row["Email"]?.trim();
+          const phone = row["Phone"]?.trim();
+          if (!companyName || !contactName || !email || !phone) {
+            throw new Error("Company Name, Contact Name, Email, and Phone are required");
+          }
+          await clientsApi.create({
+            companyName,
+            contactName,
+            email,
+            phone,
+            companyAddress: row["Address"]?.trim() || undefined,
+            website: row["Website"]?.trim() || undefined,
+            logo: row["Logo URL"]?.trim() || undefined,
+            isActive: (row["Active"] || "Yes").trim().toLowerCase() !== "no",
+          });
+        }}
+        onImported={load}
+      />
 
       <div className="relative">
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />

@@ -5,7 +5,29 @@ import Image from "next/image";
 import Link from "next/link";
 import siteConfigApi from "@/lib/siteConfigApi";
 import RichTextRenderer from "@/components/shared/RichTextRenderer";
-import { Eye, Goal } from 'lucide-react';
+import * as Icons from "lucide-react";
+
+// Fallback content shown only if the admin hasn't configured Vision & Mission yet.
+const DEFAULT_VISION_MISSION = [
+  {
+    type: "vision",
+    icon: "Eye",
+    iconSize: 90,
+    iconColor: "#7ccf00",
+    title: "Our Vision",
+    description:
+      "<p>Quality product with prompt service is our principle. We initiated to serve towards the growing concern for safety needs in the present industrial scenario at the power capital of India.</p>",
+  },
+  {
+    type: "mission",
+    icon: "Goal",
+    iconSize: 90,
+    iconColor: "#7ccf00",
+    title: "Our Mission",
+    description:
+      "<p>To deliver quality industrial products and prompt service, creating value not just commercially but also by respecting and fulfilling our commitments to customers, partners, and stakeholders.</p>",
+  },
+];
 
 const Card = ({ icon, title, children }) => {
   return (
@@ -245,12 +267,35 @@ export default function PublicAboutPage() {
           </div>
           {/* Floating Cards */}
           <div className="relative -mt-44 max-w-6xl mx-auto px-5 pb-20">
-            <Card title="Our Vision" icon={<Eye size={90} color="#7ccf00" />} className="bg-transparent/50">
-              <p>Quality product with prompt service is our principle. We initiated to serve towards the growing concern for safety needs in the present industrial scenario at the power capital of India.</p>
-            </Card>
-            <Card title="Our Mission" icon={<Goal size={90} color="#7ccf00" />} className="bg-transparent/50" >
-              <p>To deliver quality industrial products and prompt service, creating value not just commercially but also by respecting and fulfilling our commitments to customers, partners, and stakeholders.</p>
-            </Card>
+            {loading ? (
+              <>
+                <div className="bg-white rounded-lg shadow-[0_18px_45px_rgba(0,0,0,0.12)] p-10 lg:p-12 mb-10">
+                  <SectionSkeleton />
+                </div>
+                <div className="bg-white rounded-lg shadow-[0_18px_45px_rgba(0,0,0,0.12)] p-10 lg:p-12 mb-10">
+                  <SectionSkeleton />
+                </div>
+              </>
+            ) : (
+              (visionMission.length > 0 ? visionMission : DEFAULT_VISION_MISSION).map((vm, i) => {
+                const DynamicIcon = (vm.icon && Icons[vm.icon]) || Icons.Sparkles;
+                const title = vm.title || (vm.type === "mission" ? "Our Mission" : "Our Vision");
+                return (
+                  <Card
+                    key={i}
+                    title={title}
+                    icon={
+                      <DynamicIcon
+                        size={vm.iconSize || 90}
+                        color={vm.iconColor || "#7ccf00"}
+                      />
+                    }
+                  >
+                    <RichTextRenderer html={vm.description} />
+                  </Card>
+                );
+              })
+            )}
           </div>
         </section>
         {/* ================================================================================================================================================= */}

@@ -70,6 +70,7 @@ const newsApi = {
       if (params.page) cleanParams.page = Number(params.page);
       if (params.pageSize) cleanParams.pageSize = Number(params.pageSize);
       if (params.categoryId) cleanParams.categoryId = params.categoryId;
+      if (params.subcategoryId) cleanParams.subcategoryId = params.subcategoryId;
       if (params.status) cleanParams.status = params.status;
       if (params.search) cleanParams.search = params.search;
 
@@ -80,6 +81,16 @@ const newsApi = {
     } catch (error) {
       console.error('Failed to fetch posts:', error);
       return { data: [], meta: { total: 0 } };
+    }
+  },
+
+  async getPost(id) {
+    try {
+      const res = await apiClient.get(`/news/posts/${id}`);
+      return res?.data || res;
+    } catch (error) {
+      console.error('Failed to fetch post:', error);
+      return null;
     }
   },
 

@@ -5,11 +5,18 @@ import toast from "react-hot-toast";
 import faqApi from "@/lib/faq/api";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import RichTextEditor from "@/components/shared/RichTextEditor";
+import TableExportImport from "@/components/admin/shared/TableExportImport";
 
 const TABS = [
   { key: "pending",  label: "Pending",   emoji: "📥", desc: "User-submitted questions awaiting an answer" },
   { key: "approved", label: "Published",  emoji: "✅", desc: "Answered & live FAQs" },
   { key: "create",   label: "Create FAQ", emoji: "✏️", desc: "Publish a new FAQ directly" },
+];
+
+const FAQ_EXPORT_COLUMNS = [
+  { key: "question", label: "Question" },
+  { key: "answer", label: "Answer", exportValue: (r) => (r.answer || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() },
+  { key: "status", label: "Status" },
 ];
 
 function timeAgo(iso) {
@@ -412,6 +419,24 @@ export default function AdminFaqManagerPage() {
             Review user questions, publish answers, and manage the FAQ knowledge base.
           </p>
         </div>
+
+        <TableExportImport
+          data={faqs}
+          columns={FAQ_EXPORT_COLUMNS}
+          filenamePrefix={`faqs-${activeTab}`}
+          onImportRow={async (row) => {
+            const question = row["Question"]?.trim();
+            const answer = row["Answer"]?.trim();
+            if (!question || !answer) throw new Error("Question and Answer are required");
+            await faqApi.adminCreate({
+              question,
+              answer,
+              isListedOnFaqPage: true,
+              isFeaturedInComponent: false,
+            });
+          }}
+          onImported={() => load(activeTab, meta.page)}
+        />
 
         {/* Tab bar */}
         <div className="flex gap-1 bg-slate-100 rounded-xl p-1">

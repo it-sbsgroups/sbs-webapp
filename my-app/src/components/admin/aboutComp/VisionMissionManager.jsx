@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
+import * as Icons from "lucide-react";
 import RichTextEditor from "@/components/shared/RichTextEditor";
 
 const inputCls =
@@ -9,6 +10,27 @@ const labelCls =
   "text-[10px] font-black text-slate-500 uppercase tracking-wide";
 const cardCls =
   "bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm";
+
+// A curated shortlist so the datalist isn't 1500+ items — but any valid
+// lucide-react export name typed in works too.
+const SUGGESTED_ICONS = [
+  "Eye", "Goal", "Target", "Compass", "Rocket", "Lightbulb", "Star",
+  "Shield", "ShieldCheck", "Award", "Trophy", "Heart", "Gem", "Sparkles",
+  "TrendingUp", "Flag", "Sun", "Globe", "Handshake", "Users",
+];
+
+function IconPreview({ name, size, color }) {
+  const DynamicIcon = (name && Icons[name]) || Icons.HelpCircle;
+  return (
+    <div
+      className="flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 shrink-0"
+      style={{ width: 56, height: 56 }}
+      title={Icons[name] ? name : "Unknown icon — showing fallback"}
+    >
+      <DynamicIcon size={Math.min(size || 28, 32)} color={color || "#0f172a"} />
+    </div>
+  );
+}
 
 export default function VisionMissionManager({ data, setData }) {
   const blocks = data.visionMission || [];
@@ -20,8 +42,11 @@ export default function VisionMissionManager({ data, setData }) {
         ...(prev.visionMission || []),
         {
           type: "vision",
-          icon: "visibility",
-          points: [{ heading: "", description: "" }],
+          icon: "Eye",
+          iconSize: 90,
+          iconColor: "#7ccf00",
+          title: "Our Vision",
+          description: "",
         },
       ],
     }));
@@ -42,44 +67,13 @@ export default function VisionMissionManager({ data, setData }) {
     });
   };
 
-  const addPoint = (blockIdx) => {
-    setData((prev) => {
-      const arr = [...prev.visionMission];
-      arr[blockIdx].points = [
-        ...(arr[blockIdx].points || []),
-        { heading: "", description: "" },
-      ];
-      return { ...prev, visionMission: arr };
-    });
-  };
-
-  const removePoint = (blockIdx, pointIdx) => {
-    setData((prev) => {
-      const arr = [...prev.visionMission];
-      arr[blockIdx].points = arr[blockIdx].points.filter(
-        (_, i) => i !== pointIdx
-      );
-      return { ...prev, visionMission: arr };
-    });
-  };
-
-  const updatePoint = (blockIdx, pointIdx, field, value) => {
-    setData((prev) => {
-      const arr = [...prev.visionMission];
-      const points = [...arr[blockIdx].points];
-      points[pointIdx] = { ...points[pointIdx], [field]: value };
-      arr[blockIdx] = { ...arr[blockIdx], points };
-      return { ...prev, visionMission: arr };
-    });
-  };
-
   return (
     <div className={cardCls}>
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-black text-slate-900">Vision & Mission</h3>
           <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-            Each block can have a rich‑text description per point.
+            Set a lucide-react icon (with size &amp; color), a title, and a rich-text description for each block.
           </p>
         </div>
         <button
@@ -94,8 +88,9 @@ export default function VisionMissionManager({ data, setData }) {
         {blocks.map((block, bi) => (
           <div
             key={bi}
-            className="border border-slate-200 rounded-xl p-4 space-y-3"
+            className="border border-slate-200 rounded-xl p-4 space-y-4"
           >
+            {/* Type + delete */}
             <div className="flex items-center gap-3">
               <select
                 className={`${inputCls} w-28`}
@@ -114,20 +109,7 @@ export default function VisionMissionManager({ data, setData }) {
               >
                 {block.type}
               </span>
-              <div className="flex items-center gap-2 flex-1">
-                <span
-                  className="material-symbols-outlined text-blue-700"
-                  style={{ fontSize: "24px" }}
-                >
-                  {block.icon || "star"}
-                </span>
-                <input
-                  className={`${inputCls} flex-1`}
-                  placeholder="Material Symbol icon"
-                  value={block.icon || ""}
-                  onChange={(e) => updateBlock(bi, { icon: e.target.value })}
-                />
-              </div>
+              <div className="flex-1" />
               <button
                 onClick={() => removeBlock(bi)}
                 className="p-1.5 text-red-400 hover:text-red-700"
@@ -136,51 +118,87 @@ export default function VisionMissionManager({ data, setData }) {
               </button>
             </div>
 
-            <div className="space-y-3">
-              <p className={labelCls}>Points</p>
-              {block.points.map((point, pi) => (
-                <div
-                  key={pi}
-                  className="flex items-start gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100"
-                >
-                  <span className="text-[10px] font-bold text-slate-400 mt-2 w-4">
-                    {pi + 1}.
-                  </span>
-                  <div className="flex-1 space-y-2">
-                    <input
-                      className={inputCls}
-                      placeholder="Point heading (optional)"
-                      value={point.heading || ""}
-                      onChange={(e) =>
-                        updatePoint(bi, pi, "heading", e.target.value)
-                      }
-                    />
-                    <div className="h-36">
-                      <RichTextEditor
-                        value={point.description || ""}
-                        onChange={(html) =>
-                          updatePoint(bi, pi, "description", html)
-                        }
-                        placeholder="Describe this point…"
-                        uploadFolder="about-vision-mission"
-                        minHeight="120px"
-                      />
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => removePoint(bi, pi)}
-                    className="p-1.5 text-red-400 hover:text-red-700"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+            {/* Icon + size + color */}
+            <div className="flex flex-wrap items-end gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+              <IconPreview name={block.icon} size={block.iconSize} color={block.iconColor} />
+
+              <div className="min-w-[160px] flex-1">
+                <label className={labelCls}>Lucide Icon Name</label>
+                <input
+                  list={`icon-suggestions-${bi}`}
+                  className={inputCls}
+                  placeholder="e.g. Eye, Goal, Target…"
+                  value={block.icon || ""}
+                  onChange={(e) => updateBlock(bi, { icon: e.target.value })}
+                />
+                <datalist id={`icon-suggestions-${bi}`}>
+                  {SUGGESTED_ICONS.map((n) => (
+                    <option key={n} value={n} />
+                  ))}
+                </datalist>
+                {block.icon && !Icons[block.icon] && (
+                  <p className="text-[10px] text-red-500 font-semibold mt-1">
+                    Unknown icon name — check spelling (case-sensitive, e.g. "ShieldCheck").
+                  </p>
+                )}
+              </div>
+
+              <div className="w-24">
+                <label className={labelCls}>Size (px)</label>
+                <input
+                  type="number"
+                  min={16}
+                  max={200}
+                  className={inputCls}
+                  value={block.iconSize ?? 90}
+                  onChange={(e) =>
+                    updateBlock(bi, { iconSize: Number(e.target.value) || 0 })
+                  }
+                />
+              </div>
+
+              <div className="w-28">
+                <label className={labelCls}>Color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    className="h-[38px] w-10 rounded-lg border border-slate-200 cursor-pointer bg-white"
+                    value={block.iconColor || "#7ccf00"}
+                    onChange={(e) => updateBlock(bi, { iconColor: e.target.value })}
+                  />
+                  <input
+                    className={inputCls}
+                    value={block.iconColor || "#7ccf00"}
+                    onChange={(e) => updateBlock(bi, { iconColor: e.target.value })}
+                  />
                 </div>
-              ))}
-              <button
-                onClick={() => addPoint(bi)}
-                className="flex items-center gap-1.5 text-xs font-black text-blue-800 hover:text-blue-950 py-1.5 transition-colors"
-              >
-                <Plus size={14} /> Add Point
-              </button>
+              </div>
+            </div>
+
+            {/* Title */}
+            <div>
+              <label className={labelCls}>Title</label>
+              <input
+                className={inputCls}
+                placeholder="e.g. Our Vision"
+                value={block.title || ""}
+                onChange={(e) => updateBlock(bi, { title: e.target.value })}
+              />
+            </div>
+
+            {/* Description (rich text) */}
+            <div>
+              <label className={labelCls}>Description</label>
+              <div className="mt-1.5">
+                <RichTextEditor
+                  value={block.description || ""}
+                  onChange={(html) => updateBlock(bi, { description: html })}
+                  placeholder="Describe this vision or mission…"
+                  uploadFolder="about-vision-mission"
+                  minHeight="140px"
+                  resetKey={bi}
+                />
+              </div>
             </div>
           </div>
         ))}

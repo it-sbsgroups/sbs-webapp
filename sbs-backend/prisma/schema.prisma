@@ -479,6 +479,11 @@ model NewsPost {
   status          PostStatus       @default(DRAFT)
   allowVersioning Boolean          @default(true)
   isFeatured      Boolean          @default(false)
+  // Denormalized fields for fast list/card rendering — kept in sync with
+  // `blocks` in NewsService.createPost/updatePost so the list endpoint
+  // never has to pull full block content (which can be large LongText).
+  excerpt         String?          @db.VarChar(300)
+  coverImage      String?          @db.VarChar(500)
   publishedAt     DateTime?        
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -487,6 +492,7 @@ model NewsPost {
   blocks          NewsBlock[]      
   versions        NewsVersion[]    
   comments        NewsComment[]    
+  @@index([status, createdAt])
   @@map("news_posts")
 }
 
@@ -904,7 +910,7 @@ model PageSection {
   heading         String
   subHeading      String?
   content         String   @db.Text // Yahan editor ka HTML store hoga
-  imageUrls       String[] // Array of strings (agar multiple images hain)
+  imageUrls       Json? // Array of strings (agar multiple images hain)
   
   // Repeater data ke liye alag relation
   items           Item[]   // e.g., Features list ya "Grow Together" list

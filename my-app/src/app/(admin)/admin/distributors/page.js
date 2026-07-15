@@ -6,6 +6,7 @@ import testimonialsApi from "@/lib/testimonialsApi";
 import toast from "react-hot-toast";
 import { Plus, Edit, Trash2, X, Save, Search, Building2, Mail, Phone, Globe, ChevronLeft, ChevronRight, MessageSquareQuote } from "lucide-react";
 import BrandGalleryUploader from "@/components/admin/brand/BrandGalleryUploader";
+import TableExportImport from "@/components/admin/shared/TableExportImport";
 
 const Toggle = ({ checked, onChange }) => (
   <button type="button" onClick={onChange} className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${ checked ? 'bg-blue-600' : 'bg-gray-300' }`}>
@@ -25,6 +26,16 @@ const emptyForm = {
 };
 
 const STORAGE_KEY = "brands_management_state";
+
+const BRAND_EXPORT_COLUMNS = [
+  { key: "name", label: "Brand Name" },
+  { key: "email", label: "Email" },
+  { key: "phone", label: "Phone" },
+  { key: "website", label: "Website" },
+  { key: "logo", label: "Logo URL" },
+  { key: "isOwnBrand", label: "Own Brand", exportValue: (r) => (r.isOwnBrand ? "Yes" : "No") },
+  { key: "isActive", label: "Active", exportValue: (r) => (r.isActive ? "Yes" : "No") },
+];
 
 export default function BrandsManagementPage() {
   const [brands, setBrands] = useState([]);
@@ -226,6 +237,26 @@ export default function BrandsManagementPage() {
           <Plus size={14} /> Register New Brand
         </button>
       </div>
+
+      <TableExportImport
+        data={filteredBrands}
+        columns={BRAND_EXPORT_COLUMNS}
+        filenamePrefix="brands"
+        onImportRow={async (row) => {
+          const name = row["Brand Name"]?.trim();
+          if (!name) throw new Error("Brand Name is required");
+          await brandsApi.create({
+            name,
+            email: row["Email"]?.trim() || undefined,
+            phone: row["Phone"]?.trim() || undefined,
+            website: row["Website"]?.trim() || undefined,
+            logo: row["Logo URL"]?.trim() || undefined,
+            isOwnBrand: (row["Own Brand"] || "").trim().toLowerCase() === "yes",
+            isActive: (row["Active"] || "Yes").trim().toLowerCase() !== "no",
+          });
+        }}
+        onImported={fetchBrands}
+      />
 
       <div className="relative">
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />

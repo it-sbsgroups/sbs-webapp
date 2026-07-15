@@ -10,6 +10,7 @@ const publicNewsApi = {
       if (params.page) cleanParams.page = Number(params.page);
       if (params.pageSize) cleanParams.pageSize = Number(params.pageSize);
       if (params.categoryId) cleanParams.categoryId = params.categoryId;
+      if (params.subcategoryId) cleanParams.subcategoryId = params.subcategoryId;
       if (params.search) cleanParams.search = params.search;
 
       const res = await apiClient.get('/news/public/posts', cleanParams);

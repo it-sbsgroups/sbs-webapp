@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import publicNewsApi from "@/lib/news/publicNewsApi";
+import LazyCacheImage from "@/components/shared/LazyCacheImage";
 
 const fmtDate = (iso) => {
   if (!iso) return "";
@@ -13,13 +14,12 @@ const fmtDate = (iso) => {
   });
 };
 
-const coverImageOf = (post) => post?.blocks?.[0]?.images?.[0]?.src || "";
-
 export default function PublicNewsPage() {
   // ============================================
   // DATA STATES
   // ============================================
   const [posts, setPosts] = useState([]);
+  const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
   const [settings, setSettings] = useState({
@@ -32,31 +32,42 @@ export default function PublicNewsPage() {
     latestNewsCount: 5,
   });
   const [latestNews, setLatestNews] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true); // first paint only
+  const [fetching, setFetching] = useState(false); // subsequent filter/page fetches
 
   // ============================================
   // FILTER STATES
   // ============================================
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState(""); // raw input, updates instantly
+  const [search, setSearch] = useState(""); // debounced value actually sent to the API
   const [categoryId, setCategoryId] = useState("ALL");
   const [subcategoryId, setSubcategoryId] = useState("ALL");
   const [page, setPage] = useState(1);
 
   // ============================================
-  // LOAD DATA
+  // DEBOUNCE SEARCH (avoid firing a request on every keystroke)
   // ============================================
   useEffect(() => {
-    const loadData = async () => {
+    const t = setTimeout(() => setSearch(searchInput.trim()), 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  // Reset to page 1 whenever a filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [search, categoryId, subcategoryId]);
+
+  // ============================================
+  // ONE-TIME DATA: categories + settings + latest news sidebar
+  // ============================================
+  useEffect(() => {
+    const loadStaticData = async () => {
       try {
-        const [postsRes, catData, settingsData] = await Promise.all([
-          publicNewsApi.getPublishedPosts({ pageSize: 100 }),
+        const [catData, settingsData] = await Promise.all([
           publicNewsApi.getCategories(),
           publicNewsApi.getSettings(),
         ]);
-
-        setPosts(postsRes?.data || []);
         setCategories(Array.isArray(catData) ? catData : []);
-
         if (settingsData) {
           setSettings((prev) => ({ ...prev, ...settingsData }));
           if (settingsData.latestNewsEnabled !== false) {
@@ -65,21 +76,11 @@ export default function PublicNewsPage() {
           }
         }
       } catch (error) {
-        console.error("Failed to load news data:", error);
-      } finally {
-        setLoading(false);
+        console.error("Failed to load news static data:", error);
       }
     };
-    loadData();
+    loadStaticData();
   }, []);
-
-  // ============================================
-  // FILTERED SUBCATEGORIES
-  // ============================================
-  const subOptions = useMemo(() => {
-    if (categoryId === "ALL") return [];
-    return subcategories.filter((s) => s.categoryId === categoryId);
-  }, [subcategories, categoryId]);
 
   // Load subcategories when category changes
   useEffect(() => {
@@ -87,38 +88,56 @@ export default function PublicNewsPage() {
       publicNewsApi.getSubcategories(categoryId).then((data) => {
         setSubcategories(Array.isArray(data) ? data : []);
       });
+    } else {
+      setSubcategories([]);
     }
   }, [categoryId]);
 
-  // ============================================
-  // FILTER ENGINE
-  // ============================================
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    return posts.filter((post) => {
-      if (categoryId !== "ALL" && post.categoryId !== categoryId) return false;
-      if (subcategoryId !== "ALL" && post.subcategoryId !== subcategoryId) return false;
-      if (q.length >= 2) {
-        return (
-          (post.title || "").toLowerCase().includes(q) ||
-          (post.slug || "").toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [posts, search, categoryId, subcategoryId]);
+  const subOptions = useMemo(() => {
+    if (categoryId === "ALL") return [];
+    return subcategories.filter((s) => s.categoryId === categoryId);
+  }, [subcategories, categoryId]);
 
   // ============================================
-  // PAGINATION
+  // SERVER-SIDE POSTS FETCH — the actual perf fix: only the current page's
+  // worth of lightweight cards (title/excerpt/coverImage) crosses the wire,
+  // filtered and paginated by the backend instead of client-side over a
+  // 100-post dump.
+  // ============================================
+  const requestId = useRef(0);
+  useEffect(() => {
+    const myId = ++requestId.current;
+    const load = async () => {
+      setFetching(true);
+      try {
+        const res = await publicNewsApi.getPublishedPosts({
+          page,
+          pageSize: settings.cardsPerPage || 9,
+          categoryId: categoryId !== "ALL" ? categoryId : undefined,
+          subcategoryId: subcategoryId !== "ALL" ? subcategoryId : undefined,
+          search: search.length >= 2 ? search : undefined,
+        });
+        if (myId !== requestId.current) return; // a newer request superseded this one
+        setPosts(res?.data || []);
+        setTotal(res?.meta?.total ?? (res?.data || []).length);
+      } catch (error) {
+        console.error("Failed to load news posts:", error);
+      } finally {
+        if (myId === requestId.current) {
+          setFetching(false);
+          setInitialLoading(false);
+        }
+      }
+    };
+    load();
+  }, [page, categoryId, subcategoryId, search, settings.cardsPerPage]);
+
+  // ============================================
+  // PAGINATION (server-driven)
   // ============================================
   const perPage = settings.cardsPerPage || 9;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
   const pageStart = (page - 1) * perPage;
-  const pageItems = filtered.slice(pageStart, pageStart + perPage);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, categoryId, subcategoryId]);
 
   // ============================================
   // GRID CLASS
@@ -131,20 +150,15 @@ export default function PublicNewsPage() {
   }[settings.cardsPerRow] || "md:grid-cols-3";
 
   // ============================================
-  // LOADING
+  // LOADING (first paint)
   // ============================================
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
       </div>
     );
   }
-
-  const getCategoryName = (catId) => categories.find((c) => c.id === catId)?.name || "";
-  const getFirstImage = (post) => {
-    return post?.blocks?.find((b) => b.type === "imageRow")?.images?.[0]?.src || null;
-  };
 
   return (
     <div className="p-6 md:p-12 max-w-6xl mx-auto flex-1 w-full space-y-8">
@@ -168,11 +182,11 @@ export default function PublicNewsPage() {
             <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1 block">Search</label>
             <div className="relative">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
-              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+              <input type="text" value={searchInput} onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Type 2+ characters to search news..."
                 className="w-full text-xs font-semibold text-slate-800 border border-slate-300 rounded-xl pl-8 pr-8 py-2.5 bg-white focus:outline-none focus:border-blue-900" />
-              {search && (
-                <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 font-bold text-xs">✕</button>
+              {searchInput && (
+                <button onClick={() => setSearchInput("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 font-bold text-xs">✕</button>
               )}
             </div>
           </div>
@@ -207,19 +221,22 @@ export default function PublicNewsPage() {
           ? "lg:grid-cols-[1fr_280px]" : "grid-cols-1"
       }`}>
         {/* ARTICLES */}
-        <div>
-          <p className="text-[11px] font-bold text-slate-400 mb-4">{filtered.length} article{filtered.length !== 1 ? "s" : ""} found</p>
-          {pageItems.length > 0 ? (
+        <div className={fetching ? "opacity-60 transition-opacity" : "transition-opacity"}>
+          <p className="text-[11px] font-bold text-slate-400 mb-4">{total} article{total !== 1 ? "s" : ""} found</p>
+          {posts.length > 0 ? (
             <div className={`grid grid-cols-1 ${colClass} gap-6`}>
-              {pageItems.map((post) => {
-                const coverImage = getFirstImage(post);
-                const catName = getCategoryName(post.categoryId);
+              {posts.map((post) => {
+                const catName = post.category?.name || "";
                 return (
                   <Link key={post.id} href={`/news/${post.slug}`}
                     className="bg-white border rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-md border-slate-200/80 flex flex-col hover:border-blue-950 group">
-                    {coverImage && (
+                    {post.coverImage && (
                       <div className="aspect-[16/10] bg-slate-100 overflow-hidden">
-                        <img loading="lazy" src={coverImage} alt={post.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <LazyCacheImage
+                          src={post.coverImage}
+                          alt={post.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
                       </div>
                     )}
                     <div className="p-5 flex flex-col justify-between flex-1">
@@ -234,7 +251,7 @@ export default function PublicNewsPage() {
                           {post.title}
                         </h3>
                         <p className="text-[11px] text-slate-500 mt-3 font-medium leading-relaxed line-clamp-3">
-                          {post.blocks?.[0]?.content?.substring(0, 150) || "Read more..."}
+                          {post.excerpt || "Read more..."}
                         </p>
                       </div>
                       <span className="text-[10px] text-blue-900 font-black uppercase tracking-wider mt-4 block">
@@ -257,7 +274,7 @@ export default function PublicNewsPage() {
           {totalPages > 1 && (
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4">
               <p className="text-[11px] font-semibold text-slate-400">
-                Showing <span className="font-black text-slate-700">{pageStart + 1}–{Math.min(pageStart + perPage, filtered.length)}</span> of <span className="font-black text-slate-700">{filtered.length}</span>
+                Showing <span className="font-black text-slate-700">{pageStart + 1}–{Math.min(pageStart + perPage, total)}</span> of <span className="font-black text-slate-700">{total}</span>
               </p>
               <div className="flex items-center gap-1.5">
                 <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
@@ -273,7 +290,7 @@ export default function PublicNewsPage() {
           )}
         </div>
 
-        {/* LATEST NEWS SIDEBAR (replaces the old sponsored-products ad slot) */}
+        {/* LATEST NEWS SIDEBAR */}
         {latestNews.length > 0 && settings.latestNewsEnabled !== false && (
           <aside className="space-y-4">
             <div className="bg-white border border-slate-200 rounded-2xl p-4 sticky top-6">
@@ -283,8 +300,8 @@ export default function PublicNewsPage() {
                   <Link key={n.id} href={`/news/${n.slug}`}
                     className="flex gap-3 items-center p-2 rounded-xl border border-slate-100 hover:border-blue-300 hover:shadow-sm transition-all group">
                     <div className="w-14 h-14 shrink-0 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-center p-1 overflow-hidden">
-                      {coverImageOf(n) ? (
-                        <img loading="lazy" src={coverImageOf(n)} alt={n.title} className="w-full h-full object-cover" />
+                      {n.coverImage ? (
+                        <LazyCacheImage src={n.coverImage} alt={n.title} className="w-full h-full object-cover" />
                       ) : (<span className="text-xl">📰</span>)}
                     </div>
                     <div className="min-w-0">

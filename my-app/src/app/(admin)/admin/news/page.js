@@ -186,26 +186,32 @@ export default function AdminNewsManage() {
   const [selectedPostForAds, setSelectedPostForAds] = useState("__all__"); // "__all__" for global, or post ID
   const [adProductIds, setAdProductIds] = useState([]);
 
+  // Comments and the (legacy) products list are heavy and only needed once
+  // their respective tabs are opened — loading them eagerly on every page
+  // load was a big chunk of the admin news page's slowness.
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [productsLoaded, setProductsLoaded] = useState(false);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [editLoadingId, setEditLoadingId] = useState(null);
+
   // ============================================
-  // LOAD ALL DATA
+  // LOAD ALL DATA (lightweight — posts list no longer carries block content,
+  // and comments/products are deferred to when their tabs are opened)
   // ============================================
   const loadAllData = useCallback(async () => {
     setLoading(true);
     try {
-      const [catData, subData, postsRes, commentsRes, productsRes, settingsData] = await Promise.all([
+      const [catData, subData, postsRes, settingsData] = await Promise.all([
         newsApi.getCategories(),
         newsApi.getSubcategories(),
         newsApi.getPosts({ pageSize: 100 }),
-        newsApi.getComments({ pageSize: 200 }),
-        productsApi.getAll({ pageSize: 500 }),
         newsApi.getSettings(),
       ]);
 
       setCategories(Array.isArray(catData) ? catData : []);
       setSubcategories(Array.isArray(subData) ? subData : []);
       setPosts(postsRes?.data || []);
-      setComments(commentsRes?.data || []);
-      setAllProducts(productsRes?.data || []);
 
       // In loadAllData function, update the settings loading:
       if (settingsData && typeof settingsData === 'object') {
@@ -229,7 +235,7 @@ export default function AdminNewsManage() {
             productSuggestionMode: settingsData.productSuggestionMode ?? prev.productSuggestionMode,
             selectedProductIds: settingsData.selectedProductIds ?? prev.selectedProductIds,
           }));
-          
+
           // Load selected product IDs
           if (settingsData.selectedProductIds && Array.isArray(settingsData.selectedProductIds)) {
             setAdProductIds(settingsData.selectedProductIds);
@@ -249,6 +255,40 @@ export default function AdminNewsManage() {
   useEffect(() => {
     loadAllData();
   }, [loadAllData]);
+
+  // Lazy-load comments the first time the Comments tab is opened
+  const loadComments = useCallback(async () => {
+    setCommentsLoading(true);
+    try {
+      const commentsRes = await newsApi.getComments({ pageSize: 200 });
+      setComments(commentsRes?.data || []);
+      setCommentsLoaded(true);
+    } catch (error) {
+      console.error("Failed to load comments:", error);
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, []);
+
+  // Lazy-load the (legacy) product catalog the first time the Suggested
+  // Products tab is opened
+  const loadProducts = useCallback(async () => {
+    setProductsLoading(true);
+    try {
+      const productsRes = await productsApi.getAll({ pageSize: 500 });
+      setAllProducts(productsRes?.data || []);
+      setProductsLoaded(true);
+    } catch (error) {
+      console.error("Failed to load products:", error);
+    } finally {
+      setProductsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "comments" && !commentsLoaded && !commentsLoading) loadComments();
+    if (activeTab === "ads" && !productsLoaded && !productsLoading) loadProducts();
+  }, [activeTab, commentsLoaded, commentsLoading, productsLoaded, productsLoading, loadComments, loadProducts]);
 
   // ============================================
   // FILTERED DATA
@@ -355,7 +395,7 @@ export default function AdminNewsManage() {
     setEditingPostId(null);
   };
 
-  const openEditPost = (post) => {
+  const openEditPost = async (post) => {
     setEditingPostId(post.id);
     setTitle(post.title || "");
     setCategoryId(post.categoryId || "");
@@ -363,13 +403,26 @@ export default function AdminNewsManage() {
     setAllowVersioning(post.allowVersioning !== false);
     setIsFeatured(post.isFeatured || false);
     setPublishStatus(post.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT");
-    setBlocks(post.blocks?.length ? post.blocks.map((b) => ({
-      type: b.type || "text",
-      content: b.content || "",
-      style: b.style || { fontFamily: "serif", color: "#1e293b", fontSize: "16px" },
-      images: b.images || [],
-    })) : [{ type: "text", content: "", style: { fontFamily: "serif", color: "#1e293b", fontSize: "16px" } }]);
     setActiveTab("composer");
+
+    // The posts list is now lightweight (no block content) for speed, so
+    // fetch the full post — including its blocks — right before editing.
+    setEditLoadingId(post.id);
+    try {
+      const full = await newsApi.getPost(post.id);
+      const sourceBlocks = full?.blocks?.length ? full.blocks : post.blocks;
+      setBlocks(sourceBlocks?.length ? sourceBlocks.map((b) => ({
+        type: b.type || "text",
+        content: b.content || "",
+        style: b.style || { fontFamily: "serif", color: "#1e293b", fontSize: "16px" },
+        images: b.images || [],
+      })) : [{ type: "text", content: "", style: { fontFamily: "serif", color: "#1e293b", fontSize: "16px" } }]);
+    } catch (error) {
+      console.error("Failed to load full post for editing:", error);
+      alert("Couldn't load this post's content. Please try again.");
+    } finally {
+      setEditLoadingId(null);
+    }
   };
 
   const savePost = async (e) => {
@@ -789,7 +842,10 @@ export default function AdminNewsManage() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex justify-end gap-1">
-                        <button onClick={() => openEditPost(post)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600" title="Edit"><Edit size={14} /></button>
+                        <button onClick={() => openEditPost(post)} disabled={editLoadingId === post.id}
+                          className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 disabled:opacity-50" title="Edit">
+                          {editLoadingId === post.id ? <Loader2 size={14} className="animate-spin" /> : <Edit size={14} />}
+                        </button>
                         <button onClick={() => deletePost(post.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-600" title="Delete"><Trash2 size={14} /></button>
                       </div>
                     </td>
@@ -1023,6 +1079,11 @@ export default function AdminNewsManage() {
           <div className="flex justify-between items-center border-b pb-3">
             <h2 className="text-sm font-black text-slate-900 uppercase">Comment Moderation ({comments.length})</h2>
           </div>
+          {commentsLoading ? (
+            <div className="flex items-center justify-center py-16 text-slate-400 gap-2">
+              <Loader2 size={18} className="animate-spin" /> <span className="text-xs font-bold">Loading comments…</span>
+            </div>
+          ) : (
           <div className="space-y-3 max-h-[600px] overflow-y-auto">
             {comments.map((r) => {
               const [label, cls] = statusBadge(r);
@@ -1058,6 +1119,7 @@ export default function AdminNewsManage() {
             })}
             {comments.length === 0 && <p className="text-center text-slate-400 py-8">No comments to moderate</p>}
           </div>
+          )}
         </div>
       )}
 
@@ -1087,7 +1149,11 @@ export default function AdminNewsManage() {
               <span className="text-xs text-slate-400">Click to toggle selection</span>
             </div>
             <div className="space-y-2 max-h-[600px] overflow-y-auto">
-              {allProducts.map((p) => {
+              {productsLoading ? (
+                <div className="flex items-center justify-center py-16 text-slate-400 gap-2">
+                  <Loader2 size={18} className="animate-spin" /> <span className="text-xs font-bold">Loading products…</span>
+                </div>
+              ) : allProducts.map((p) => {
                 const on = adProductIds.includes(p.id);
                 return (
                   <button key={p.id} type="button" onClick={() => toggleAdProduct(p.id)}
