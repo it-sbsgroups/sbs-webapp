@@ -14,7 +14,7 @@ function toBrandCard(b) {
   };
 }
 
-export default function BrandsDirectoryPage() {
+export default function OwnBrandsDirectoryPage() {
   const [query, setQuery] = useState("");
   const [activeSector, setActiveSector] = useState("All");
   const [brands, setBrands] = useState([]);
@@ -22,10 +22,10 @@ export default function BrandsDirectoryPage() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await brandsApi.getPublic(false); // isOwnBrand: false — distributor/partner brands only
+        const data = await brandsApi.getPublic(true); // isOwnBrand: true — our own proprietary brands
         if (Array.isArray(data)) setBrands(data.map(toBrandCard));
       } catch (error) {
-        console.error("Failed to fetch brands:", error);
+        console.error("Failed to fetch own brands:", error);
       }
     })();
   }, []);
@@ -59,13 +59,13 @@ export default function BrandsDirectoryPage() {
         <div className="max-w-6xl mx-auto px-4 md:px-8 py-12">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="max-w-2xl">
-              <span className="text-xs font-black text-indigo-600 uppercase tracking-widest">Distribution Partners</span>
-              <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mt-1">Brands We Distribute</h1>
-              <p className="text-xs md:text-sm text-slate-500 font-medium mt-2 leading-relaxed">Explore the manufacturers and distribution partners we represent across our industrial supply network.</p>
+              <span className="text-xs font-black text-indigo-600 uppercase tracking-widest">In-House Portfolios</span>
+              <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mt-1">Our Native Proprietary Brands</h1>
+              <p className="text-xs md:text-sm text-slate-500 font-medium mt-2 leading-relaxed">Discover our internally engineered brand labels designed to meet heavy industrial demands.</p>
             </div>
             <div className="bg-slate-900 text-white rounded-2xl p-5 shrink-0 shadow-md">
               <p className="text-2xl font-black">{brands.length}</p>
-              <p className="text-xs text-slate-300">Partner Brands</p>
+              <p className="text-xs text-slate-300">Own Brands</p>
             </div>
           </div>
 
@@ -89,7 +89,7 @@ export default function BrandsDirectoryPage() {
         {filteredBrands.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center bg-white rounded-2xl border border-slate-200">
             <span className="text-5xl mb-3 opacity-30">📦</span>
-            <h3 className="text-base font-black text-slate-900">No Partner Brands Found</h3>
+            <h3 className="text-base font-black text-slate-900">No House Brands Found</h3>
             <p className="text-xs text-slate-500 mt-1">Refine your active keyword or switch categories tab.</p>
           </div>
         ) : (

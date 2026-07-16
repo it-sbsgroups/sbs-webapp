@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import brandsApi from "@/lib/brands/Api";
+import { toStaticUrl } from "@/lib/client";
 import testimonialsApi from "@/lib/testimonialsApi";
 import toast from "react-hot-toast";
 import { Plus, Edit, Trash2, X, Save, Search, Building2, Mail, Phone, Globe, ChevronLeft, ChevronRight, MessageSquareQuote } from "lucide-react";
 import BrandGalleryUploader from "@/components/admin/brand/BrandGalleryUploader";
+import BrandBrochureUploader from "@/components/admin/brand/BrandBrochureUploader";
 import TableExportImport from "@/components/admin/shared/TableExportImport";
 
 const Toggle = ({ checked, onChange }) => (
@@ -43,6 +45,7 @@ export default function BrandsManagementPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
+  const [brochureInfo, setBrochureInfo] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -125,6 +128,7 @@ export default function BrandsManagementPage() {
   const openCreateModal = () => {
     setEditingId(null);
     setFormData(emptyForm);
+    setBrochureInfo(null);
     setShowModal(true);
   };
 
@@ -140,6 +144,12 @@ export default function BrandsManagementPage() {
       isOwnBrand: brand?.isOwnBrand ?? false,
       gallery: brand?.gallery || [],
     });
+    setBrochureInfo({
+      brochureUrl: brand?.brochureUrl || null,
+      brochureName: brand?.brochureName || null,
+      brochureSize: brand?.brochureSize || null,
+      brochureFormat: brand?.brochureFormat || null,
+    });
     setShowModal(true);
   };
 
@@ -147,6 +157,7 @@ export default function BrandsManagementPage() {
     setShowModal(false);
     setEditingId(null);
     setFormData(emptyForm);
+    setBrochureInfo(null);
     sessionStorage.removeItem(STORAGE_KEY);
   };
 
@@ -182,6 +193,11 @@ export default function BrandsManagementPage() {
 
   const handleFieldChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleBrochureChange = (updated) => {
+    setBrochureInfo(updated);
+    setBrands((prev) => prev.map((b) => (b.id === editingId ? { ...b, ...updated } : b)));
   };
 
   const handleToggleChange = async (brandId, field, newValue) => {
@@ -274,6 +290,7 @@ export default function BrandsManagementPage() {
                 <th className="py-4 px-5">Contact</th>
                 <th className="py-4 px-5">Active</th>
                 <th className="py-4 px-5">Own Brand</th>
+                <th className="py-4 px-5">Brochure</th>
                 <th className="py-4 px-5">Products</th>
                 <th className="py-4 px-5">Gallery</th>
                 <th className="py-4 px-5 text-right">Actions</th>
@@ -328,6 +345,13 @@ export default function BrandsManagementPage() {
                     </div>
                   </td>
                   <td className="py-4 px-5">
+                    {brand.brochureUrl ? (
+                      <a href={toStaticUrl(brand.brochureUrl)} target="_blank" rel="noopener noreferrer" className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full text-[10px] font-bold hover:bg-emerald-100">Uploaded</a>
+                    ) : (
+                      <span className="bg-slate-100 text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-bold">None</span>
+                    )}
+                  </td>
+                  <td className="py-4 px-5">
                     <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-bold">
                       {brand?._count?.products ?? brand?.productCount ?? 0} items
                     </span>
@@ -359,7 +383,7 @@ export default function BrandsManagementPage() {
               ))}
               {paginatedBrands.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-16 text-center text-slate-400">
+                  <td colSpan={9} className="py-16 text-center text-slate-400">
                     <Building2 className="mx-auto h-10 w-10 mb-3 opacity-30" />
                     <p className="font-semibold">No brands registered yet</p>
                     <p className="text-xs mt-1">Click "Register New Brand" to add your first manufacturer or distributor.</p>
@@ -442,6 +466,12 @@ export default function BrandsManagementPage() {
                     <span className="text-xs font-medium">{formData.isOwnBrand ? "Own Brand" : "Third Party"}</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Brochure */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b pb-2">Brochure</h3>
+                <BrandBrochureUploader brandId={editingId} brochure={brochureInfo} onChange={handleBrochureChange} />
               </div>
 
               {/* Image Gallery */}

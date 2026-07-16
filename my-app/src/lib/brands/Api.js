@@ -1,5 +1,12 @@
 import apiClient from '@/lib/client';
 
+function apiBase() {
+  const env = process.env.NEXT_PUBLIC_API_URL;
+  if (env) return env.replace(/\/$/, '');
+  if (typeof window !== 'undefined') return `${window.location.protocol}//${window.location.hostname}:4000/api`;
+  return 'http://localhost:4000/api';
+}
+
 const brandsApi = {
   async getAll() {
     try {
@@ -35,6 +42,55 @@ const brandsApi = {
 
   async delete(id) {
     return apiClient.delete(`/brands/${id}`);
+  },
+
+  /** Active brands for public pages. ownBrand: true -> only own brands, false -> only third-party brands. */
+  async getPublic(ownBrand) {
+    try {
+      const params = ownBrand === undefined ? {} : { ownBrand: String(ownBrand) };
+      const response = await apiClient.get('/brands/public/list', params);
+      if (Array.isArray(response)) return response;
+      if (response?.data && Array.isArray(response.data)) return response.data;
+      return [];
+    } catch (error) {
+      console.error('Failed to fetch public brands:', error);
+      return [];
+    }
+  },
+
+  /** All active brands that have a brochure uploaded — for the public brochures catalog page. */
+  async getAllBrochures() {
+    try {
+      const response = await apiClient.get('/brands/public/brochures');
+      if (Array.isArray(response)) return response;
+      if (response?.data && Array.isArray(response.data)) return response.data;
+      return [];
+    } catch (error) {
+      console.error('Failed to fetch brochures:', error);
+      return [];
+    }
+  },
+
+  async uploadBrochure(brandId, file) {
+    const formData = new FormData();
+    formData.append('brochure', file);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('sbs_auth_token') : null;
+
+    const res = await fetch(`${apiBase()}/brands/${brandId}/brochure`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.message || 'Brochure upload failed');
+    }
+    return res.json();
+  },
+
+  async deleteBrochure(brandId) {
+    return apiClient.delete(`/brands/${brandId}/brochure`);
   },
 
   async uploadGalleryImage(file, folder = 'brands-gallery') {

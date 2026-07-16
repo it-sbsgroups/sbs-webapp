@@ -1,7 +1,9 @@
 // src/app.module.ts
 import { Module } from '@nestjs/common';
+import { join } from 'path';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaService } from './prisma/prisma.service';
@@ -39,6 +41,14 @@ import { WhyChooseUsModule } from './why-choose-us/why-choose-us.module';
     PrismaModule,
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
+    // Serves files placed under sbs-backend/public (e.g. public/brands/brochure/*)
+    // at the same relative URL — this middleware runs outside the 'api' global
+    // prefix, so a file at public/brands/brochure/foo.pdf is reachable at
+    // https://<backend-host>/brands/brochure/foo.pdf
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'public'),
+      serveRoot: '/',
+    }),
     ApiKeysModule,
     AuthModule,
     ProductsModule,

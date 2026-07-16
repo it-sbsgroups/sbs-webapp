@@ -15,9 +15,10 @@ export class CreateClientDto {
   @IsString()
   slug?: string; // auto-generated from companyName when omitted
 
+  @IsOptional()
   @IsString()
   @MinLength(2)
-  contactName!: string; // person to contact at the client's company
+  contactName?: string; // person to contact at the client's company (optional — contact details are not required)
 
   @IsString()
   @MinLength(2)
@@ -27,12 +28,14 @@ export class CreateClientDto {
   @IsString()
   companyAddress?: string;
 
+  @IsOptional()
   @IsEmail()
-  email!: string;
+  email?: string;
 
+  @IsOptional()
   @IsString()
   @MinLength(6)
-  phone!: string;
+  phone?: string;
 
   @IsOptional()
   @IsString()

@@ -105,15 +105,8 @@ export class ClientsService {
     if (!dto.companyName?.trim()) {
       throw new BadRequestException('companyName is required');
     }
-    if (!dto.contactName?.trim()) {
-      throw new BadRequestException('contactName is required');
-    }
-    if (!dto.email?.trim()) {
-      throw new BadRequestException('email is required');
-    }
-    if (!dto.phone?.trim()) {
-      throw new BadRequestException('phone is required');
-    }
+    // Contact details (contactName, email, phone) are intentionally optional —
+    // a client can be added with just company info and filled in later.
     const slug = await this.uniqueSlug(dto.slug || dto.companyName);
     return this.prisma.client.create({ data: { ...dto, slug } });
   }

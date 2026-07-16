@@ -106,18 +106,16 @@ export default function AdminClientsManagementDashboard() {
 
   const handleFormSubmitAction = async (e) => {
     e.preventDefault();
-    if (!formData.contactName.trim()) { toast.error("Contact name is required"); return; }
     if (!formData.companyName.trim()) { toast.error("Company name is required"); return; }
-    if (!formData.email.trim()) { toast.error("Email is required"); return; }
-    if (!formData.phone.trim()) { toast.error("Phone is required"); return; }
+    // Contact details are optional — a client can be saved with just company info.
 
     setSaving(true);
     const payload = {
-      contactName: formData.contactName.trim(),
+      contactName: formData.contactName.trim() || undefined,
       companyName: formData.companyName.trim(),
       companyAddress: formData.companyAddress.trim() || undefined,
-      email: formData.email.trim(),
-      phone: formData.phone.trim(),
+      email: formData.email.trim() || undefined,
+      phone: formData.phone.trim() || undefined,
       logo: formData.logo.trim() || undefined,
       website: formData.website.trim() || undefined,
       isActive: formData.isActive,
@@ -199,14 +197,14 @@ export default function AdminClientsManagementDashboard() {
           const contactName = row["Contact Name"]?.trim();
           const email = row["Email"]?.trim();
           const phone = row["Phone"]?.trim();
-          if (!companyName || !contactName || !email || !phone) {
-            throw new Error("Company Name, Contact Name, Email, and Phone are required");
+          if (!companyName) {
+            throw new Error("Company Name is required");
           }
           await clientsApi.create({
             companyName,
-            contactName,
-            email,
-            phone,
+            contactName: contactName || undefined,
+            email: email || undefined,
+            phone: phone || undefined,
             companyAddress: row["Address"]?.trim() || undefined,
             website: row["Website"]?.trim() || undefined,
             logo: row["Logo URL"]?.trim() || undefined,
@@ -261,9 +259,10 @@ export default function AdminClientsManagementDashboard() {
                     </div>
                   </td>
                   <td className="py-4 px-5">
-                    <p className="font-bold text-slate-800">{client.contactName}</p>
-                    <p className="flex items-center gap-1 text-[11px] mt-0.5"><Mail size={10} /><a href={`mailto:${client.email}`} className="text-blue-600 hover:underline">{client.email}</a></p>
-                    <p className="flex items-center gap-1 text-[11px] mt-0.5"><Phone size={10} /><a href={`tel:${client.phone}`} className="text-blue-600 hover:underline">{client.phone}</a></p>
+                    {client.contactName && <p className="font-bold text-slate-800">{client.contactName}</p>}
+                    {client.email && <p className="flex items-center gap-1 text-[11px] mt-0.5"><Mail size={10} /><a href={`mailto:${client.email}`} className="text-blue-600 hover:underline">{client.email}</a></p>}
+                    {client.phone && <p className="flex items-center gap-1 text-[11px] mt-0.5"><Phone size={10} /><a href={`tel:${client.phone}`} className="text-blue-600 hover:underline">{client.phone}</a></p>}
+                    {!client.contactName && !client.email && !client.phone && <span className="text-slate-300 text-[11px]">No contact details</span>}
                   </td>
                   <td className="py-4 px-5 max-w-[220px]">
                     {client.companyAddress ? (
@@ -358,19 +357,19 @@ export default function AdminClientsManagementDashboard() {
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b pb-2">Contact Person</h3>
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b pb-2">Contact Person <span className="text-slate-400 font-medium normal-case">(optional)</span></h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Contact Name *</label>
-                    <input type="text" required value={formData.contactName} onChange={(e) => handleField("contactName", e.target.value)} placeholder="e.g., Rohan Mehta" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
+                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Contact Name</label>
+                    <input type="text" value={formData.contactName} onChange={(e) => handleField("contactName", e.target.value)} placeholder="e.g., Rohan Mehta" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Email * <span className="text-slate-400 font-medium">(testimonial requests go here)</span></label>
-                    <input type="email" required value={formData.email} onChange={(e) => handleField("email", e.target.value)} placeholder="contact@company.com" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
+                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Email <span className="text-slate-400 font-medium">(testimonial requests go here)</span></label>
+                    <input type="email" value={formData.email} onChange={(e) => handleField("email", e.target.value)} placeholder="contact@company.com" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Phone *</label>
-                    <input type="text" required value={formData.phone} onChange={(e) => handleField("phone", e.target.value)} placeholder="+91-98765-43210" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
+                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Phone</label>
+                    <input type="text" value={formData.phone} onChange={(e) => handleField("phone", e.target.value)} placeholder="+91-98765-43210" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
                   </div>
                 </div>
               </div>

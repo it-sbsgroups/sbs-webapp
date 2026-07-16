@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import brandsApi from "@/lib/brands/Api";
+import { toStaticUrl } from "@/lib/client";
 
 const fallbackImg = (e) => {
   e.currentTarget.src = "https://placehold.co/800x500/f1f5f9/94a3b8?text=Asset+Not+Available";
@@ -64,24 +65,33 @@ export default function BrandDetailPage() {
     isActive,
     isOwnBrand,
     gallery,
+    brochureUrl,
     products,
     testimonials,
     _count,
   } = brand;
   const productCount = _count?.products ?? 0;
   const approvedTestimonials = testimonials || [];
+  const directoryHref = isOwnBrand ? "/own-brands" : "/brands";
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans text-slate-800 antialiased pb-16">
       {/* Top navigation */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-4 flex justify-between items-center">
-          <Link href="/brands" className="text-[10px] font-black uppercase tracking-wider text-slate-400 hover:text-slate-900" >← Brand Directory</Link>
-          {website && (
-            <a href={website} target="_blank" rel="noopener noreferrer" className="text-[10px] font-black uppercase text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100">
-              Visit Website ↗
-            </a>
-          )}
+          <Link href={directoryHref} className="text-[10px] font-black uppercase tracking-wider text-slate-400 hover:text-slate-900" >← Brand Directory</Link>
+          <div className="flex items-center gap-2">
+            {brochureUrl && (
+              <a href={toStaticUrl(brochureUrl)} target="_blank" rel="noopener noreferrer" className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100">
+                Download Brochure ↓
+              </a>
+            )}
+            {website && (
+              <a href={website} target="_blank" rel="noopener noreferrer" className="text-[10px] font-black uppercase text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100">
+                Visit Website ↗
+              </a>
+            )}
+          </div>
         </div>
       </div>
 

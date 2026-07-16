@@ -112,3 +112,19 @@ class ApiClient {
 // Create and export singleton
 const apiClient = new ApiClient(API_BASE_URL);
 export default apiClient;
+
+// The backend serves locally-stored static files (e.g. public/brands/brochure/*)
+// outside the '/api' prefix, so this strips '/api' off the API base URL to get
+// the plain host, e.g. "http://localhost:4000/api" -> "http://localhost:4000".
+export function getStaticBaseUrl() {
+  return API_BASE_URL.replace(/\/api\/?$/, '');
+}
+
+// Prefixes a stored relative path (e.g. "/brands/brochure/foo.pdf") with the
+// backend host so it can be used directly as a download/view link. Absolute
+// URLs (http://, https://) are returned unchanged.
+export function toStaticUrl(relativePath) {
+  if (!relativePath) return '';
+  if (/^https?:\/\//i.test(relativePath)) return relativePath;
+  return `${getStaticBaseUrl()}${relativePath.startsWith('/') ? '' : '/'}${relativePath}`;
+}
