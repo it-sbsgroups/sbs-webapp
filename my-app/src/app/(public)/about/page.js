@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import siteConfigApi from "@/lib/siteConfigApi";
+import siteConfigApi from "@/lib/siteConfig/siteConfigApi";
 import RichTextRenderer from "@/components/shared/RichTextRenderer";
 import * as Icons from "lucide-react";
 
