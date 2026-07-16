@@ -1,11 +1,3 @@
-// =============================================================================
-// FILE: src/lib/company/companyApi.js  (FULL REPLACEMENT — Phase 1 consolidation)
-// The old /api/company endpoint is gone. Header.jsx and Footer.jsx still
-// import this file unchanged for logo/contact/founder data — internals now
-// fan out to the unified site-config sections (branding + contact + founders
-// + social) and merge them into the same DEFAULT_COMPANY shape so no
-// component code needs to change.
-// =============================================================================
 import apiClient from "@/lib/client";
 
 const unwrap = (r) => (r?.data ?? r);
