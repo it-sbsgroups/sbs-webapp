@@ -177,7 +177,8 @@ export default function PublicContactUsPage() {
                 <Phone size={36} strokeWidth={2} />
               </div>
               <p className="mt-8 text-2xl font-medium text-gray-900">
-                +91 22 2500 1288
+                <a href="tel:+91 9826808412">+91 9826808412</a> <br></br>
+                <a href="tel:+91 8827559826">+91 8827559826</a>
               </p>
             </div>
 
@@ -189,6 +190,7 @@ export default function PublicContactUsPage() {
               <h4 className="mt-8 text-2xl font-bold text-slate-900">
                 Our Corporate Address
               </h4>
+              <p>SUPERB BEARING STORES, Main Road, Tali Waidhan, Near Honda Showroom, Singrauli, M.P. 486886 (India)</p>
               {fullAddress && (
                 <p className="mt-3 text-gray-700 text-lg leading-8">
                   {fullAddress}
@@ -202,7 +204,8 @@ export default function PublicContactUsPage() {
                 <Mail size={36} strokeWidth={2} />
               </div>
               <p className="mt-8 text-2xl font-medium text-gray-900 break-all">
-                marketing@kanexfire.com
+                <a href="mailto:info@sbsgroups.co.in">info@sbsgroups.co.in</a> <br></br>
+                <a href="mailto:admin@sbsgroups.co.in">admin@sbsgroups.co.in</a>
               </p>
             </div>
           </div>

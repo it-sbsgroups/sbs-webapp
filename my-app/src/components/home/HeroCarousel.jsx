@@ -6,7 +6,7 @@ import carouselApi from "@/lib/carouselApi";
 
 const DEFAULT_SETTINGS = {
   autoplay: true,
-  overlayOpacity: 0.55,
+  overlayOpacity: 0,
   carouselHeight: "650vh",
   prevButton: true,
   nextButton: true,
@@ -177,7 +177,7 @@ export default function HeroCarousel() {
               {/* OVERLAY */}
               <div
                 className="absolute inset-0 bg-black"
-                style={{ opacity: settings.overlayOpacity ?? 0.55 }}
+                style={{ opacity: settings.overlayOpacity ?? 0 }}
               />
 
               {/* CONTENT */}
