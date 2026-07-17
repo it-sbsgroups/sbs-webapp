@@ -6,6 +6,7 @@ import Link from "next/link";
 import siteConfigApi from "@/lib/siteConfig/siteConfigApi";
 import RichTextRenderer from "@/components/shared/RichTextRenderer";
 import * as Icons from "lucide-react";
+import FounderSimple from "@/components/public/FounderSimple";
 
 // Fallback content shown only if the admin hasn't configured Vision & Mission yet.
 const DEFAULT_VISION_MISSION = [
@@ -243,7 +244,13 @@ export default function PublicAboutPage() {
           </div>
         )} */}
         {/* ── FOUNDER / CO-FOUNDER MESSAGE ───────────────────────────────────── */}
-        {/* {!loading && <FounderMessage founders={founders} />} */}
+        {/* ── FOUNDER / CO‑FOUNDER CARDS ───────────────────────────────────── */}
+        {!loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+            <FounderSimple person={founders.founder} />
+            <FounderSimple person={founders.coFounder} />
+          </div>
+        )}
         {/* ── STATS / TRUST INDICATORS ──────────────────────────────────────── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-slate-50 rounded-3xl p-8 md:p-12 border border-slate-200 sticky top-20 z-50">
           {[

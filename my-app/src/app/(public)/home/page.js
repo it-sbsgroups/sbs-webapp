@@ -21,7 +21,7 @@ export default function HomePage() {
 
       <AboutIntro />
 
-      <IndustryInnovation />
+      {/* <IndustryInnovation /> */}
 
       <BusinessCTA />
 
