@@ -5,15 +5,15 @@ import { useState, useEffect } from "react";
 import { Package, FolderTree, MessageSquare, Settings, BarChart3, Download, RefreshCw, Plus, Grid3X3, List } from "lucide-react";
 import ProductsTable from "@/components/admin/products/ProductsTable";
 import ProductFormModal from "@/components/admin/products/ProductFormModal";
-import ProductCardDesigner from "@/components/admin/products/ProductCardDesigner";
-import ProductDetailDesigner from "@/components/admin/products/ProductDetailDesigner";
-import ProductSettings from "@/components/admin/products/ProductSettings";
-import ProductNotifications from "@/components/admin/products/ProductNotifications";
+// import ProductCardDesigner from "@/components/admin/products/ProductCardDesigner";
+// import ProductDetailDesigner from "@/components/admin/products/ProductDetailDesigner";
+// import ProductSettings from "@/components/admin/products/ProductSettings";
+// import ProductNotifications from "@/components/admin/products/ProductNotifications";
 import ProductImportExport from "@/components/admin/products/ProductImportExport";
-import ProductPreview from "@/components/admin/products/ProductPreview";
+// import ProductPreview from "@/components/admin/products/ProductPreview";
 import CategoriesManager from "@/components/admin/products/CategoriesManager";
 import RfqManager from "@/components/admin/products/RfqManager";
-import RfqSettings from "@/components/admin/products/RfqSettings";
+// import RfqSettings from "@/components/admin/products/RfqSettings";
 import RfqIntegrationSettings from "@/components/admin/products/RfqIntegrationSettings";
 import productsApi from "@/lib/productsApi";
 import categoriesApi from "@/lib/categoriesApi";
@@ -26,14 +26,14 @@ const STORAGE_KEY_FORM = "sbs_admin_product_form_state";
 const tabs = [
   { id: "products", label: "Products", icon: Package },
   { id: "categories", label: "Categories", icon: FolderTree },
-  { id: "design", label: "Card Design", icon: Grid3X3 },
-  { id: "detail", label: "Detail Page", icon: List },
-  { id: "settings", label: "Settings", icon: Settings },
-  { id: "notifications", label: "Notifications", icon: BarChart3 },
+  // { id: "design", label: "Card Design", icon: Grid3X3 },
+  // { id: "detail", label: "Detail Page", icon: List },
+  // { id: "settings", label: "Settings", icon: Settings },
+  // { id: "notifications", label: "Notifications", icon: BarChart3 },
   { id: "importexport", label: "Import/Export", icon: Download },
-  { id: "preview", label: "Preview", icon: RefreshCw },
+  // { id: "preview", label: "Preview", icon: RefreshCw },
   { id: "rfq", label: "RFQ Manager", icon: MessageSquare },
-  { id: "rfqsettings", label: "RFQ Settings", icon: Settings },
+  // { id: "rfqsettings", label: "RFQ Settings", icon: Settings },
   { id: "rfqintegrations", label: "RFQ Integrations", icon: Settings },
 ];
 
@@ -291,24 +291,15 @@ export default function ProductsAdminPage() {
         );
       case "categories":
         return <CategoriesManager />;
-      case "design":
-        return <ProductCardDesigner />;
-      case "detail":
-        return <ProductDetailDesigner />;
-      case "settings":
-        return <ProductSettings autoRefresh={autoRefresh} setAutoRefresh={setAutoRefresh} />;
-      case "notifications":
-        return <ProductNotifications />;
-      case "importexport":
-        return <ProductImportExport products={products} setProducts={setProducts} />;
-      case "preview":
-        return <ProductPreview products={products} />;
-      case "rfq":
-        return <RfqManager />;
-      case "rfqsettings":
-        return <RfqSettings />;
-      case "rfqintegrations":
-        return <RfqIntegrationSettings />;
+      // case "design": return <ProductCardDesigner />;
+      // case "detail": return <ProductDetailDesigner />;
+      // case "settings": return <ProductSettings autoRefresh={autoRefresh} setAutoRefresh={setAutoRefresh} />;
+      // case "notifications": return <ProductNotifications />;
+      case "importexport": return <ProductImportExport products={products} setProducts={setProducts} />;
+      // case "preview": return <ProductPreview products={products} />;
+      case "rfq": return <RfqManager />;
+      // case "rfqsettings": return <RfqSettings />;
+      case "rfqintegrations": return <RfqIntegrationSettings />;
       default:
         return null;
     }

@@ -15,8 +15,8 @@ import LocationSelector from "@/components/admin/site-config/LocationSelector";
 // Reuse the components that already correctly read/write the "navigation"
 // site-config key — see the audit note above HeaderSection() below.
 import LogoManager from "@/components/admin/header/LogoManager";
-import NavigationManager from "@/components/admin/header/NavigationManager";
-import LoginManager from "@/components/admin/header/LoginManager";
+// import NavigationManager from "@/components/admin/header/NavigationManager";
+// import LoginManager from "@/components/admin/header/LoginManager";
 import HomeAboutManager from "@/components/admin/home/HomeAboutManager";
 import HomePrinciplesManager from "@/components/admin/home/HomePrinciplesManager";
 import AuthorizedNetwork from "@/components/admin/distributorComp/AuthorizedNetwork";
@@ -102,7 +102,7 @@ const TABS = [
   { key: "about",                         label: "About Us"                },
   { key: "apiKeys",                       label: "API Keys"                },
   { key: "founders",                      label: "Founders"                },
-  { key: "font",                          label: "Font"                    },
+  // { key: "font",                          label: "Font"                    },
   { key: "location",                      label: "Location"                },
   { key: "homeAbout",                     label: "Home About"              },
   { key: "homePrinciples",                label: "Home Principles"         },
@@ -129,8 +129,8 @@ function HeaderSection() {
 
   const subTabs = [
     { id: "logo", label: "Logo & Branding" },
-    { id: "navigation", label: "Navigation Items" },
-    { id: "login", label: "Login Button" },
+    // { id: "navigation", label: "Navigation Items" },
+    // { id: "login", label: "Login Button" },
   ];
 
   return (
@@ -152,8 +152,8 @@ function HeaderSection() {
       </div>
 
       {subTab === "logo" && <LogoManager />}
-      {subTab === "navigation" && <NavigationManager />}
-      {subTab === "login" && <LoginManager />}
+      {/* {subTab === "navigation" && <NavigationManager />} */}
+      {/* {subTab === "login" && <LoginManager />} */}
     </div>
   );
 }
@@ -233,7 +233,7 @@ function ContactSection() {
       </div>
 
       {/* 7 — Quick Links */}
-      <div className={cardCls}>
+      {/* <div className={cardCls}>
         <h3 className="text-sm font-black text-slate-900">🔗 Quick Links (Footer)</h3>
         <AddRemoveList
           items={data.quickLinks || []}
@@ -246,10 +246,10 @@ function ContactSection() {
             </div>
           )}
         />
-      </div>
+      </div> */}
 
       {/* 8 — Services Links */}
-      <div className={cardCls}>
+      {/* <div className={cardCls}>
         <h3 className="text-sm font-black text-slate-900">⚙️ Services Links (Footer)</h3>
         <AddRemoveList
           items={data.servicesLinks || []}
@@ -262,7 +262,7 @@ function ContactSection() {
             </div>
           )}
         />
-      </div>
+      </div> */}
 
       {/* 9 — Social Media */}
       <div className={cardCls}>
@@ -295,7 +295,7 @@ function ContactSection() {
       </div>
 
       {/* 10 — Newsletter */}
-      <div className={cardCls}>
+      {/* <div className={cardCls}>
         <h3 className="text-sm font-black text-slate-900">📰 Newsletter Subscribe Section</h3>
         <label className="flex items-center gap-3 cursor-pointer">
           <div onClick={() => setData((p) => ({ ...p, newsletter: { ...p.newsletter, enabled: !p.newsletter?.enabled } }))}
@@ -306,7 +306,7 @@ function ContactSection() {
             {data.newsletter?.enabled !== false ? "Newsletter section is visible in footer" : "Newsletter section is hidden"}
           </span>
         </label>
-      </div>
+      </div> */}
 
       {/* 11 — Copyright */}
       <div className={cardCls}>
@@ -432,7 +432,15 @@ function ApiKeysSection() {
 }
 
 // ─── FOUNDER CARD COMPONENT (stable, outside of FoundersSection) ──────────────
-function FounderCard({ who, title, data, setF, uploading, handlePhoto, handleAdditionalPhoto }) {
+function FounderCard({ 
+  who, 
+  title, 
+  data, 
+  setF, 
+  uploading, 
+  handlePhoto, 
+  // handleAdditionalPhoto 
+}) {
   const f = data[who] || {};
   return (
     <div className={cardCls}>
@@ -476,7 +484,7 @@ function FounderCard({ who, title, data, setF, uploading, handlePhoto, handleAdd
           </div>
 
           {/* Additional PNG Image */}
-          <div>
+          {/* <div>
             <p className={labelCls}>Additional Image (PNG)</p>
             <div className="relative">
               {f.additionalImageUrl ? (
@@ -508,7 +516,7 @@ function FounderCard({ who, title, data, setF, uploading, handlePhoto, handleAdd
                 </button>
               )}
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* ─── Details column ─── */}
@@ -670,7 +678,7 @@ function FoundersSection() {
         setF={setF}
         uploading={uploading}
         handlePhoto={handlePhoto}
-        handleAdditionalPhoto={handleAdditionalPhoto}
+        // handleAdditionalPhoto={handleAdditionalPhoto}
       />
       <FounderCard
         who="coFounder"
@@ -679,7 +687,7 @@ function FoundersSection() {
         setF={setF}
         uploading={uploading}
         handlePhoto={handlePhoto}
-        handleAdditionalPhoto={handleAdditionalPhoto}
+        // handleAdditionalPhoto={handleAdditionalPhoto}
       />
       <div className="flex justify-end">
         <SaveBtn saving={saving} onClick={save} />
@@ -689,63 +697,63 @@ function FoundersSection() {
 }
 
 // ─── SECTION: FONT SELECTOR (task 18) ────────────────────────────────────────
-function FontSection() {
-  const [data,   setData]   = useState(DEFAULT_FONT);
-  const [saving, setSaving] = useState(false);
+// function FontSection() {
+//   const [data,   setData]   = useState(DEFAULT_FONT);
+//   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    siteConfigApi.getFont().then((d) => setData({ ...DEFAULT_FONT, ...d }));
-  }, []);
+//   useEffect(() => {
+//     siteConfigApi.getFont().then((d) => setData({ ...DEFAULT_FONT, ...d }));
+//   }, []);
 
-  const save = async () => {
-    setSaving(true);
-    try { await siteConfigApi.saveFont(data); toast.success("Font saved — reload the site to see the change"); }
-    catch (e) { toast.error(e.message); } finally { setSaving(false); }
-  };
+//   const save = async () => {
+//     setSaving(true);
+//     try { await siteConfigApi.saveFont(data); toast.success("Font saved — reload the site to see the change"); }
+//     catch (e) { toast.error(e.message); } finally { setSaving(false); }
+//   };
 
-  return (
-    <div className="space-y-5">
-      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-xs text-blue-800 font-semibold">
-        The selected font is applied via a <code className="bg-white px-1 rounded">{"<link>"}</code> tag in your <code className="bg-white px-1 rounded">layout.js</code>.
-        After saving, update <code className="bg-white px-1 rounded">src/app/layout.js</code> to import the Google Fonts URL from the API, or add it to your <code className="bg-white px-1 rounded">globals.css</code>.
-      </div>
+//   return (
+//     <div className="space-y-5">
+//       <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-xs text-blue-800 font-semibold">
+//         The selected font is applied via a <code className="bg-white px-1 rounded">{"<link>"}</code> tag in your <code className="bg-white px-1 rounded">layout.js</code>.
+//         After saving, update <code className="bg-white px-1 rounded">src/app/layout.js</code> to import the Google Fonts URL from the API, or add it to your <code className="bg-white px-1 rounded">globals.css</code>.
+//       </div>
 
-      <div className={cardCls}>
-        <h3 className="text-sm font-black text-slate-900">Select App Font</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {GOOGLE_FONTS.map((font) => (
-            <button key={font.name} onClick={() => setData({ family: font.name, googleUrl: font.url })}
-              className={`p-4 rounded-xl border-2 text-left transition-all ${data.family === font.name ? "border-blue-950 bg-blue-50" : "border-slate-200 hover:border-blue-300 bg-white"}`}
-              style={{ fontFamily: `"${font.name}", sans-serif` }}>
-              <span className={`text-xs font-black ${data.family === font.name ? "text-blue-950" : "text-slate-700"}`}>{font.name}</span>
-              <p className="text-[11px] text-slate-500 mt-1" style={{ fontFamily: `"${font.name}", sans-serif` }}>
-                The quick brown fox jumps over the lazy dog
-              </p>
-              {data.family === font.name && (
-                <span className="mt-2 inline-flex items-center gap-1 text-[10px] font-black text-blue-950">
-                  <Icon name="check_circle" className="text-sm" /> Selected
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+//       <div className={cardCls}>
+//         <h3 className="text-sm font-black text-slate-900">Select App Font</h3>
+//         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+//           {GOOGLE_FONTS.map((font) => (
+//             <button key={font.name} onClick={() => setData({ family: font.name, googleUrl: font.url })}
+//               className={`p-4 rounded-xl border-2 text-left transition-all ${data.family === font.name ? "border-blue-950 bg-blue-50" : "border-slate-200 hover:border-blue-300 bg-white"}`}
+//               style={{ fontFamily: `"${font.name}", sans-serif` }}>
+//               <span className={`text-xs font-black ${data.family === font.name ? "text-blue-950" : "text-slate-700"}`}>{font.name}</span>
+//               <p className="text-[11px] text-slate-500 mt-1" style={{ fontFamily: `"${font.name}", sans-serif` }}>
+//                 The quick brown fox jumps over the lazy dog
+//               </p>
+//               {data.family === font.name && (
+//                 <span className="mt-2 inline-flex items-center gap-1 text-[10px] font-black text-blue-950">
+//                   <Icon name="check_circle" className="text-sm" /> Selected
+//                 </span>
+//               )}
+//             </button>
+//           ))}
+//         </div>
 
-        <Field label="Custom Google Fonts URL (optional)">
-          <input className={inputCls} value={data.googleUrl || ""}
-            onChange={(e) => setData((p) => ({ ...p, googleUrl: e.target.value }))}
-            placeholder="https://fonts.googleapis.com/css2?family=…" />
-        </Field>
-        <Field label="Font Family Name">
-          <input className={inputCls} value={data.family || ""}
-            onChange={(e) => setData((p) => ({ ...p, family: e.target.value }))}
-            placeholder="Inter" />
-        </Field>
-      </div>
+//         <Field label="Custom Google Fonts URL (optional)">
+//           <input className={inputCls} value={data.googleUrl || ""}
+//             onChange={(e) => setData((p) => ({ ...p, googleUrl: e.target.value }))}
+//             placeholder="https://fonts.googleapis.com/css2?family=…" />
+//         </Field>
+//         <Field label="Font Family Name">
+//           <input className={inputCls} value={data.family || ""}
+//             onChange={(e) => setData((p) => ({ ...p, family: e.target.value }))}
+//             placeholder="Inter" />
+//         </Field>
+//       </div>
 
-      <div className="flex justify-end"><SaveBtn saving={saving} onClick={save} /></div>
-    </div>
-  );
-}
+//       <div className="flex justify-end"><SaveBtn saving={saving} onClick={save} /></div>
+//     </div>
+//   );
+// }
 
 // ─── SECTION: LOCATION SELECTOR DEMO (task 19) ────────────────────────────────
 function LocationSection() {
@@ -777,7 +785,7 @@ function LocationSection() {
         </div>
       </div>
 
-      <div className={cardCls}>
+      {/* <div className={cardCls}>
         <h3 className="text-sm font-black text-slate-900">How to use LocationSelector in your forms</h3>
         <pre className="bg-slate-900 text-green-400 rounded-xl p-4 text-[11px] overflow-x-auto">{`import LocationSelector from "@/components/admin/site-config/LocationSelector";
 
@@ -795,7 +803,7 @@ const [address, setAddress] = useState({});
 //   cityId: 3,  cityName: "Lucknow",
 //   pincode: "226001"
 // }`}</pre>
-      </div>
+      </div> */}
     </div>
   );
 }
@@ -842,7 +850,7 @@ export default function SiteConfigPage() {
       case "about":                        return <AboutManager />;
       case "apiKeys":                      return <ApiKeysSection />;
       case "founders":                     return <FoundersSection />;
-      case "font":                         return <FontSection />;
+      // case "font":                         return <FontSection />;
       case "location":                     return <LocationSection />;
       case "homeAbout":                    return <HomeAboutManager />;
       case "homePrinciples":               return <HomePrinciplesManager />;

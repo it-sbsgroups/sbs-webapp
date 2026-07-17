@@ -3,12 +3,12 @@
 import { useState } from "react";
 import CarouselSlidesManager from "@/components/admin/carousel/CarouselSlidesManager";
 import CarouselSettingsManager from "@/components/admin/carousel/CarouselSettingsManager";
-import CarouselPreview from "@/components/admin/carousel/CarouselPreview";
+// import CarouselPreview from "@/components/admin/carousel/CarouselPreview";
 
 const tabs = [
   { id: "slides", label: "Slides Manager", description: "Add, edit & reorder slides" },
   { id: "settings", label: "Carousel Settings", description: "Global carousel configuration" },
-  { id: "preview", label: "Live Preview", description: "Real-time carousel preview" },
+  // { id: "preview", label: "Live Preview", description: "Real-time carousel preview" },
 ];
 
 export default function CarouselManagementPage() {
@@ -16,14 +16,10 @@ export default function CarouselManagementPage() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case "slides":
-        return <CarouselSlidesManager />;
-      case "settings":
-        return <CarouselSettingsManager />;
-      case "preview":
-        return <CarouselPreview />;
-      default:
-        return <CarouselSlidesManager />;
+      case "slides": return <CarouselSlidesManager />;
+      case "settings": return <CarouselSettingsManager />;
+      // case "preview": return <CarouselPreview />;
+      default: return <CarouselSlidesManager />;
     }
   };
 

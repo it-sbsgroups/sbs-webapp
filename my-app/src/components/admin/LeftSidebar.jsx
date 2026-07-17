@@ -185,7 +185,7 @@ export default function LeftSidebar({ isLeftCollapsed, navTree, onLogout, curren
         isDark ? "border-slate-700/50 bg-slate-900" : "border-slate-100 bg-white"
       }`}>
         {/* Collapse Toggle */}
-        {!isLeftCollapsed && (
+        {/* {!isLeftCollapsed && (
           <div className="mb-2">
             <div className={`text-[9px] font-bold uppercase tracking-wider mb-1 px-3 ${
               isDark ? "text-slate-500" : "text-slate-400"
@@ -209,7 +209,7 @@ export default function LeftSidebar({ isLeftCollapsed, navTree, onLogout, curren
               </div>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Logout Button */}
         <button

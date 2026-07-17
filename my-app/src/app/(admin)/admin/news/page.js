@@ -619,9 +619,9 @@ export default function AdminNewsManage() {
     { id: "composer", label: "Composer", icon: "✍️" },
     { id: "posts", label: "All Posts", icon: "📰" },
     { id: "categories", label: "Categories", icon: "📁" },
-    { id: "settings", label: "Settings", icon: "⚙️" },
+    // { id: "settings", label: "Settings", icon: "⚙️" },
     { id: "comments", label: "Comments", icon: "💬" },
-    { id: "ads", label: "Suggested Products", icon: "🎯" },
+    // { id: "ads", label: "Suggested Products", icon: "🎯" },
   ];
 
   // ============================================
@@ -958,7 +958,7 @@ export default function AdminNewsManage() {
       {/* ============================================ */}
       {/* SETTINGS TAB */}
       {/* ============================================ */}
-      {activeTab === "settings" && (
+      {/* {activeTab === "settings" && (
         <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-6">
           <div className="flex justify-between items-center border-b pb-3">
             <h2 className="text-sm font-black text-slate-900 uppercase">Display & Behavior Settings</h2>
@@ -968,7 +968,6 @@ export default function AdminNewsManage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* List Page */}
             <div className="space-y-3">
               <h3 className="text-xs font-black text-slate-400 uppercase border-b pb-2">📰 List Page</h3>
               <label className="flex justify-between text-xs font-bold">
@@ -994,8 +993,6 @@ export default function AdminNewsManage() {
                 <input type="checkbox" checked={settings.showSubcategoryFilter} onChange={(e) => updateSetting("showSubcategoryFilter", e.target.checked)} />
               </label>
             </div>
-
-            {/* Carousel */}
             <div className="space-y-3">
               <h3 className="text-xs font-black text-slate-400 uppercase border-b pb-2">🎠 Home Carousel</h3>
               <label className="flex justify-between text-xs font-bold">
@@ -1019,8 +1016,6 @@ export default function AdminNewsManage() {
                 <input type="number" min="1000" step="500" value={settings.carouselIntervalMs} onChange={(e) => updateSetting("carouselIntervalMs", num(e.target.value))} className="border rounded px-2 py-1 w-20 text-center text-xs" />
               </label>
             </div>
-
-            {/* Ads & Comments */}
             <div className="space-y-3">
               <h3 className="text-xs font-black text-slate-400 uppercase border-b pb-2">💬 Ads & Comments</h3>
               <label className="flex justify-between text-xs font-bold">
@@ -1049,8 +1044,6 @@ export default function AdminNewsManage() {
               </label>
             </div>
           </div>
-
-          {/* Product Suggestion Mode */}
           <div className="border-t pt-4 space-y-3">
             <h3 className="text-xs font-black text-slate-400 uppercase">🎯 Product Suggestion Mode (for all news pages)</h3>
             <div className="flex gap-4">
@@ -1069,7 +1062,7 @@ export default function AdminNewsManage() {
             )}
           </div>
         </div>
-      )}
+      )} */}
 
       {/* ============================================ */}
       {/* COMMENTS TAB */}
@@ -1126,7 +1119,7 @@ export default function AdminNewsManage() {
       {/* ============================================ */}
       {/* SUGGESTED PRODUCTS TAB */}
       {/* ============================================ */}
-      {activeTab === "ads" && (
+      {/* {activeTab === "ads" && (
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-1 bg-white p-6 rounded-2xl border shadow-sm space-y-4">
             <h2 className="text-sm font-black text-slate-900 uppercase border-b pb-3">Select Target</h2>
@@ -1175,7 +1168,7 @@ export default function AdminNewsManage() {
             </div>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 }

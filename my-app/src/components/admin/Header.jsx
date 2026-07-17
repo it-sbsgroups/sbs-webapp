@@ -86,14 +86,14 @@ export default function Header({
 
       {/* Right utility elements */}
       <div className="flex items-center space-x-4 relative">
-        <button
+        {/* <button
           onClick={() => { setShowThemeModal(!showThemeModal); setShowNotificationModal(false); setShowProfileModal(false); }}
           className={`p-2 rounded-lg text-lg transition-all duration-200 ${showThemeModal ? "bg-lime-500 text-slate-900 scale-105" : "bg-white/10 hover:bg-white/20"}`}
         >
           🎨
-        </button>
+        </button> */}
 
-        <button
+        {/* <button
           onClick={() => { setShowNotificationModal(!showNotificationModal); setShowProfileModal(false); setShowThemeModal(false); }}
           className={`relative p-2 rounded-lg text-lg transition-all duration-200 ${showNotificationModal ? "bg-white/20 text-lime-400" : "bg-white/10 hover:bg-white/20"}`}
         >
@@ -103,7 +103,7 @@ export default function Header({
               {notifications.length}
             </span>
           )}
-        </button>
+        </button> */}
 
         <button onClick={() => { setShowProfileModal(!showProfileModal); setShowNotificationModal(false); setShowThemeModal(false); }} className="focus:outline-none">
           <div className="h-9 w-9 rounded-lg bg-gradient-to-tr from-lime-400 to-emerald-500 text-slate-950 font-black text-xs flex items-center justify-center shadow-lg border border-white/20">
@@ -112,7 +112,7 @@ export default function Header({
         </button>
 
         {/* THEME PANEL MODAL */}
-        {showThemeModal && (
+        {/* {showThemeModal && (
           <div className="absolute right-24 top-13 w-80 bg-white rounded-xl shadow-2xl border border-slate-100 text-slate-800 z-50 p-5 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
               <span className="text-xs font-black text-slate-900 uppercase tracking-tight">Theme Engine Panel</span>
@@ -158,10 +158,10 @@ export default function Header({
               </div>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* NOTIFICATIONS MODAL */}
-        {showNotificationModal && (
+        {/* {showNotificationModal && (
           <div className="absolute right-12 top-13 w-80 bg-white rounded-xl shadow-2xl border border-slate-100 text-slate-800 z-50 py-2">
             <div className="px-4 py-2 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
               <span className="text-xs font-black text-slate-900 uppercase">Live Event Alerts</span>
@@ -175,7 +175,7 @@ export default function Header({
               ))}
             </div>
           </div>
-        )}
+        )} */}
 
         {/* PROFILE MODAL */}
         {showProfileModal && (
@@ -185,7 +185,7 @@ export default function Header({
               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{user?.designation || "Administrator"}</p>
               {user?.email && <p className="text-[10px] text-slate-400 mt-1">{user.email}</p>}
             </div>
-            <button className="w-full text-center text-[10px] font-bold uppercase bg-slate-900 text-white py-2 rounded-lg hover:bg-slate-800">View Details</button>
+            {/* <button className="w-full text-center text-[10px] font-bold uppercase bg-slate-900 text-white py-2 rounded-lg hover:bg-slate-800">View Details</button> */}
             <button onClick={() => { if (confirm("Are you sure you want to log out?")) onLogout?.(); }}
               className="w-full text-center text-[10px] font-bold uppercase bg-red-50 text-red-600 py-2 rounded-lg hover:bg-red-600 hover:text-white transition-colors" >
               Log Out

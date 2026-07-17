@@ -161,13 +161,13 @@ const navTree = [
         href: "/admin/contacts",
         type: "link",
       },
-      {
-        id: "comp-industryinnovation",
-        name: "Industry Innovation",
-        icon: Factory,
-        href: "admin/industry-innovation",
-        type: "link",
-      }
+      // {
+      //   id: "comp-industryinnovation",
+      //   name: "Industry Innovation",
+      //   icon: Factory,
+      //   href: "admin/industry-innovation",
+      //   type: "link",
+      // }
     ],
   },
 

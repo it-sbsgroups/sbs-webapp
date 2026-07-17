@@ -6,11 +6,6 @@ import { getCurrentInnovation } from "@/lib/industry-innovation/api";
 import RichTextRenderer from "@/components/shared/RichTextRenderer";
 import LazyCacheImage from "@/components/shared/LazyCacheImage";
 
-// A key point's `icon` field (set via the admin panel) is a free-text CSS
-// class string (e.g. a Font Awesome class like "fas fa-bolt") rather than a
-// lucide name — the admin UI doesn't currently expose a way to set it, so we
-// render it if present (forward-compatible) and fall back to a lucide icon
-// otherwise, matching the icon style used across the rest of the site.
 function KeyIcon({ iconClass }) {
   if (iconClass) {
     return <i className={`${iconClass} text-lg`} aria-hidden="true" />;
@@ -31,9 +26,6 @@ export default function IndustryInnovation() {
     return () => { active = false; };
   }, []);
 
-  // Nothing configured in the admin panel yet, or still loading — don't
-  // reserve space with an empty/skeleton section on a page that otherwise
-  // has real content.
   if (loading || !innovation || (!innovation.title && !innovation.description)) {
     return null;
   }
