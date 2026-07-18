@@ -96,7 +96,7 @@ export default function WhyChooseUs() {
         <div className="text-center max-w-2xl mx-auto mb-12 md:mb-16">
           {title && (
             <h2 className="text-3xl font-extrabold tracking-tight text-blue-950 sm:text-4xl" > Why Choose 
-            <span className="block text-lime-500 mt-1 md:inline md:mt-0"> SBS Group </span>?</h2>
+            <span className="block text-[#557b01] mt-1 md:inline md:mt-0"> SBS Group </span>?</h2>
           )}
           {mainDescription && (
             <div className="mt-4 text-sm text-gray-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: mainDescription }} />

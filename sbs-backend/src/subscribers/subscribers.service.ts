@@ -131,6 +131,28 @@ export class SubscribersService {
   }
 
   /**
+   * Unsubscribe by ID (admin action from the subscribers table).
+   */
+  async unsubscribeById(id: string) {
+    await this.findOne(id);
+    return this.prisma.newsletterSubscriber.update({
+      where: { id },
+      data: { subscribed: false, unsubscribedAt: new Date() },
+    });
+  }
+
+  /**
+   * Resubscribe by ID (admin action from the subscribers table).
+   */
+  async resubscribeById(id: string) {
+    await this.findOne(id);
+    return this.prisma.newsletterSubscriber.update({
+      where: { id },
+      data: { subscribed: true, unsubscribedAt: null },
+    });
+  }
+
+  /**
    * Unsubscribe by email (used by public unsubscribe link).
    * This sets subscribed = false and records unsubscribedAt.
    */

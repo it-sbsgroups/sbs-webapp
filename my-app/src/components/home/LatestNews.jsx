@@ -7,6 +7,7 @@ import publicNewsApi from "@/lib/news/publicNewsApi";
 export default function LatestNews() {
   const [posts, setPosts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [subCategories, setSubCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,7 +33,7 @@ export default function LatestNews() {
 
   const getCoverImage = (post) =>
     post?.blocks?.find((b) => b.type === "imageRow")?.images?.[0]?.src ||
-    "https://placehold.co/600x400/f1f5f9/94a3b8?text=News";
+    "";
 
   const latestThree = posts.slice(0, 3);
 
@@ -108,7 +109,7 @@ export default function LatestNews() {
             {words.length > 1 && (
               <>
                 {" "}
-                <span className="text-lime-500">{words.slice(1).join(" ")}</span>
+                <span className="text-[#557b01]">{words.slice(1).join(" ")}</span>
               </>
             )}
             <span className="animate-cursor-blink inline-block border-l-2 border-black align-middle" style={{ height: "1em", marginLeft: "2px" }} />
@@ -141,9 +142,9 @@ export default function LatestNews() {
                     </div>
                   </div>
                   <div className="flex flex-1 flex-col justify-center p-6">
-                    <h3 className="text-lg font-black text-gray-900 group-hover:text-blue-900 transition-colors line-clamp-2 uppercase tracking-tight">
+                    <h6 className="text-lg font-black text-gray-900 group-hover:text-blue-900 transition-colors line-clamp-2 capitalize tracking-tight">
                       {item.title}
-                    </h3>
+                    </h6>
                   </div>
                 </article>
               </Link>

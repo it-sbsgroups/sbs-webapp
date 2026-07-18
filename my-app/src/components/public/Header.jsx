@@ -5,7 +5,8 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { searchAll, TYPE_META } from "@/lib/searchIndex";
+import { fetchGlobalSearch, flattenPreview, TYPE_META } from "@/lib/globalSearchApi";
+import searchLogsApi from "@/lib/searchLogsApi";
 
 // Import dummy data (replace with API call later)
 import headerDummyData from "@/data/headerData";
@@ -23,6 +24,8 @@ export default function Header() {
   const [openCategoryId, setOpenCategoryId] = useState(null);   // Subcategory flyout
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState([]);
+  const [resultCounts, setResultCounts] = useState({ products: 0, news: 0, brands: 0, total: 0 });
+  const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
 
@@ -67,18 +70,40 @@ export default function Header() {
     return () => { active = false; };
   }, []);
 
-  // ===== SEARCH =====
+  // ===== SEARCH (live, debounced, hits the backend) =====
   useEffect(() => {
     const q = searchQuery.trim();
     if (q.length < 2) {
       setResults([]);
+      setResultCounts({ products: 0, news: 0, brands: 0, total: 0 });
       setShowResults(false);
+      setIsSearching(false);
       setActiveIdx(-1);
       return;
     }
-    setResults(searchAll(q, { limit: 8 }));
+
     setShowResults(true);
-    setActiveIdx(-1);
+    setIsSearching(true);
+    const controller = new AbortController();
+    const debounce = setTimeout(async () => {
+      try {
+        const res = await fetchGlobalSearch(q, { type: "all", signal: controller.signal });
+        setResults(flattenPreview(res, 4));
+        setResultCounts(res.counts || { products: 0, news: 0, brands: 0, total: 0 });
+        setActiveIdx(-1);
+        // Fire-and-forget: feeds the admin "Search Logs" dashboard.
+        searchLogsApi.log(q, res.counts?.total ?? 0).catch(() => {});
+      } catch (err) {
+        if (err?.name !== "AbortError") setResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300); // debounce so we don't hit the API on every keystroke
+
+    return () => {
+      clearTimeout(debounce);
+      controller.abort();
+    };
   }, [searchQuery]);
 
   useEffect(() => {
@@ -103,7 +128,7 @@ export default function Header() {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (activeIdx >= 0 && results[activeIdx]) goTo(results[activeIdx].href);
-    else if (searchQuery.trim()) goTo(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+    else if (searchQuery.trim()) goTo(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
   };
 
   const handleKeyDown = (e) => {
@@ -134,7 +159,9 @@ export default function Header() {
   const ResultsDropdown = ({ idPrefix }) =>
     showResults ? (
       <div className="absolute left-0 right-0 top-full mt-2 rounded-2xl border border-gray-100 bg-white shadow-2xl z-[100] overflow-hidden">
-        {results.length > 0 ? (
+        {isSearching && results.length === 0 ? (
+          <div className="px-4 py-6 text-center text-xs font-semibold text-gray-400">Searching…</div>
+        ) : results.length > 0 ? (
           <>
             <ul className="max-h-[60vh] overflow-y-auto py-1">
               {results.map((r, i) => {
@@ -146,9 +173,13 @@ export default function Header() {
                       onClick={() => goTo(r.href)}
                       className={`w-full text-left flex items-center gap-3 px-4 py-2.5 transition-colors ${i === activeIdx ? "bg-blue-50" : "hover:bg-gray-50"}`}
                     >
-                      <span className={`shrink-0 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md ${meta.color || "bg-gray-100 text-gray-600"}`}>
-                        {meta.icon} {meta.label}
-                      </span>
+                      {r.image ? (
+                        <img src={r.image} alt="" className="h-8 w-8 shrink-0 rounded-md object-contain bg-gray-50 border border-gray-100" />
+                      ) : (
+                        <span className={`shrink-0 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md ${meta.color || "bg-gray-100 text-gray-600"}`}>
+                          {meta.icon} {meta.label}
+                        </span>
+                      )}
                       <span className="min-w-0">
                         <span className="block text-xs font-black text-gray-900 truncate">{r.title}</span>
                         {r.subtitle && <span className="block text-[10px] font-semibold text-gray-400 truncate">{r.subtitle}</span>}
@@ -158,9 +189,9 @@ export default function Header() {
                 );
               })}
             </ul>
-            <button onClick={() => goTo(`/products?search=${encodeURIComponent(searchQuery.trim())}`)}
+            <button onClick={() => goTo(`/search?q=${encodeURIComponent(searchQuery.trim())}`)}
               className="w-full border-t border-gray-100 bg-gray-50 px-4 py-2.5 text-[11px] font-black uppercase tracking-wider text-blue-900 hover:bg-gray-100 transition-colors text-left">
-              See all results for &ldquo;{searchQuery.trim()}&rdquo; →
+              See all {resultCounts.total || ""} result{resultCounts.total === 1 ? "" : "s"} for &ldquo;{searchQuery.trim()}&rdquo; →
             </button>
           </>
         ) : (
@@ -210,7 +241,7 @@ export default function Header() {
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               onFocus={() => searchQuery.trim().length >= 2 && setShowResults(true)}
-              placeholder="Search products, news, distributors..."
+              placeholder="Search products, news, brands..."
               className="w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-4 pr-10 py-2.5 text-xs font-medium text-gray-900 placeholder-gray-400 focus:border-blue-900 focus:bg-white focus:outline-none transition-all shadow-inner"
             />
             <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-900 transition-colors p-1" aria-label="Submit search">
@@ -413,7 +444,7 @@ export default function Header() {
           <form onSubmit={handleSearchSubmit} className="relative flex items-center">
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Search products, news, distributors..."
+              placeholder="Search products, news, brands..."
               className="w-full rounded-xl border border-gray-200 bg-gray-50 pl-4 pr-10 py-3 text-xs font-semibold text-gray-900 focus:outline-none focus:border-blue-900 focus:bg-white transition-all" autoFocus />
             <button type="submit" className="absolute right-3.5 text-gray-500 p-1">🔍</button>
           </form>

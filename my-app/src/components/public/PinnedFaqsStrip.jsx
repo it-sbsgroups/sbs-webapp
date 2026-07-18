@@ -1,17 +1,10 @@
 "use client";
 
-// =============================================================================
-// FILE: src/components/public/PinnedFaqsStrip.jsx
-// Replaces the mock-data version. Fetches featured FAQs live from the backend.
-// Used on the Contact page and anywhere else the strip is embedded.
-// =============================================================================
-
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import faqApi from "@/lib/faq/api";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
 
-// ─── Single expandable row ─────────────────────────────────────────────────────
 
 function FaqRow({ faq }) {
   const [open, setOpen] = useState(false);
@@ -19,22 +12,17 @@ function FaqRow({ faq }) {
   return (
     <div className={`transition-all duration-200 rounded-2xl overflow-hidden
       ${open ? "bg-blue-50/60 border border-blue-200" : "border border-transparent"}`}>
-      <button
-        onClick={() => setOpen((p) => !p)}
-        className="w-full flex items-start justify-between gap-4 py-4 px-1 text-left group"
-      >
+      <button onClick={() => setOpen((p) => !p)} className="w-full flex items-start justify-between gap-4 py-4 px-1 text-left group" >
         <div className="flex items-start gap-2.5 flex-1 min-w-0">
           <span className={`text-sm shrink-0 mt-0.5 transition-colors
             ${open ? "text-blue-700" : "text-blue-400"}`}>
             {open ? "💡" : "❓"}
           </span>
-          <p className={`text-xs md:text-sm font-bold leading-relaxed transition-colors
-            ${open ? "text-blue-950" : "text-slate-700 group-hover:text-blue-900"}`}>
+          <p className={`text-xs md:text-sm font-bold leading-relaxed transition-colors ${open ? "text-blue-950" : "text-slate-700 group-hover:text-blue-900"}`}>
             {faq.question}
           </p>
         </div>
-        <span className={`shrink-0 text-xs font-black transition-all duration-200 mt-0.5
-          ${open ? "text-blue-700 rotate-180" : "text-slate-400"}`}>
+        <span className={`shrink-0 text-xs font-black transition-all duration-200 mt-0.5 ${open ? "text-blue-700 rotate-180" : "text-slate-400"}`}>
           ▾
         </span>
       </button>

@@ -55,7 +55,7 @@ export default function PrinciplesSection() {
           <div className="lg:col-span-7 space-y-5 text-gray-700">
             <h2 className="text-2xl font-extrabold tracking-tight text-blue-950 sm:text-3xl leading-tight">
               {data.headingPart1}{" "} <br></br>
-              <span className="block text-lime-500 mt-1 md:inline md:mt-0">{data.headingPart2}</span>
+              <span className="block text-[#557b01] mt-1 md:inline md:mt-0">{data.headingPart2}</span>
             </h2>
 
             <div className="text-xs md:text-sm text-gray-600 leading-relaxed text-justify font-normal">
@@ -64,7 +64,7 @@ export default function PrinciplesSection() {
 
             <div className="space-y-3 pt-2">
               <h4 className="text-sm font-extrabold text-blue-950 flex items-center">
-                We <span className="text-lime-500 mx-1">Grow</span> Together With:
+                We <span className="text-[#557b01] mx-1">Grow</span> Together With:
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
                 {data.growItems.map((item, index) => (

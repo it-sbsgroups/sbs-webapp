@@ -40,7 +40,7 @@ export default function ClientSlider() {
   return (
     <section className="relative overflow-hidden py-12 bg-white/50 backdrop-blur-xl">
       <div className="relative z-10 max-w-7xl mx-auto px-4 text-center mb-8">
-        <h2 className="mt-6 text-4xl md:text-5xl font-bold text-blue-950">Our Trusted <span className="text-lime-500">Clients</span></h2>
+        <h2 className="mt-6 text-4xl md:text-5xl font-bold text-blue-950">Our Trusted <span className="text-[#557b01]">Clients</span></h2>
       </div>
 
       <div className="relative flex w-screen overflow-hidden" suppressHydrationWarning>

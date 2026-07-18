@@ -47,7 +47,7 @@ export default function AboutIntro() {
           <div className="lg:col-span-6 space-y-6">
             <h2 className="text-3xl font-extrabold tracking-tight text-blue-950 sm:text-4xl">
               {content.headingPart1}{" "}
-              <span className="block text-lime-500 mt-1 md:inline md:mt-0">
+              <span className="block text-[#557b01] mt-1 md:inline md:mt-0">
                 {content.headingPart2}
               </span>
             </h2>

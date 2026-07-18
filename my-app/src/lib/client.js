@@ -78,9 +78,9 @@ class ApiClient {
   }
 
   // HTTP Methods
-  async get(endpoint, params) {
+  async get(endpoint, params, opts = {}) {
     const query = this.buildQuery(params);
-    return this.request(`${endpoint}${query}`, { method: 'GET' });
+    return this.request(`${endpoint}${query}`, { method: 'GET', ...opts });
   }
 
   async post(endpoint, data) {

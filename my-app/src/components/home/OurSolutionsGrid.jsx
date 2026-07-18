@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import categoriesApi from "@/lib/categoriesApi";
 import { ChevronLeft, Package, ArrowRight } from "lucide-react";
 
-const FALLBACK_ICONS = ["📦", "⚙️", "🔧", "🏗️", "⚡", "🛠️", "🚛", "🔩"];
+// const FALLBACK_ICONS = ["📦", "⚙️", "🔧", "🏗️", "⚡", "🛠️", "🚛", "🔩"];
 
 export default function OurSolutionsGrid() {
   const router = useRouter();
@@ -47,24 +47,21 @@ export default function OurSolutionsGrid() {
         {/* Section title & Back Navigation */}
         <div className="text-center relative">
           {selectedCategory && (
-            <button
-              onClick={() => setSelectedCategory(null)}
-              className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-blue-950 hover:text-lime-600 transition-colors"
-            >
+            <button onClick={() => setSelectedCategory(null)} className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-blue-950 hover:text-lime-600 transition-colors" >
               <ChevronLeft size={16} /> Back to Categories
             </button>
           )}
-          <h2 className="mt-1 text-2xl font-black tracking-tight text-blue-950 sm:text-3xl">
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-blue-950 sm:text-3xl">
             {selectedCategory ? (
               <>
                 {selectedCategory.name} <span className="text-lime-500">Subcategories</span>
               </>
             ) : (
-              <>
-                Our <span className="text-lime-500">Solutions</span>
-              </>
+              <h1 className="text-5xl">
+                Our <span className="text-[#557b01]">Solutions</span>
+              </h1>
             )}
-          </h2>
+          </h1>
         </div>
 
         {loading ? (
@@ -100,7 +97,7 @@ export default function OurSolutionsGrid() {
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center bg-blue-950">
-                      <span className="text-5xl opacity-80">{FALLBACK_ICONS[idx % FALLBACK_ICONS.length]}</span>
+                      {/* <span className="text-5xl opacity-80">{FALLBACK_ICONS[idx % FALLBACK_ICONS.length]}</span> */}
                     </div>
                   )}
 
@@ -148,26 +145,36 @@ export default function OurSolutionsGrid() {
               /* Subcategories render in the same grid styling as the parent categories */
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {selectedCategory.subcategories.map((sub) => (
-                  <button key={sub.id} onClick={() => goToProducts(selectedCategory.id, sub.id)} className="group text-left rounded-xl border border-gray-200 bg-white p-6 transition-all hover:border-lime-400 hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between aspect-[16/10]" >
+                <button
+                  key={sub.id}
+                  onClick={() => goToProducts(selectedCategory.id, sub.id)}
+                  className="group relative text-left rounded-xl border border-gray-200 bg-white p-6 transition-all hover:border-lime-400 hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between aspect-[16/10]"
+                >
                   {sub.image ? (
-                    <img src={sub.image} alt={`${sub.name} thumbnail`} className="absolute inset-0 h-full w-full object-cover opacity-85 transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+                    <img
+                      src={sub.image}
+                      alt={`${sub.name} thumbnail`}
+                      className="absolute inset-0 h-full w-full object-cover opacity-85 transition-transform duration-500 group-hover:scale-105 rounded"
+                      loading="lazy"
+                    />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center bg-blue-950">
                       <span className="text-5xl opacity-80">{FALLBACK_ICONS[idx % FALLBACK_ICONS.length]}</span>
                     </div>
                   )}
-                    <div className="flex items-start justify-between gap-4">
-                      <h4 className="text-base font-extrabold text-blue-950 uppercase tracking-wide group-hover:text-blue-900">
-                        {sub.name}
-                      </h4>
-                      <span className="shrink-0 rounded-md bg-gray-100 px-2.5 py-1 text-[11px] font-black text-gray-500">
-                        {sub._count?.products ?? 0}
-                      </span>
-                    </div>
-                    <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-lime-600">
-                      View products <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+                  {/* baaki content (name, count, view products) */}
+                  <div className="flex items-start justify-between gap-4">
+                    <h4 className="text-base font-extrabold text-black text-extrabold capitalize tracking-wide z-50 hover:text-lg text-center">
+                      {sub.name}
+                    </h4>
+                    <span className="shrink-0 rounded-md bg-gray-100 px-2.5 py-1 text-[11px] font-black text-gray-500">
+                      {sub._count?.products ?? 0}
                     </span>
-                  </button>
+                  </div>
+                  <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-lime-600">
+                    View products <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </button>
                 ))}
               </div>
             )}
