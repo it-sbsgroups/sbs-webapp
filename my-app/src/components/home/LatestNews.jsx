@@ -68,6 +68,9 @@ export default function LatestNews() {
     };
   }, [startTyping]);
 
+  // Split the currently typed text into words for separate coloring
+  const words = displayedText.split(" ");
+
   if (loading) return null;
   if (latestThree.length === 0) return null;
 
@@ -96,22 +99,21 @@ export default function LatestNews() {
       `}</style>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
-        {/* Centered heading with typing effect */}
+        {/* Centered heading with typing effect – bigger, two‑tone */}
         <div className="text-center border-b border-gray-100 pb-6">
-          <span className="text-xs font-bold uppercase tracking-widest text-red-600">
-            Updates &amp; Highlights
-          </span>
-          <h2 className="mt-2 text-2xl font-black tracking-tight text-blue-900 sm:text-3xl uppercase">
-            {displayedText}
-            {/* Thin black cursor – 2px border-left, inline-block, blinking */}
-            <span
-              className="animate-cursor-blink inline-block border-l-2 border-black align-middle"
-              style={{ height: "1em", marginLeft: "2px" }}
-            />
-          </h2>
+          <h1 className="mt-2 text-4xl sm:text-5xl font-black tracking-tight capitalize leading-tight">
+            {words.length > 0 && (
+              <span className="text-blue-950">{words[0]}</span>
+            )}
+            {words.length > 1 && (
+              <>
+                {" "}
+                <span className="text-lime-500">{words.slice(1).join(" ")}</span>
+              </>
+            )}
+            <span className="animate-cursor-blink inline-block border-l-2 border-black align-middle" style={{ height: "1em", marginLeft: "2px" }} />
+          </h1>
         </div>
-
-        {/* 3‑column grid of cards */}
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {latestThree.map((item) => {
             const catName = getCategoryName(item.categoryId);
@@ -121,19 +123,10 @@ export default function LatestNews() {
             const coverImage = getCoverImage(item);
 
             return (
-              <Link
-                key={item.id}
-                href={`/news/${item.slug}`}
-                className="group block"
-              >
+              <Link key={item.id} href={`/news/${item.slug}`} className="group block" >
                 <article className="animate-card flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white transition-all duration-300 hover:-translate-y-2 hover:shadow-lg hover:border-blue-900/30">
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
-                    <img
-                      src={coverImage}
-                      alt={item.title}
-                      loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
+                    <img src={coverImage} alt={item.title} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
                     <div className="absolute left-4 top-4 flex flex-wrap gap-2">
                       {catName && (
                         <span className="rounded bg-blue-900 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white shadow">
@@ -159,23 +152,10 @@ export default function LatestNews() {
         </div>
 
         <div className="flex justify-center pt-4">
-          <Link
-            href="/news"
-            className="inline-flex items-center space-x-2 rounded-full bg-blue-900 px-8 py-3 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-red-600"
-          >
+          <Link href="/news" className="inline-flex items-center space-x-2 rounded-full bg-blue-900 px-8 py-3 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-red-600" >
             <span>See All News</span>
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M9 5l7 7-7 7"
-              />
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
             </svg>
           </Link>
         </div>

@@ -12,7 +12,6 @@ import siteConfigApi from "@/lib/siteConfig/siteConfigApi";
 import footerApi from "@/lib/footerApi";
 import subscribersApi from "@/lib/subscribersApi";
 
-// Helper: get first value from an array of objects or strings
 const firstValue = (arr) => {
   if (!arr || arr.length === 0) return "";
   const first = arr[0];
@@ -158,17 +157,21 @@ export default function Footer() {
     <footer className="bg-gradient-to-b from-[#0d5fd3] to-[#103b87] text-white">
       <div className="max-w-7xl mx-auto px-6 lg:px-10 py-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {/* Company */}
           <div>
             {data.branding.logoUrl ? (
+            <div className="inline-block mb-4">
               <Image
                 src={data.branding.logoUrl}
                 alt={data.branding.companyName}
                 width={160}
                 height={160}
-                className="mb-4"
                 priority
+                className="
+                  drop-shadow-[0_0_8px_rgba(255,255,255,0.9)]
+                  drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]
+                "
               />
+            </div>
             ) : (
               <div className="text-2xl font-bold mb-4">{data.branding.companyName}</div>
             )}
@@ -179,16 +182,15 @@ export default function Footer() {
                   <p>{fullAddress}</p>
                 </div>
               )}
+              {/*  */}
               <div className="flex gap-2">
                 <Phone className="w-4 h-4 mt-0.5 shrink-0" />
                 <div>
-                  {/* Only co‑founder name (if set) */}
                   {data.founders.coFounder.name && (
                     <p>{data.founders.coFounder.name}</p>
                   )}
-                  {/* Deduplicated phone numbers */}
                   {allPhones.map((phone, idx) => (
-                    <p key={idx}>Mobile: {phone}</p>
+                    <span key={idx}><a href="tel:{phone}">+91-{phone} </a></span>
                   ))}
                 </div>
               </div>
@@ -196,17 +198,18 @@ export default function Footer() {
                 <Mail className="w-4 h-4 mt-0.5 shrink-0" />
                 <div>
                   {allEmails.map((email, idx) => (
-                    <p key={idx}>{email}</p>
+                    <p key={idx}><a href="mailto:{email}">{email} </a></p>
                   ))}
                 </div>
               </div>
+              {/*  */}
             </div>
           </div>
 
           {/* Quick Links */}
           <div>
             <h3 className="text-xl font-semibold mb-4">Quick Links</h3>
-            <ul className="space-y-2 text-sm">
+            <ul className="space-y-2 text-l">
               {quickLinks.map((link) => (
                 <li key={link.href || link.name}>
                   <Link href={link.href}>{link.name}</Link>
@@ -218,7 +221,7 @@ export default function Footer() {
           {/* Services */}
           <div>
             <h3 className="text-xl font-semibold mb-4">Services</h3>
-            <ul className="space-y-2 text-sm">
+            <ul className="space-y-2 text-l">
               {servicesLinks.map((link) => (
                 <li key={link.href || link.name}>
                   {link.href ? <Link href={link.href}>{link.name}</Link> : link.name}
@@ -236,13 +239,7 @@ export default function Footer() {
                   const Icon = socialIconMap[social.iconType?.toLowerCase()] || socialIconMap[social.platform?.toLowerCase()];
                   if (!Icon) return null;
                   return (
-                    <a
-                      key={social.id || social.url}
-                      href={social.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-10 h-10 rounded-lg bg-blue-700 hover:bg-blue-600 flex items-center justify-center transition"
-                    >
+                    <a key={social.id || social.url} href={social.url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-lg bg-blue-700 hover:bg-blue-600 flex items-center justify-center transition" >
                       <Icon className="text-sm" />
                     </a>
                   );
@@ -269,19 +266,8 @@ export default function Footer() {
               <>
                 <p className="text-sm mb-2">Subscribe to our newsletter</p>
                 <form onSubmit={handleSubscribe} className="flex overflow-hidden rounded-lg">
-                  <input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-white text-black outline-none"
-                    required
-                  />
-                  <button
-                    type="submit"
-                    disabled={subscribing}
-                    className="bg-blue-500 hover:bg-blue-600 px-4 text-sm disabled:opacity-60"
-                  >
+                  <input type="email" placeholder="Enter your email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2 text-sm bg-white text-black outline-none" required />
+                  <button type="submit" disabled={subscribing} className="bg-blue-500 hover:bg-blue-600 px-4 text-sm disabled:opacity-60" >
                     {subscribing ? "..." : "Subscribe"}
                   </button>
                 </form>
@@ -292,7 +278,7 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-white/20">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 py-4 text-sm text-white/90">
+        <div className="max-w-7xl mx-auto px-6 lg:px-10 py-4 text-sm text-white/90 text-center">
           © {new Date().getFullYear()} {data.branding.companyName}. All rights reserved.
         </div>
       </div>
