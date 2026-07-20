@@ -5,6 +5,17 @@ import { NotificationsService } from './notifications.service';
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
+  // -------------------- Universal Settings: instant vs daily batch --------------------
+  @Get('settings')
+  getSettings() {
+    return this.notificationsService.getSettings();
+  }
+
+  @Post('settings')
+  updateSettings(@Body() data: any) {
+    return this.notificationsService.updateSettings(data);
+  }
+
   // -------------------- Products: manual, immediate, one-by-one --------------------
   @Post('products/send')
   sendProductNotification(@Body('productIds') productIds: string[]) {

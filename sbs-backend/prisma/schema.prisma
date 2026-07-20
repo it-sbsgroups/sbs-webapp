@@ -91,6 +91,7 @@ model Brand {
   phone          String?   
   isActive       Boolean   @default(true)
   isOwnBrand     Boolean   @default(false)    
+  description    String?   @db.LongText  // rich-text HTML (EditorJS output) — only shown on brand/own-brand detail page when non-empty
   gallery        Json?     
   brochureUrl    String?   @db.Text   // local path e.g. /brands/brochure/makita-169999.pdf
   brochureName   String?              // original uploaded filename
@@ -355,7 +356,7 @@ model RfqIntegration {
 // ============================================
 
 model ScheduledNotification {
-  id          String    @id @default(cuid())
+  id           String    @id @default(cuid())
   type        String    // "PRODUCT" | "NEWS"
   targetIds   Json
   scheduledAt DateTime
@@ -363,7 +364,25 @@ model ScheduledNotification {
   sentAt      DateTime?
   error       String?   @db.Text
   createdAt   DateTime  @default(now())
+  // true for the auto-accumulating "today's daily digest" row created by the
+  // batch notification mode (see NotificationSettings); false/omitted for a
+  // one-off admin-scheduled send. Lets us find "today's batch row" for a type
+  // without confusing it with manual schedules.
+  isDailyBatch Boolean  @default(false)
   @@map("scheduled_notifications")
+}
+
+// Universal notification timing settings — one place to control whether new
+// products / news posts email subscribers the instant they're added, or get
+// batched into a single once-a-day digest sent at a configured time.
+model NotificationSettings {
+  id                String   @id @default("default")
+  productsMode      String   @default("INSTANT") // "INSTANT" | "BATCH"
+  productsBatchTime String   @default("18:00")    // 24h "HH:mm", server local time
+  newsMode          String   @default("INSTANT")
+  newsBatchTime     String   @default("18:00")
+  updatedAt         DateTime @updatedAt
+  @@map("notification_settings")
 }
 
 
@@ -496,6 +515,8 @@ model NewsPost {
   blocks          NewsBlock[]      
   versions        NewsVersion[]    
   comments        NewsComment[]    
+  likesCount      Int              @default(0)
+  likes           NewsLike[]
   @@index([status, createdAt])
   @@map("news_posts")
 }
@@ -506,6 +527,19 @@ enum PostStatus {
   DRAFT    
   PUBLISHED
   ARCHIVED 
+}
+
+// One row per (post, ip) — the unique constraint is what actually enforces
+// "one like per IP per article"; the API layer just toggles this row's
+// existence and keeps NewsPost.likesCount in sync alongside it.
+model NewsLike {
+  id        String   @id @default(cuid())
+  postId    String
+  ip        String
+  createdAt DateTime @default(now())
+  post      NewsPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  @@unique([postId, ip])
+  @@map("news_likes")
 }
 
 

@@ -15,4 +15,13 @@ export class SearchController {
   async search(@Query() query: QuerySearchDto) {
     return this.searchService.search(query);
   }
+
+  // Admin global search — protected by the default JwtAuthGuard (no
+  // @Public() here). Searches the live database across products, news,
+  // brands, clients and employees, including inactive/draft/unpublished
+  // rows, since admins need to find things the public site wouldn't show.
+  @Get('admin')
+  async adminSearch(@Query('q') q: string, @Query('limit') limit?: string) {
+    return this.searchService.adminSearch(q, limit ? parseInt(limit, 10) : 20);
+  }
 }

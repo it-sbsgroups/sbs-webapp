@@ -1,13 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class NewsService {
   constructor(
     private prisma: PrismaService,
     private notifications: NotificationsService,
+    private mail: MailService,
   ) {}
+
+  private get siteUrl() {
+    return (process.env.PUBLIC_SITE_URL || '').replace(/\/$/, '');
+  }
 
   // ============================================
   // LIST-VIEW HELPERS
@@ -270,7 +276,7 @@ export class NewsService {
     });
 
     // Alert subscribers who opted into news emails (non-blocking).
-    void this.notifications.notifyNewNews({
+    void this.notifications.handleNewNews({
       id: post.id,
       title: post.title,
       slug: post.slug,
@@ -278,6 +284,71 @@ export class NewsService {
     });
 
     return post;
+  }
+
+  // ============================================
+  // LIKES (one per IP per article — enforced by the DB unique constraint,
+  // not just checked in application code)
+  // ============================================
+
+  async toggleLike(slug: string, ip: string) {
+    const post = await this.prisma.newsPost.findUnique({ where: { slug }, select: { id: true } });
+    if (!post) throw new NotFoundException('Post not found');
+    if (!ip) throw new BadRequestException('Could not determine your IP address');
+
+    const existing = await this.prisma.newsLike.findUnique({
+      where: { postId_ip: { postId: post.id, ip } },
+    });
+
+    if (existing) {
+      // Already liked from this IP — clicking again un-likes it.
+      const [, updated] = await this.prisma.$transaction([
+        this.prisma.newsLike.delete({ where: { id: existing.id } }),
+        this.prisma.newsPost.update({
+          where: { id: post.id },
+          data: { likesCount: { decrement: 1 } },
+          select: { likesCount: true },
+        }),
+      ]);
+      return { liked: false, likesCount: updated.likesCount };
+    }
+
+    try {
+      const [, updated] = await this.prisma.$transaction([
+        this.prisma.newsLike.create({ data: { postId: post.id, ip } }),
+        this.prisma.newsPost.update({
+          where: { id: post.id },
+          data: { likesCount: { increment: 1 } },
+          select: { likesCount: true },
+        }),
+      ]);
+      return { liked: true, likesCount: updated.likesCount };
+    } catch (e) {
+      // Race condition: two requests from the same IP landed at once and
+      // both passed the "existing" check above. The unique constraint
+      // rejects the second insert — treat it as "already liked" rather
+      // than erroring the request.
+      if (e.code === 'P2002') {
+        const current = await this.prisma.newsPost.findUnique({
+          where: { id: post.id },
+          select: { likesCount: true },
+        });
+        return { liked: true, likesCount: current?.likesCount ?? 0 };
+      }
+      throw e;
+    }
+  }
+
+  async getLikeStatus(slug: string, ip: string) {
+    const post = await this.prisma.newsPost.findUnique({
+      where: { slug },
+      select: { id: true, likesCount: true },
+    });
+    if (!post) throw new NotFoundException('Post not found');
+    const existing = ip
+      ? await this.prisma.newsLike.findUnique({ where: { postId_ip: { postId: post.id, ip } } })
+      : null;
+    return { liked: !!existing, likesCount: post.likesCount };
   }
 
   // ============================================
@@ -322,7 +393,7 @@ export class NewsService {
     const parent = data.parentId ? await this.prisma.newsComment.findUnique({ where: { id: data.parentId } }) : null;
     const depth = parent ? parent.depth + 1 : 0;
 
-    return this.prisma.newsComment.create({
+    const comment = await this.prisma.newsComment.create({
       data: {
         postId: data.postId,
         parentId: data.parentId,
@@ -333,14 +404,54 @@ export class NewsService {
         geolocation: data.geolocation,
         status: 'PENDING',
       },
+      include: { post: { select: { title: true } } },
     });
+
+    // Best-effort — a failed confirmation email must never block the comment
+    // from being saved.
+    void this.mail
+      .sendCommentReceived({
+        name: comment.name,
+        email: comment.email,
+        postTitle: comment.post?.title || 'our article',
+        body: comment.body,
+      })
+      .catch((err) => console.error('Comment-received email failed:', err.message));
+
+    return comment;
   }
 
   async updateCommentStatus(id: string, status: string) {
-    return this.prisma.newsComment.update({
+    const updated = await this.prisma.newsComment.update({
       where: { id },
       data: { status: status as any },
+      include: { post: { select: { title: true, slug: true } } },
     });
+
+    // Notify the commenter of the moderation outcome — best-effort, never
+    // blocks the status change itself.
+    if (status === 'APPROVED') {
+      void this.mail
+        .sendCommentApproved({
+          name: updated.name,
+          email: updated.email,
+          postTitle: updated.post?.title || 'our article',
+          body: updated.body,
+          articleUrl: `${this.siteUrl}/news/${updated.post?.slug || ''}`,
+        })
+        .catch((err) => console.error('Comment-approved email failed:', err.message));
+    } else if (status === 'REJECTED') {
+      void this.mail
+        .sendCommentRejected({
+          name: updated.name,
+          email: updated.email,
+          postTitle: updated.post?.title || 'our article',
+          body: updated.body,
+        })
+        .catch((err) => console.error('Comment-rejected email failed:', err.message));
+    }
+
+    return updated;
   }
 
   async softDeleteComment(id: string) {

@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { Plus, Edit, Trash2, X, Save, Search, Building2, Mail, Phone, Globe, ChevronLeft, ChevronRight, MessageSquareQuote } from "lucide-react";
 import BrandGalleryUploader from "@/components/admin/brand/BrandGalleryUploader";
 import BrandBrochureUploader from "@/components/admin/brand/BrandBrochureUploader";
+import RichTextEditor from "@/components/shared/RichTextEditor";
 import TableExportImport from "@/components/admin/shared/TableExportImport";
 
 const Toggle = ({ checked, onChange }) => (
@@ -24,6 +25,7 @@ const emptyForm = {
   phone: "",
   isActive: true,
   isOwnBrand: false,
+  description: "",
   gallery: [],
 };
 
@@ -142,6 +144,7 @@ export default function BrandsManagementPage() {
       phone: brand?.phone || "",
       isActive: brand?.isActive ?? true,
       isOwnBrand: brand?.isOwnBrand ?? false,
+      description: brand?.description || "",
       gallery: brand?.gallery || [],
     });
     setBrochureInfo({
@@ -466,6 +469,20 @@ export default function BrandsManagementPage() {
                     <span className="text-xs font-medium">{formData.isOwnBrand ? "Own Brand" : "Third Party"}</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Description — optional rich text, shown on the brand/own-brand detail page only when filled in */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b pb-2">
+                  Description <span className="normal-case font-medium text-slate-400">(optional — leave blank to hide this section on the detail page)</span>
+                </h3>
+                <RichTextEditor
+                  value={formData.description}
+                  onChange={(html) => handleFieldChange("description", html)}
+                  placeholder="Write about this brand… shown on its public detail page."
+                  uploadFolder="brand-description"
+                  resetKey={editingId || "new-brand"}
+                />
               </div>
 
               {/* Brochure */}

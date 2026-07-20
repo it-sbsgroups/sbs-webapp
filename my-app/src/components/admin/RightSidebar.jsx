@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ADMIN_TYPE_META } from "@/lib/adminSearchIndex";
+import { ADMIN_TYPE_META } from "@/lib/adminGlobalSearchApi";
 
 export default function RightSidebar({ isRightOpen, setIsRightOpen, searchResults = [] }) {
   const router = useRouter();

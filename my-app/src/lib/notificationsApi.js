@@ -2,6 +2,14 @@
 import apiClient from "./client";
 
 const notificationsApi = {
+  /** Universal instant-vs-batch timing settings (products & news). */
+  async getSettings() {
+    return apiClient.get("/notifications/settings");
+  },
+  async updateSettings(data) {
+    return apiClient.post("/notifications/settings", data);
+  },
+
   /** Send a product notification RIGHT NOW, one email per subscriber. */
   async sendProductsNow(productIds) {
     return apiClient.post("/notifications/products/send", { productIds });

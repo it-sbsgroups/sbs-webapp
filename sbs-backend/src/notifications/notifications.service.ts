@@ -37,6 +37,100 @@ export class NotificationsService {
     return subs.filter((s) => s.email && s.unsubscribeToken);
   }
 
+  // ---------- Universal Notification Settings (instant vs daily batch) ----------
+
+  async getSettings() {
+    const existing = await this.prisma.notificationSettings.findFirst();
+    if (existing) return existing;
+    return this.prisma.notificationSettings.create({ data: { id: 'default' } });
+  }
+
+  async updateSettings(data: {
+    productsMode?: string;
+    productsBatchTime?: string;
+    newsMode?: string;
+    newsBatchTime?: string;
+  }) {
+    await this.getSettings(); // ensure the row exists
+    return this.prisma.notificationSettings.update({ where: { id: 'default' }, data });
+  }
+
+  /** Entry point for a newly-created (active) product. Routes to instant send
+   *  or into today's batch depending on the admin's chosen mode. */
+  async handleNewProduct(product: {
+    id: string;
+    name: string;
+    sku?: string | null;
+    slug?: string | null;
+    keyFeatures?: string | null;
+    description?: string | null;
+  }) {
+    const settings = await this.getSettings();
+    if (settings.productsMode === 'BATCH') {
+      await this.addToDailyBatch('PRODUCT', product.id, settings.productsBatchTime);
+    } else {
+      await this.notifyNewProduct(product);
+    }
+  }
+
+  /** Entry point for a newly-published news post. Same instant/batch routing. */
+  async handleNewNews(post: { id: string; title: string; slug?: string; excerpt?: string }) {
+    const settings = await this.getSettings();
+    if (settings.newsMode === 'BATCH') {
+      await this.addToDailyBatch('NEWS', post.id, settings.newsBatchTime);
+    } else {
+      await this.notifyNewNews(post);
+    }
+  }
+
+  /**
+   * Adds a target (product/news id) to today's single accumulating digest
+   * row for that type, creating it if it doesn't exist yet. The existing
+   * per-minute cron (processDueScheduledNotifications) sends it once
+   * `scheduledAt` (today at the configured HH:mm) is reached — everything
+   * added before that time goes out together; anything added after that
+   * time today goes out on the very next cron tick since the time already
+   * passed, rather than silently waiting for tomorrow.
+   */
+  private async addToDailyBatch(type: 'PRODUCT' | 'NEWS', targetId: string, batchTime: string) {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfTomorrow = new Date(startOfDay);
+    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+    const [hh, mm] = (batchTime || '18:00').split(':').map((n) => parseInt(n, 10) || 0);
+    const scheduledAt = new Date(startOfDay);
+    scheduledAt.setHours(hh, mm, 0, 0);
+
+    const existing = await this.prisma.scheduledNotification.findFirst({
+      where: {
+        type,
+        status: 'pending',
+        isDailyBatch: true,
+        scheduledAt: { gte: startOfDay, lt: startOfTomorrow },
+      },
+    });
+
+    if (existing) {
+      const ids = Array.isArray(existing.targetIds) ? (existing.targetIds as string[]) : [];
+      if (!ids.includes(targetId)) {
+        await this.prisma.scheduledNotification.update({
+          where: { id: existing.id },
+          data: { targetIds: [...ids, targetId] as any },
+        });
+      }
+    } else {
+      await this.prisma.scheduledNotification.create({
+        data: {
+          type,
+          targetIds: [targetId] as any,
+          scheduledAt,
+          isDailyBatch: true,
+        },
+      });
+    }
+  }
+
   // ---------- New Product Notification (auto) ----------
 
   async notifyNewProduct(product: {
@@ -82,18 +176,22 @@ export class NotificationsService {
     const recipients = await this.getSubscribersWithPreference('notifyProducts');
     if (!recipients.length) return { sent: 0, failed: 0 };
 
+    // Build one combined email listing every product in this batch (not just
+    // the first one) — matters especially for the daily-digest batch mode,
+    // where several products can land here together.
+    const template = this.templates.getProductsBatchNotification(
+      products.map((p) => ({
+        name: p.name,
+        sku: p.sku || undefined,
+        keyFeatures: p.keyFeatures || undefined,
+        productUrl: `${this.siteUrl}/products/${p.sku || p.slug || p.id}`,
+      })),
+    );
+
     let sent = 0,
       failed = 0;
     for (const sub of recipients) {
       try {
-        const product = products[0];
-        const productUrl = `${this.siteUrl}/products/${product.sku || product.slug || product.id}`;
-        const template = this.templates.getProductNotification({
-          productName: product.name,
-          sku: product.sku || undefined,
-          keyFeatures: product.keyFeatures || undefined,
-          productUrl,
-        });
         const unsubscribeUrl = `${this.siteUrl}/subscribers/unsubscribe?token=${sub.unsubscribeToken}`;
         const html = this.templates.render({ ...template, unsubscribeUrl });
         await this.mail.sendBroadcast([sub.email], template.subject, html);
@@ -106,7 +204,7 @@ export class NotificationsService {
 
     await this.logNotification(
       'PRODUCT',
-      `${products.length} new product(s)`,
+      template.subject,
       recipients.map((r) => r.email),
       { status: failed === 0 ? 'sent' : 'partial', productIds },
     );

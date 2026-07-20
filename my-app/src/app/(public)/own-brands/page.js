@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import Link from "next/link";
 import brandsApi from "@/lib/brands/Api";
+import BrandCard from "@/components/shared/BrandCard";
 
 function toBrandCard(b) {
   return {
@@ -48,10 +48,6 @@ export default function OwnBrandsDirectoryPage() {
     });
   }, [query, activeSector, brands]);
 
-  const fallbackImg = (e) => {
-    e.currentTarget.src = "https://placehold.co/120x120/f1f5f9/94a3b8?text=Brand";
-  };
-
   return (
     <div className="bg-slate-50 min-h-screen font-sans text-slate-800 antialiased">
       {/* Header */}
@@ -93,25 +89,9 @@ export default function OwnBrandsDirectoryPage() {
             <p className="text-xs text-slate-500 mt-1">Refine your active keyword or switch categories tab.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-4" style={{ perspective: "1200px" }}>
             {filteredBrands.map((brand) => (
-              <Link key={brand.id} href={`/brands/${brand.slug}`} className="group block bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                {/* Logo only – full top half */}
-                <div className="h-36 flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-white">
-                  <img src={brand.logo} alt="" className="w-full h-full object-contain" onError={fallbackImg} />
-                </div>
-                {/* Brand name – hidden until hover, appears over the logo */}
-                <div className="absolute inset-0 bg-indigo-900/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                  <div className="text-center">
-                    <h3 className="text-white font-black text-sm md:text-base leading-tight drop-shadow-lg">{brand.brandName}</h3>
-                    {brand.sector && (
-                      <p className="text-indigo-200 text-[10px] font-bold uppercase tracking-wider mt-1">{brand.sector}</p>
-                    )}
-                  </div>
-                </div>
-                {/* Small footer for founder / website (optional) */}
-                <div className="px-3 py-2 bg-slate-50 border-t border-slate-100 text-[9px] text-slate-500 font-medium truncate">{brand.website || " "}</div>
-              </Link>
+              <BrandCard key={brand.id} brand={brand} />
             ))}
           </div>
         )}

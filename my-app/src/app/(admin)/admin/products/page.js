@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Package, FolderTree, MessageSquare, Settings, BarChart3, Download, RefreshCw, Plus, Grid3X3, List } from "lucide-react";
 import ProductsTable from "@/components/admin/products/ProductsTable";
 import ProductFormModal from "@/components/admin/products/ProductFormModal";
@@ -38,6 +39,9 @@ const tabs = [
 ];
 
 export default function ProductsAdminPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   // --- Tab state with persistence ---
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== "undefined") {
@@ -66,6 +70,29 @@ export default function ProductsAdminPage() {
     total: 0, page: 1, pageSize: 20, totalPages: 1,
     hasNextPage: false, hasPreviousPage: false
   });
+
+  // Deep link from admin search: /admin/products?edit=<id> opens that
+  // product's edit modal directly, fetching it by id rather than relying on
+  // whatever page of the (paginated) product list happens to be loaded.
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId) return;
+    productsApi
+      .getById(editId)
+      .then((product) => {
+        if (product) {
+          setEditingProduct(product);
+          setShowProductModal(true);
+          setActiveTab("products");
+        }
+      })
+      .catch((err) => console.error("Failed to load product for edit link:", err))
+      .finally(() => {
+        // Strip the query param so it doesn't re-trigger / linger in the URL.
+        router.replace("/admin/products");
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // --- Restore form state from sessionStorage ---
   useEffect(() => {

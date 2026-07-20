@@ -36,6 +36,7 @@ import {
   PenTool,
   Mail,
   Factory,
+  Bell,
 } from "lucide-react";
 
 // ============================================
@@ -138,6 +139,13 @@ const navTree = [
         name: "Subscribers",
         icon: Building2,
         href: "/admin/subscribers",
+        type: "link",
+      },
+      {
+        id: "comp-notification-settings",
+        name: "Notification Settings",
+        icon: Bell,
+        href: "/admin/notification-settings",
         type: "link",
       },
       {

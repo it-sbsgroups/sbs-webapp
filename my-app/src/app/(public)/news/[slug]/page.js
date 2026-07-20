@@ -127,6 +127,7 @@ export default function PublicNewsDetailPage() {
   const [notice, setNotice] = useState("");
   const [hasLiked, setHasLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
+  const [liking, setLiking] = useState(false);
   const [lightboxIdx, setLightboxIdx] = useState(null);
 
   const pageUrl = typeof window !== "undefined" ? window.location.href : "";
@@ -143,7 +144,18 @@ export default function PublicNewsDetailPage() {
 
         setArticle(articleData);
         setComments(articleData?.comments || []);
-        setLikeCount(articleData?.likes || 0);
+        setLikeCount(articleData?.likesCount || 0);
+
+        // Real, server-verified like state for this visitor's IP (separate
+        // call since it depends on the request's IP, not on the article data).
+        if (articleData?.slug) {
+          publicNewsApi.getLikeStatus(articleData.slug).then((status) => {
+            if (status) {
+              setHasLiked(!!status.liked);
+              setLikeCount(status.likesCount ?? 0);
+            }
+          }).catch(() => {});
+        }
 
         // Restore saved comment form for this article
         const saved = loadFormFromStorage(articleData?.id);
@@ -186,9 +198,27 @@ export default function PublicNewsDetailPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const handleLike = () => {
-    setLikeCount((c) => (hasLiked ? c - 1 : c + 1));
-    setHasLiked((v) => !v);
+  const handleLike = async () => {
+    if (liking || !article?.slug) return;
+    // Optimistic update for instant feedback, corrected once the server responds.
+    const prevLiked = hasLiked;
+    const prevCount = likeCount;
+    setHasLiked(!prevLiked);
+    setLikeCount((c) => (prevLiked ? c - 1 : c + 1));
+    setLiking(true);
+    try {
+      const result = await publicNewsApi.toggleLike(article.slug);
+      if (result) {
+        setHasLiked(!!result.liked);
+        setLikeCount(result.likesCount ?? 0);
+      }
+    } catch {
+      // Revert the optimistic change if the request failed (e.g. offline).
+      setHasLiked(prevLiked);
+      setLikeCount(prevCount);
+    } finally {
+      setLiking(false);
+    }
   };
 
   const handleAddComment = async (e) => {
@@ -370,8 +400,8 @@ export default function PublicNewsDetailPage() {
                 {/* Like bar + share bar */}
                 <div className="border-t border-slate-100 pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <button onClick={handleLike}
-                      className={`flex items-center space-x-2 text-xs font-black uppercase tracking-wider px-4 py-2 rounded-xl transition-all ${
+                    <button onClick={handleLike} disabled={liking}
+                      className={`flex items-center space-x-2 text-xs font-black uppercase tracking-wider px-4 py-2 rounded-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
                         hasLiked ? "bg-rose-50 text-rose-600 border border-rose-200" : "bg-slate-50 hover:bg-slate-100 text-slate-600 border"
                       }`}>
                       <span>{hasLiked ? "❤️ Liked" : "🤍 Like"}</span>

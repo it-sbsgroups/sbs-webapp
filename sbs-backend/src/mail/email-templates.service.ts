@@ -98,14 +98,51 @@ export class EmailTemplatesService {
    */
   getRfqTeamNotification(data: {
     fullName: string; companyName?: string; email: string; mobile: string;
-    itemCount: number; productTable: string; rfqReference: string; date: string; remarks?: string;
+    itemCount: number;
+    productRows: { name: string; sku?: string; model?: string; category?: string; subcategory?: string; brand?: string; qty: number }[];
+    rfqReference: string; date: string; remarks?: string;
   }): TemplateData {
+    const rows = data.productRows || [];
+    const productTableHtml = rows.length
+      ? `<table style="width:100%;border-collapse:collapse;margin:10px 0;font-size:13px;">
+          <thead>
+            <tr style="background:#f1f5f9;text-align:left;">
+              <th style="padding:8px;border:1px solid #e2e8f0;">#</th>
+              <th style="padding:8px;border:1px solid #e2e8f0;">Product</th>
+              <th style="padding:8px;border:1px solid #e2e8f0;">Model</th>
+              <th style="padding:8px;border:1px solid #e2e8f0;">Category</th>
+              <th style="padding:8px;border:1px solid #e2e8f0;">Brand</th>
+              <th style="padding:8px;border:1px solid #e2e8f0;text-align:right;">Qty</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows
+              .map((item, i) => {
+                const productUrl = item.sku ? `${this.siteUrl}/products/${encodeURIComponent(item.sku)}` : '';
+                const nameCell = productUrl
+                  ? `<a href="${productUrl}" style="color:#1e3a8a;text-decoration:underline;font-weight:bold;">${this.escapeHtml(item.name)}</a>`
+                  : `<strong>${this.escapeHtml(item.name)}</strong>`;
+                const categoryPath = [item.category, item.subcategory].filter(Boolean).join(' > ');
+                return `<tr>
+                  <td style="padding:8px;border:1px solid #e2e8f0;">${i + 1}</td>
+                  <td style="padding:8px;border:1px solid #e2e8f0;">${nameCell}</td>
+                  <td style="padding:8px;border:1px solid #e2e8f0;">${this.escapeHtml(item.model || 'N/A')}</td>
+                  <td style="padding:8px;border:1px solid #e2e8f0;">${this.escapeHtml(categoryPath || 'N/A')}</td>
+                  <td style="padding:8px;border:1px solid #e2e8f0;">${this.escapeHtml(item.brand || 'N/A')}</td>
+                  <td style="padding:8px;border:1px solid #e2e8f0;text-align:right;">${item.qty}</td>
+                </tr>`;
+              })
+              .join('')}
+          </tbody>
+        </table>`
+      : '';
+
     const body = `
       <h2>New RFQ Received</h2>
       <p><strong>Client:</strong> ${this.escapeHtml(data.fullName)}${data.companyName ? ` (${this.escapeHtml(data.companyName)})` : ''}</p>
       <p><strong>Email:</strong> ${this.escapeHtml(data.email)} | <strong>Mobile:</strong> ${this.escapeHtml(data.mobile)}</p>
-      <p><strong>Reference:</strong> ${this.escapeHtml(data.rfqReference)}</p>
-      ${data.productTable ? `<p><strong>Products:</strong><br>${data.productTable}</p>` : ''}
+      <p><strong>Reference:</strong> ${this.escapeHtml(data.rfqReference)} | <strong>Date:</strong> ${this.escapeHtml(data.date)}</p>
+      ${productTableHtml}
       <p><strong>Total items:</strong> ${data.itemCount}</p>
       ${data.remarks ? `<p><strong>Remarks:</strong> ${this.escapeHtml(data.remarks)}</p>` : ''}
       <p>Please process at the earliest.</p>
@@ -229,6 +266,60 @@ export class EmailTemplatesService {
   }
 
   /**
+   * 8b. News Comment — Received (auto-reply, awaiting moderation)
+   */
+  getCommentReceived(data: { name: string; postTitle: string; body: string }): TemplateData {
+    const body = `
+      <h2>We received your comment!</h2>
+      <p>Dear ${this.escapeHtml(data.name)},</p>
+      <p>Thank you for commenting on <strong>${this.escapeHtml(data.postTitle)}</strong>. Your comment is waiting for review and approval:</p>
+      <blockquote style="border-left:4px solid #1e3a8a;background:#f8fafc;padding:12px 16px;margin:12px 0;">${this.escapeHtml(data.body)}</blockquote>
+      <p>We'll let you know as soon as it's approved and live on the article.</p>
+      <p>Regards,<br>SBS Groups Team</p>
+    `;
+    return {
+      subject: `We received your comment — SBS Groups`,
+      bodyContent: body,
+    };
+  }
+
+  /**
+   * 8c. News Comment — Approved
+   */
+  getCommentApproved(data: { name: string; postTitle: string; body: string; articleUrl: string }): TemplateData {
+    const body = `
+      <h2>Your comment has been approved!</h2>
+      <p>Dear ${this.escapeHtml(data.name)},</p>
+      <p>Good news — your comment on <strong>${this.escapeHtml(data.postTitle)}</strong> has been approved and is now live:</p>
+      <blockquote style="border-left:4px solid #16a34a;background:#f0fdf4;padding:12px 16px;margin:12px 0;">${this.escapeHtml(data.body)}</blockquote>
+      <p><a href="${data.articleUrl}" style="display:inline-block;margin-top:6px;color:#1e3a8a;font-weight:700;">View it on the article →</a></p>
+      <p>Regards,<br>SBS Groups Team</p>
+    `;
+    return {
+      subject: `Your comment has been approved — SBS Groups`,
+      bodyContent: body,
+    };
+  }
+
+  /**
+   * 8d. News Comment — Rejected
+   */
+  getCommentRejected(data: { name: string; postTitle: string; body: string }): TemplateData {
+    const body = `
+      <h2>Update on your comment</h2>
+      <p>Dear ${this.escapeHtml(data.name)},</p>
+      <p>Thank you for commenting on <strong>${this.escapeHtml(data.postTitle)}</strong>. After review, we're not able to publish this comment:</p>
+      <blockquote style="border-left:4px solid #94a3b8;background:#f8fafc;padding:12px 16px;margin:12px 0;">${this.escapeHtml(data.body)}</blockquote>
+      <p>This is usually because a comment doesn't meet our community guidelines. You're welcome to share a revised comment on the article any time.</p>
+      <p>Regards,<br>SBS Groups Team</p>
+    `;
+    return {
+      subject: `Update on your comment — SBS Groups`,
+      bodyContent: body,
+    };
+  }
+
+  /**
    * 9. Testimonial Passcode
    */
   getTestimonialPasscode(data: { companyName: string; code: string; expiresAt: string; writeUrl: string }): TemplateData {
@@ -263,6 +354,44 @@ export class EmailTemplatesService {
     `;
     return {
       subject: `New Product: ${data.productName} — SBS Groups`,
+      bodyContent: body,
+    };
+  }
+
+  /**
+   * 10b. Multiple-Products Notification — one email listing several products
+   * at once. Used for (a) an admin manually selecting more than one product
+   * to notify about, and (b) the once-a-day batch digest mode.
+   */
+  getProductsBatchNotification(
+    products: { name: string; sku?: string; keyFeatures?: string; productUrl: string }[],
+  ): TemplateData {
+    if (products.length === 1) return this.getProductNotification({
+      productName: products[0].name,
+      sku: products[0].sku,
+      keyFeatures: products[0].keyFeatures,
+      productUrl: products[0].productUrl,
+    });
+
+    const cards = products
+      .map(
+        (p) => `
+      <div style="border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:12px;">
+        <div style="font-size:16px;font-weight:700;color:#0f172a;">${this.escapeHtml(p.name)}</div>
+        ${p.sku ? `<div style="color:#64748b;font-size:13px;">SKU: ${this.escapeHtml(p.sku)}</div>` : ''}
+        ${p.keyFeatures ? `<div style="color:#334155;font-size:14px;margin-top:6px;">${this.escapeHtml(p.keyFeatures)}</div>` : ''}
+        <p><a href="${p.productUrl}" style="display:inline-block;margin-top:6px;color:#1e3a8a;font-weight:700;">View Product →</a></p>
+      </div>`,
+      )
+      .join('');
+
+    const body = `
+      <h2>${products.length} New Products Available</h2>
+      <p>Here's what we've just added to our catalog:</p>
+      ${cards}
+    `;
+    return {
+      subject: `${products.length} New Products — SBS Groups`,
       bodyContent: body,
     };
   }

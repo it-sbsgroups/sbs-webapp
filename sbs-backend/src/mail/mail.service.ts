@@ -104,7 +104,7 @@ export class MailService {
       email: rfqData.email,
       mobile: rfqData.mobile,
       itemCount: rfqData.itemCount,
-      productTable: rfqData.productTable || '',
+      productRows: rfqData.productRows || [],
       rfqReference: rfqData.rfqReference || '',
       date: new Date().toLocaleDateString('en-IN'),
       remarks: rfqData.remarks,
@@ -239,6 +239,54 @@ export class MailService {
     const template = this.templates.getFaqRejectionAutoReply({
       name: data.name,
       question: data.question,
+    });
+    const html = this.templates.render(template);
+    await this.transporter.sendMail({
+      from: `"SBS Groups" <${this.configService.get('SMTP_USER')}>`,
+      to: data.email,
+      subject: template.subject,
+      html,
+    });
+  }
+
+  // ---------- News Comments (received / approved / rejected) ----------
+
+  async sendCommentReceived(data: { name: string; email: string; postTitle: string; body: string }) {
+    const template = this.templates.getCommentReceived({
+      name: data.name,
+      postTitle: data.postTitle,
+      body: data.body,
+    });
+    const html = this.templates.render(template);
+    await this.transporter.sendMail({
+      from: `"SBS Groups" <${this.configService.get('SMTP_USER')}>`,
+      to: data.email,
+      subject: template.subject,
+      html,
+    });
+  }
+
+  async sendCommentApproved(data: { name: string; email: string; postTitle: string; body: string; articleUrl: string }) {
+    const template = this.templates.getCommentApproved({
+      name: data.name,
+      postTitle: data.postTitle,
+      body: data.body,
+      articleUrl: data.articleUrl,
+    });
+    const html = this.templates.render(template);
+    await this.transporter.sendMail({
+      from: `"SBS Groups" <${this.configService.get('SMTP_USER')}>`,
+      to: data.email,
+      subject: template.subject,
+      html,
+    });
+  }
+
+  async sendCommentRejected(data: { name: string; email: string; postTitle: string; body: string }) {
+    const template = this.templates.getCommentRejected({
+      name: data.name,
+      postTitle: data.postTitle,
+      body: data.body,
     });
     const html = this.templates.render(template);
     await this.transporter.sendMail({

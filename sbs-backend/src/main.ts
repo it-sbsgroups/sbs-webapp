@@ -6,6 +6,13 @@ import cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // In production this app sits behind a reverse proxy (nginx/etc), so
+  // Express sees the proxy's IP on every request unless told to trust the
+  // X-Forwarded-For header. This matters specifically for @Ip() usage
+  // (e.g. one-like-per-IP on news articles) — without it every visitor
+  // would appear to share the proxy's single IP.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
   app.use(cookieParser());
 
   const allowedOrigins = (process.env.CORS_ORIGINS ?? '')

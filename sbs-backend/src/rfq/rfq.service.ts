@@ -68,12 +68,15 @@ export class RfqService {
       },
     });
 
-    const productTable = rfq.items
-      .map(
-        (item, i) =>
-          `${i + 1}. ${item.product.name} | Model: ${item.product.model || 'N/A'} | ${item.product.category?.name || ''} > ${item.product.subcategory?.name || ''} | Brand: ${item.product.brand?.name || ''} | Qty: ${item.quantity}`,
-      )
-      .join('\n');
+    const productRows = rfq.items.map((item) => ({
+      name: item.product.name,
+      sku: item.product.sku,
+      model: item.product.model || '',
+      category: item.product.category?.name || '',
+      subcategory: item.product.subcategory?.name || '',
+      brand: item.product.brand?.name || '',
+      qty: item.quantity,
+    }));
     const productList = rfq.items
       .map((item, i) => `${i + 1}. ${item.product.name} (Qty: ${item.quantity})`)
       .join('\n');
@@ -86,7 +89,7 @@ export class RfqService {
       mobile: rfq.mobile,
       remarks: rfq.remarks || '',
       itemCount: rfq.items.length,
-      productTable,
+      productRows,
       productList,
       rfqReference: rfq.reference,
     };

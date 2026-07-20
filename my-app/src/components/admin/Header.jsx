@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { adminSearch } from "@/lib/adminSearchIndex";
+import { useState, useEffect, useRef } from "react";
+import { adminGlobalSearch, searchSections } from "@/lib/adminGlobalSearchApi";
 
 export default function Header({
   headerThemeStyle,
@@ -40,14 +40,37 @@ export default function Header({
     .join("")
     .toUpperCase();
 
+  const searchAbortRef = useRef(null);
+
   useEffect(() => {
     const q = (searchQuery || "").trim();
     if (q.length < 2) {
       setSearchResults?.([]);
       return;
     }
-    setSearchResults?.(adminSearch(q, { limit: 12 }));
     setIsRightOpen?.(true);
+
+    // Sections match instantly (static list, no request needed).
+    const sectionHits = searchSections(q, 5);
+    setSearchResults?.(sectionHits);
+
+    // Debounce the real DB search so we don't fire a request per keystroke,
+    // and cancel any still-in-flight previous search when the query changes.
+    if (searchAbortRef.current) searchAbortRef.current.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+
+    const timer = setTimeout(() => {
+      adminGlobalSearch(q, { limit: 15, signal: controller.signal })
+        .then((contentHits) => {
+          setSearchResults?.([...sectionHits, ...contentHits]);
+        })
+        .catch((err) => {
+          if (err?.name !== "AbortError") console.error(err);
+        });
+    }, 300);
+
+    return () => clearTimeout(timer);
   }, [searchQuery, setSearchResults, setIsRightOpen]);
 
   return (

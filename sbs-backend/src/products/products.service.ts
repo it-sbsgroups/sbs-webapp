@@ -171,7 +171,7 @@ export class ProductsService {
     // Fire-and-forget: alert subscribers who opted into new-product emails.
     // Notification failures must never block product creation.
     if (created.isActive) {
-      void this.notifications.notifyNewProduct(created);
+      void this.notifications.handleNewProduct(created);
     }
 
     return created;

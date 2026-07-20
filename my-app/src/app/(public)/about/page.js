@@ -8,6 +8,7 @@ import RichTextRenderer from "@/components/shared/RichTextRenderer";
 import * as Icons from "lucide-react";
 import FounderSimple from "@/components/public/FounderSimple";
 import SafetyHelmet from "@/components/icons/SafetyHelmet"
+import LazySection from "@/components/shared/LazySection";
 
 // Fallback content shown only if the admin hasn't configured Vision & Mission yet.
 const DEFAULT_VISION_MISSION = [
@@ -87,7 +88,7 @@ export default function PublicAboutPage() {
   return (
     <div className="bg-white min-h-screen font-sans text-slate-800 antialiased">
       {/* ======================================================================================================================================= */}
-      <section className="relative overflow-hidden bg-white py-24">
+      <section id="story" className="relative overflow-hidden bg-white py-24">
         {/* Left Dot Pattern */}
         <svg className="absolute left-6 top-16 w-20 opacity-70 hidden lg:block" viewBox="0 0 120 120" fill="none" >
           {[...Array(10)].map((_, row) =>
@@ -170,7 +171,7 @@ export default function PublicAboutPage() {
       {/* ======================================================================================================================================= */}
       
       {/* ── HERO — SbsGroups.in style: dark, confident, statement-led ─────────── */}
-      <div className="relative text-white overflow-hidden">
+      <div id="mission" className="relative text-white overflow-hidden">
         <div className="absolute inset-0 opacity-[1] brightness-90" style={{ backgroundImage: "url('https://res.cloudinary.com/dhrnoojwo/image/upload/v1783947198/ChatGPT_Image_Jul_13_2026_06_23_01_PM_k7cds1.png')", }} />
         <div className="max-w-6xl mx-auto px-4 py-20 md:py-28 text-center space-y-5 relative">
           <span className="text-[10px] font-black text-white bg-[#557b00] border border-lime-400/30 px-3 py-1 rounded-full uppercase tracking-widest">About {companyName}</span>
@@ -200,27 +201,32 @@ export default function PublicAboutPage() {
         {/* ── OUR JOURNEY — timeline of milestones ──────────────────────────── */}
         {/* ── FOUNDER / CO‑FOUNDER CARDS ───────────────────────────────────── */}
         {!loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-            <FounderSimple person={founders.founder} />
-            <FounderSimple person={founders.coFounder} />
-          </div>
+          <LazySection id="founders" minHeight={300}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+              <FounderSimple person={founders.founder} />
+              <FounderSimple person={founders.coFounder} />
+            </div>
+          </LazySection>
         )}
         {/* ── STATS / TRUST INDICATORS ──────────────────────────────────────── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-slate-50 rounded-3xl p-8 md:p-12 border border-slate-200 sticky top-20 z-50">
-          {[
-            { number: "21+", label: "Years of Excellence" },
-            { number: "500+", label: "Happy Clients" },
-            { number: "10000+", label: "Products Delivered" },
-            { number: "100%", label: "Quality Commitment" },
-          ].map((stat, i) => (
-            <div key={i} className="text-center">
-              <p className="text-3xl font-black text-blue-950">{stat.number}</p>
-              <p className="text-xs text-slate-500 font-medium mt-1">{stat.label}</p>
-            </div>
-          ))}
-        </div>
+        <LazySection id="trust-stats" minHeight={150}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-slate-50 rounded-3xl p-8 md:p-12 border border-slate-200 sticky top-20 z-50">
+            {[
+              { number: "21+", label: "Years of Excellence" },
+              { number: "500+", label: "Happy Clients" },
+              { number: "10000+", label: "Products Delivered" },
+              { number: "100%", label: "Quality Commitment" },
+            ].map((stat, i) => (
+              <div key={i} className="text-center">
+                <p className="text-3xl font-black text-blue-950">{stat.number}</p>
+                <p className="text-xs text-slate-500 font-medium mt-1">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </LazySection>
 
         {/* ================================================================================================================================================= */}
+        <LazySection id="vision-mission" minHeight={600}>
         <section className="relative">
           {/* Background */}
           {/* <div className="h-80 bg-cover bg-center" style={{ backgroundImage: "url('https://res.cloudinary.com/dhrnoojwo/image/upload/v1783947198/ChatGPT_Image_Jul_13_2026_06_23_01_PM_k7cds1.png')", }} > */}
@@ -260,9 +266,11 @@ export default function PublicAboutPage() {
             )}
           </div>
         </section>
+        </LazySection>
         {/* ================================================================================================================================================= */}
         
         {/* ── CTA ────────────────────────────────────────────────────────────── */}
+        <LazySection id="contact-cta" minHeight={200}>
         <div className="bg-gradient-to-r from-blue-950 to-blue-900 rounded-3xl p-8 md:p-12 text-center text-white space-y-4">
           <h2 className="text-2xl md:text-3xl font-black">Get in touch with {companyName}?</h2>
           {/* <p className="text-blue-200 max-w-xl mx-auto">Get in touch with our team to discuss your industrial supply needs.</p> */}
@@ -270,6 +278,7 @@ export default function PublicAboutPage() {
             <button className="bg-[#557b00] text-white font-black text-xs px-8 py-4 rounded-xl uppercase tracking-wider hover:bg-blue-950 transition-colors">Contact Us Today →</button>
           </Link>
         </div>
+        </LazySection>
       </div>
     </div>
   );

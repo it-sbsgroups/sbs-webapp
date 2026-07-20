@@ -37,6 +37,31 @@ const publicNewsApi = {
   },
 
   /**
+   * Toggle like/unlike for an article. IP-based, enforced server-side —
+   * clicking again from the same IP un-likes it.
+   */
+  async toggleLike(slug) {
+    try {
+      const res = await apiClient.post(`/news/public/posts/${slug}/like`, {});
+      return res?.data || res;
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
+      throw error;
+    }
+  },
+
+  /** Current like count + whether this visitor's IP has already liked it. */
+  async getLikeStatus(slug) {
+    try {
+      const res = await apiClient.get(`/news/public/posts/${slug}/like-status`);
+      return res?.data || res;
+    } catch (error) {
+      console.error('Failed to fetch like status:', error);
+      return { liked: false, likesCount: 0 };
+    }
+  },
+
+  /**
    * Submit a public comment
    */
   async submitComment(data) {

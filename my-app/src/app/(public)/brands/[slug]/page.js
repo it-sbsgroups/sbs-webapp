@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import brandsApi from "@/lib/brands/Api";
 import { toStaticUrl } from "@/lib/client";
+import RichTextRenderer from "@/components/shared/RichTextRenderer";
 
 const fallbackImg = (e) => {
   e.currentTarget.src = "https://placehold.co/800x500/f1f5f9/94a3b8?text=Asset+Not+Available";
@@ -64,6 +65,7 @@ export default function BrandDetailPage() {
     phone,
     isActive,
     isOwnBrand,
+    description,
     gallery,
     brochureUrl,
     products,
@@ -114,6 +116,14 @@ export default function BrandDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* About / Description — only rendered when the admin has written something for this brand */}
+        {description && (
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 md:p-8 shadow-sm">
+            <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-4">About {name}</h3>
+            <RichTextRenderer html={description} />
+          </div>
+        )}
 
         {/* Gallery Section */}
         <div className="bg-white border border-slate-200/80 rounded-3xl p-6 md:p-8 shadow-sm">

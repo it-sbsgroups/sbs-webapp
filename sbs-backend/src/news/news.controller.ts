@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode, HttpStatus, Ip } from '@nestjs/common';
 import { NewsService } from './news.service';
 import { Public } from '../auth/decorators/public.decorator';
 
@@ -19,6 +19,22 @@ export class NewsController {
   @Get('public/posts/:slug')
   getPublicPostBySlug(@Param('slug') slug: string) {
     return this.newsService.getPostBySlug(slug);
+  }
+
+  // IP comes from @Ip() — trusted, server-determined (see main.ts trust
+  // proxy setup) — never taken from anything the client sends, or the
+  // "one like per IP" rule would be trivially spoofable.
+  @Public()
+  @Post('public/posts/:slug/like')
+  @HttpCode(HttpStatus.OK)
+  toggleLike(@Param('slug') slug: string, @Ip() ip: string) {
+    return this.newsService.toggleLike(slug, ip);
+  }
+
+  @Public()
+  @Get('public/posts/:slug/like-status')
+  getLikeStatus(@Param('slug') slug: string, @Ip() ip: string) {
+    return this.newsService.getLikeStatus(slug, ip);
   }
 
   @Public()

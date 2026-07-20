@@ -112,6 +112,101 @@ export class SearchService {
     };
   }
 
+  // ==========================================================================
+  // ADMIN SEARCH — same shape/UX as the public search above, but:
+  //  (a) queries the live database directly (the old admin search searched a
+  //      frozen snapshot of the pre-database static JS data files, so it
+  //      never reflected anything added/edited after the app started), and
+  //  (b) includes inactive/draft/unpublished rows too, plus entities that
+  //      only matter internally (clients, employees), since an admin needs
+  //      to find things regardless of their public visibility.
+  // ==========================================================================
+
+  async adminSearch(q: string, limit = 20) {
+    const query = (q || '').trim();
+    if (query.length < MIN_QUERY_LENGTH) return { query, results: [] };
+
+    const [products, news, brands, clients, employees] = await Promise.all([
+      this.prisma.product.findMany({
+        where: {
+          OR: [
+            { name: { contains: query } },
+            { sku: { contains: query } },
+            { model: { contains: query } },
+            { manufacturer: { contains: query } },
+          ],
+        },
+        take: limit,
+        select: { id: true, name: true, sku: true, brand: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.newsPost.findMany({
+        where: { OR: [{ title: { contains: query } }, { excerpt: { contains: query } }] },
+        take: limit,
+        select: { id: true, title: true, status: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.brand.findMany({
+        where: { name: { contains: query } },
+        take: limit,
+        select: { id: true, name: true, isOwnBrand: true, isActive: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.client.findMany({
+        where: { OR: [{ companyName: { contains: query } }, { contactName: { contains: query } }, { email: { contains: query } }] },
+        take: limit,
+        select: { id: true, companyName: true, contactName: true },
+        orderBy: { companyName: 'asc' },
+      }),
+      this.prisma.employee.findMany({
+        where: { OR: [{ name: { contains: query } }, { email: { contains: query } }, { department: { contains: query } }] },
+        take: limit,
+        select: { id: true, name: true, designation: true, department: true },
+        orderBy: { name: 'asc' },
+      }),
+    ]);
+
+    const results = [
+      ...products.map((p) => ({
+        type: 'product',
+        id: p.id,
+        title: p.name,
+        subtitle: [p.brand?.name, p.sku].filter(Boolean).join(' · '),
+        href: `/admin/products?edit=${p.id}`,
+      })),
+      ...news.map((n) => ({
+        type: 'news',
+        id: n.id,
+        title: n.title,
+        subtitle: n.status === 'PUBLISHED' ? 'Published' : n.status === 'DRAFT' ? 'Draft' : 'Archived',
+        href: `/admin/news?edit=${n.id}`,
+      })),
+      ...brands.map((b) => ({
+        type: 'brand',
+        id: b.id,
+        title: b.name,
+        subtitle: `${b.isOwnBrand ? 'Own Brand' : 'Distributor'}${b.isActive ? '' : ' · Inactive'}`,
+        href: `/admin/distributors?edit=${b.id}`,
+      })),
+      ...clients.map((c) => ({
+        type: 'client',
+        id: c.id,
+        title: c.companyName,
+        subtitle: c.contactName || 'Client',
+        href: `/admin/clients?edit=${c.id}`,
+      })),
+      ...employees.map((e) => ({
+        type: 'employee',
+        id: e.id,
+        title: e.name,
+        subtitle: [e.designation, e.department].filter(Boolean).join(' · '),
+        href: `/admin/employees?edit=${e.id}`,
+      })),
+    ];
+
+    return { query, results: results.slice(0, limit * 2) };
+  }
+
   // ---- WHERE builders ------------------------------------------------------
 
   private productWhere(
