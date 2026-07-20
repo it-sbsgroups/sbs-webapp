@@ -21,7 +21,7 @@ export const ADMIN_SECTIONS = [
   { title: "Brands", href: "/admin/brands", keywords: "brands makita bosch manufacturers" },
   { title: "Clients", href: "/admin/clients", keywords: "clients customers accounts" },
   { title: "Employees", href: "/admin/employees", keywords: "employees staff team" },
-  { title: "Carousel", href: "/admin/carousel", keywords: "carousel hero banner slides" },
+  { title: "Carousel", href: "/admin/site-config?tab=carousel", keywords: "carousel hero banner slides cta" },
   { title: "Testimonials", href: "/admin/testimonials", keywords: "testimonials reviews feedback" },
   { title: "Newsletter", href: "/admin/newsletter", keywords: "newsletter email subscribers" },
   { title: "CRM", href: "/admin/crm", keywords: "crm leads enquiries rfq" },

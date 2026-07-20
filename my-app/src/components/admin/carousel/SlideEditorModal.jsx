@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   X, Save, Upload, Image, Video, Palette, Type, Link2,
-  ChevronDown, ChevronUp, Eye, EyeOff, Trash2
+  ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Plus
 } from "lucide-react";
 
 // ============================================
@@ -60,35 +60,46 @@ const defaultSlide = {
     transition: "all 0.3s ease",
     hoverScale: 1.0,
   },
-  ctaText: "",
-  ctaLink: "",
-  ctaOpenInNewTab: false,
-  ctaButtonStyle: {
-    fontColor: "#ffffff",
-    backgroundColor: {
-      mediatype: "SOLID",
-      solid: "#1e3a8a",
-      gradient: {
-        gradientType: "linear",
-        gradientDirection: "to right",
-        gradientColorStarts: "#1e3a8a",
-        gradientColorEnds: "#3b82f6",
-        gradientColorStops: "0%, 100%",
-      },
-    },
-    padding: "12px 28px",
-    borderRadius: "8px",
-    fontWeight: "700",
-    letterSpacing: "0.05em",
-    textTransform: "uppercase",
-    transition: "all 0.3s ease",
-    hoverScale: 1.05,
-    borderWidth: "0px",
-    borderColor: "#ffffff",
-    borderStyle: "solid",
-    boxShadow: "none",
-  },
+  // Multiple CTA buttons. Empty by default — a slide with no buttons added
+  // simply renders without any CTA, nothing is forced or implied.
+  ctas: [],
 };
+
+// Factory for a new CTA button — each button in `form.ctas` gets its own
+// text/link/style, fully independent of the others.
+function makeDefaultCta() {
+  return {
+    id: `cta-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    text: "",
+    link: "",
+    openInNewTab: false,
+    style: {
+      fontColor: "#ffffff",
+      backgroundColor: {
+        mediatype: "SOLID",
+        solid: "#1e3a8a",
+        gradient: {
+          gradientType: "linear",
+          gradientDirection: "to right",
+          gradientColorStarts: "#1e3a8a",
+          gradientColorEnds: "#3b82f6",
+          gradientColorStops: "0%, 100%",
+        },
+      },
+      padding: "12px 28px",
+      borderRadius: "8px",
+      fontWeight: "700",
+      letterSpacing: "0.05em",
+      textTransform: "uppercase",
+      transition: "all 0.3s ease",
+      hoverScale: 1.05,
+      borderWidth: "0px",
+      borderColor: "#ffffff",
+      borderStyle: "solid",
+      boxShadow: "none",
+    },
+  };
+}
 
 // ============================================
 // OPTIONS CONSTANTS
@@ -209,11 +220,34 @@ export default function SlideEditorModal({ open, onClose, onSave, initialData })
 
   useEffect(() => {
     if (initialData) {
-      setForm({ ...defaultSlide, ...initialData });
+      const merged = { ...defaultSlide, ...initialData };
+      // One-time migration: older slides saved before multi-CTA support only
+      // have the legacy ctaText/ctaLink/ctaButtonStyle fields. Fold them into
+      // the new ctas array so existing slides keep their button when edited.
+      if ((!merged.ctas || merged.ctas.length === 0) && merged.ctaText) {
+        merged.ctas = [
+          {
+            id: `cta-${Date.now()}-legacy`,
+            text: merged.ctaText,
+            link: merged.ctaLink || "",
+            openInNewTab: !!merged.ctaOpenInNewTab,
+            style: merged.ctaButtonStyle || makeDefaultCta().style,
+          },
+        ];
+      }
+      setForm(merged);
     } else {
       setForm({ ...defaultSlide, id: `slide-${Date.now()}` });
     }
   }, [initialData]);
+
+  const addCta = () => {
+    setForm((prev) => ({ ...prev, ctas: [...(prev.ctas || []), makeDefaultCta()] }));
+  };
+
+  const removeCta = (idx) => {
+    setForm((prev) => ({ ...prev, ctas: (prev.ctas || []).filter((_, i) => i !== idx) }));
+  };
 
   // Helper to update nested form fields
   const updateField = (path, value) => {
@@ -252,9 +286,13 @@ export default function SlideEditorModal({ open, onClose, onSave, initialData })
   };
 
   const handleSave = () => {
-    if (!form.title?.trim()) {
-      alert("Slide title is required");
-      return;
+    // Badge, title, description and CTA buttons are all optional — a slide
+    // can be pure media with no text/button at all. Only media is required.
+    if (form.mediaType === "IMAGE" || form.mediaType === "VIDEO") {
+      if (!form.mediaUrl?.trim()) {
+        alert("Please add an image/video for this slide");
+        return;
+      }
     }
     onSave(form);
   };
@@ -270,7 +308,7 @@ export default function SlideEditorModal({ open, onClose, onSave, initialData })
     { id: "badge", label: "Badge Style", icon: Eye },
     { id: "title", label: "Title Style", icon: Type },
     { id: "description", label: "Description Style", icon: Type },
-    { id: "cta", label: "CTA Button", icon: Link2 },
+    { id: "cta", label: "CTA Buttons", icon: Link2 },
   ];
 
   return (
@@ -575,8 +613,12 @@ export default function SlideEditorModal({ open, onClose, onSave, initialData })
               {/* Content Fields */}
               <div className="rounded-2xl border p-5 space-y-4">
                 <h3 className="text-base font-semibold">Content Text</h3>
+                <p className="text-xs text-slate-500 -mt-2">
+                  All three fields below are optional. Leave any of them blank and that
+                  part simply won't render on the live site — no placeholder text is shown.
+                </p>
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-slate-600">Badge Text</label>
+                  <label className="mb-1.5 block text-xs font-medium text-slate-600">Badge Text (optional)</label>
                   <input
                     type="text"
                     value={form.badge || ""}
@@ -586,7 +628,7 @@ export default function SlideEditorModal({ open, onClose, onSave, initialData })
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-slate-600">Title</label>
+                  <label className="mb-1.5 block text-xs font-medium text-slate-600">Title (optional)</label>
                   <input
                     type="text"
                     value={form.title || ""}
@@ -596,7 +638,7 @@ export default function SlideEditorModal({ open, onClose, onSave, initialData })
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-slate-600">Description</label>
+                  <label className="mb-1.5 block text-xs font-medium text-slate-600">Description (optional)</label>
                   <textarea
                     rows={3}
                     value={form.description || ""}
@@ -877,241 +919,262 @@ export default function SlideEditorModal({ open, onClose, onSave, initialData })
           )}
 
           {/* ============================================ */}
-          {/* TAB 6: CTA BUTTON STYLE */}
+          {/* TAB 6: CTA BUTTONS (multiple) */}
           {/* ============================================ */}
           {activeTab === "cta" && (
             <div className="space-y-5">
-              {/* CTA Content */}
-              <div className="rounded-2xl border p-5 space-y-4">
-                <h3 className="text-base font-semibold">Button Content & Link</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium text-slate-600">Button Text</label>
-                    <input
-                      type="text"
-                      value={form.ctaText || ""}
-                      onChange={(e) => updateField("ctaText", e.target.value)}
-                      placeholder="Explore Products"
-                      className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium text-slate-600">Button Link</label>
-                    <input
-                      type="text"
-                      value={form.ctaLink || ""}
-                      onChange={(e) => updateField("ctaLink", e.target.value)}
-                      placeholder="/products"
-                      className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={form.ctaOpenInNewTab || false}
-                    onChange={(e) => updateField("ctaOpenInNewTab", e.target.checked)}
-                    className="h-4 w-4"
-                  />
-                  <span className="text-sm text-slate-600">Open in new tab</span>
-                </div>
-              </div>
-
-              {/* Button Colors */}
-              <CollapsibleSection title="Button Colors" icon={Palette} defaultOpen={true}>
-                <ColorInput
-                  label="Font Color"
-                  value={form.ctaButtonStyle?.fontColor}
-                  onChange={(v) => updateField("ctaButtonStyle.fontColor", v)}
-                />
+              <div className="flex items-center justify-between">
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-slate-600">Background Type</label>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => updateField("ctaButtonStyle.backgroundColor.mediatype", "SOLID")}
-                      className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all ${
-                        form.ctaButtonStyle?.backgroundColor?.mediatype === "SOLID"
-                          ? "border-blue-500 bg-blue-50 text-blue-700"
-                          : "border-slate-200"
-                      }`}
-                    >
-                      Solid Color
-                    </button>
-                    <button
-                      onClick={() => updateField("ctaButtonStyle.backgroundColor.mediatype", "GRADIENT")}
-                      className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all ${
-                        form.ctaButtonStyle?.backgroundColor?.mediatype === "GRADIENT"
-                          ? "border-blue-500 bg-blue-50 text-blue-700"
-                          : "border-slate-200"
-                      }`}
-                    >
-                      Gradient
-                    </button>
-                  </div>
+                  <h3 className="text-base font-semibold text-slate-800">CTA Buttons</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Optional — add as many buttons as you need, each with its own text, link and color. Leave empty to show no button at all.
+                  </p>
                 </div>
-
-                {form.ctaButtonStyle?.backgroundColor?.mediatype === "SOLID" ? (
-                  <ColorInput
-                    label="Solid Color"
-                    value={form.ctaButtonStyle?.backgroundColor?.solid}
-                    onChange={(v) => updateField("ctaButtonStyle.backgroundColor.solid", v)}
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    <SelectInput
-                      label="Gradient Type"
-                      value={form.ctaButtonStyle?.backgroundColor?.gradient?.gradientType || "linear"}
-                      onChange={(v) => updateField("ctaButtonStyle.backgroundColor.gradient.gradientType", v)}
-                      options={["linear", "radial"]}
-                    />
-                    {form.ctaButtonStyle?.backgroundColor?.gradient?.gradientType === "linear" && (
-                      <SelectInput
-                        label="Direction"
-                        value={form.ctaButtonStyle?.backgroundColor?.gradient?.gradientDirection || "to right"}
-                        onChange={(v) => updateField("ctaButtonStyle.backgroundColor.gradient.gradientDirection", v)}
-                        options={gradientDirections}
-                      />
-                    )}
-                    <ColorInput
-                      label="Start Color"
-                      value={form.ctaButtonStyle?.backgroundColor?.gradient?.gradientColorStarts}
-                      onChange={(v) => updateField("ctaButtonStyle.backgroundColor.gradient.gradientColorStarts", v)}
-                    />
-                    <ColorInput
-                      label="End Color"
-                      value={form.ctaButtonStyle?.backgroundColor?.gradient?.gradientColorEnds}
-                      onChange={(v) => updateField("ctaButtonStyle.backgroundColor.gradient.gradientColorEnds", v)}
-                    />
-                  </div>
-                )}
-              </CollapsibleSection>
-
-              {/* Button Typography */}
-              <CollapsibleSection title="Button Typography" icon={Type}>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <SelectInput
-                    label="Font Weight"
-                    value={form.ctaButtonStyle?.fontWeight || "700"}
-                    onChange={(v) => updateField("ctaButtonStyle.fontWeight", v)}
-                    options={fontWeightOptions}
-                  />
-                  <SelectInput
-                    label="Text Transform"
-                    value={form.ctaButtonStyle?.textTransform || "uppercase"}
-                    onChange={(v) => updateField("ctaButtonStyle.textTransform", v)}
-                    options={textTransformOptions}
-                  />
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium text-slate-600">Letter Spacing</label>
-                    <input
-                      type="text"
-                      value={form.ctaButtonStyle?.letterSpacing || "0.05em"}
-                      onChange={(e) => updateField("ctaButtonStyle.letterSpacing", e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </CollapsibleSection>
-
-              {/* Button Spacing & Border */}
-              <CollapsibleSection title="Button Spacing & Border" icon={Eye}>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium text-slate-600">Padding</label>
-                    <input
-                      type="text"
-                      value={form.ctaButtonStyle?.padding || "12px 28px"}
-                      onChange={(e) => updateField("ctaButtonStyle.padding", e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium text-slate-600">Border Radius</label>
-                    <input
-                      type="text"
-                      value={form.ctaButtonStyle?.borderRadius || "8px"}
-                      onChange={(e) => updateField("ctaButtonStyle.borderRadius", e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium text-slate-600">Border Width</label>
-                    <input
-                      type="text"
-                      value={form.ctaButtonStyle?.borderWidth || "0px"}
-                      onChange={(e) => updateField("ctaButtonStyle.borderWidth", e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-                  <ColorInput
-                    label="Border Color"
-                    value={form.ctaButtonStyle?.borderColor}
-                    onChange={(v) => updateField("ctaButtonStyle.borderColor", v)}
-                  />
-                </div>
-              </CollapsibleSection>
-
-              {/* Button Effects */}
-              <CollapsibleSection title="Button Effects" icon={Eye}>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium text-slate-600">Transition</label>
-                    <input
-                      type="text"
-                      value={form.ctaButtonStyle?.transition || "all 0.3s ease"}
-                      onChange={(e) => updateField("ctaButtonStyle.transition", e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium text-slate-600">Box Shadow</label>
-                    <input
-                      type="text"
-                      value={form.ctaButtonStyle?.boxShadow || "none"}
-                      onChange={(e) => updateField("ctaButtonStyle.boxShadow", e.target.value)}
-                      placeholder="e.g. 0 4px 12px rgba(0,0,0,0.15)"
-                      className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-                <RangeInput
-                  label="Hover Scale"
-                  value={parseFloat(form.ctaButtonStyle?.hoverScale || 1.05)}
-                  onChange={(v) => updateField("ctaButtonStyle.hoverScale", v)}
-                  min={0.9}
-                  max={3.0}
-                  step={0.01}
-                  unit="x"
-                />
-              </CollapsibleSection>
-
-              {/* CTA Preview */}
-              <div className="rounded-2xl border p-5 bg-slate-900">
-                <h4 className="text-xs text-slate-400 mb-3 uppercase tracking-wider">Button Preview</h4>
                 <button
-                  style={{
-                    color: form.ctaButtonStyle?.fontColor || "#fff",
-                    background: form.ctaButtonStyle?.backgroundColor?.mediatype === "SOLID"
-                      ? form.ctaButtonStyle?.backgroundColor?.solid || "#1e3a8a"
-                      : form.ctaButtonStyle?.backgroundColor?.gradient?.gradientType === "radial"
-                        ? `radial-gradient(circle, ${form.ctaButtonStyle?.backgroundColor?.gradient?.gradientColorStarts}, ${form.ctaButtonStyle?.backgroundColor?.gradient?.gradientColorEnds})`
-                        : `linear-gradient(${form.ctaButtonStyle?.backgroundColor?.gradient?.gradientDirection || "to right"}, ${form.ctaButtonStyle?.backgroundColor?.gradient?.gradientColorStarts}, ${form.ctaButtonStyle?.backgroundColor?.gradient?.gradientColorEnds})`,
-                    padding: form.ctaButtonStyle?.padding || "12px 28px",
-                    borderRadius: form.ctaButtonStyle?.borderRadius || "8px",
-                    fontWeight: form.ctaButtonStyle?.fontWeight || "700",
-                    letterSpacing: form.ctaButtonStyle?.letterSpacing || "0.05em",
-                    textTransform: form.ctaButtonStyle?.textTransform || "uppercase",
-                    transition: form.ctaButtonStyle?.transition || "all 0.3s ease",
-                    borderWidth: form.ctaButtonStyle?.borderWidth || "0px",
-                    borderColor: form.ctaButtonStyle?.borderColor || "transparent",
-                    borderStyle: "solid",
-                    boxShadow: form.ctaButtonStyle?.boxShadow || "none",
-                    cursor: "pointer",
-                  }}
+                  onClick={addCta}
+                  className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
                 >
-                  {form.ctaText || "Button Text"}
+                  <Plus size={16} /> Add Button
                 </button>
               </div>
+
+              {(!form.ctas || form.ctas.length === 0) && (
+                <div className="rounded-2xl border border-dashed p-8 text-center text-slate-400">
+                  <Link2 className="mx-auto h-8 w-8 mb-2 opacity-40" />
+                  <p className="text-sm">No CTA buttons yet. This slide will render without one.</p>
+                </div>
+              )}
+
+              {(form.ctas || []).map((cta, idx) => (
+                <CollapsibleSection
+                  key={cta.id || idx}
+                  title={cta.text ? `Button ${idx + 1}: "${cta.text}"` : `Button ${idx + 1} (untitled)`}
+                  icon={Link2}
+                  defaultOpen={form.ctas.length <= 1}
+                >
+                  <div className="flex justify-end -mt-2">
+                    <button
+                      onClick={() => removeCta(idx)}
+                      className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100"
+                    >
+                      <Trash2 size={14} /> Remove Button
+                    </button>
+                  </div>
+
+                  {/* Content & Link */}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-medium text-slate-600">Button Text</label>
+                      <input
+                        type="text"
+                        value={cta.text || ""}
+                        onChange={(e) => updateField(`ctas.${idx}.text`, e.target.value)}
+                        placeholder="Explore Products"
+                        className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-medium text-slate-600">Button Link</label>
+                      <input
+                        type="text"
+                        value={cta.link || ""}
+                        onChange={(e) => updateField(`ctas.${idx}.link`, e.target.value)}
+                        placeholder="/products"
+                        className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={cta.openInNewTab || false}
+                      onChange={(e) => updateField(`ctas.${idx}.openInNewTab`, e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    <span className="text-sm text-slate-600">Open in new tab</span>
+                  </div>
+
+                  {/* Colors */}
+                  <div className="rounded-xl border p-4 space-y-3">
+                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Colors</h4>
+                    <ColorInput
+                      label="Font Color"
+                      value={cta.style?.fontColor}
+                      onChange={(v) => updateField(`ctas.${idx}.style.fontColor`, v)}
+                    />
+                    <div>
+                      <label className="mb-1.5 block text-xs font-medium text-slate-600">Background Type</label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => updateField(`ctas.${idx}.style.backgroundColor.mediatype`, "SOLID")}
+                          className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all ${
+                            cta.style?.backgroundColor?.mediatype !== "GRADIENT"
+                              ? "border-blue-500 bg-blue-50 text-blue-700"
+                              : "border-slate-200"
+                          }`}
+                        >
+                          Solid Color
+                        </button>
+                        <button
+                          onClick={() => updateField(`ctas.${idx}.style.backgroundColor.mediatype`, "GRADIENT")}
+                          className={`flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all ${
+                            cta.style?.backgroundColor?.mediatype === "GRADIENT"
+                              ? "border-blue-500 bg-blue-50 text-blue-700"
+                              : "border-slate-200"
+                          }`}
+                        >
+                          Gradient
+                        </button>
+                      </div>
+                    </div>
+
+                    {cta.style?.backgroundColor?.mediatype === "GRADIENT" ? (
+                      <div className="space-y-3">
+                        <SelectInput
+                          label="Gradient Type"
+                          value={cta.style?.backgroundColor?.gradient?.gradientType || "linear"}
+                          onChange={(v) => updateField(`ctas.${idx}.style.backgroundColor.gradient.gradientType`, v)}
+                          options={["linear", "radial"]}
+                        />
+                        {cta.style?.backgroundColor?.gradient?.gradientType === "linear" && (
+                          <SelectInput
+                            label="Direction"
+                            value={cta.style?.backgroundColor?.gradient?.gradientDirection || "to right"}
+                            onChange={(v) => updateField(`ctas.${idx}.style.backgroundColor.gradient.gradientDirection`, v)}
+                            options={gradientDirections}
+                          />
+                        )}
+                        <ColorInput
+                          label="Start Color"
+                          value={cta.style?.backgroundColor?.gradient?.gradientColorStarts}
+                          onChange={(v) => updateField(`ctas.${idx}.style.backgroundColor.gradient.gradientColorStarts`, v)}
+                        />
+                        <ColorInput
+                          label="End Color"
+                          value={cta.style?.backgroundColor?.gradient?.gradientColorEnds}
+                          onChange={(v) => updateField(`ctas.${idx}.style.backgroundColor.gradient.gradientColorEnds`, v)}
+                        />
+                      </div>
+                    ) : (
+                      <ColorInput
+                        label="Solid Color"
+                        value={cta.style?.backgroundColor?.solid}
+                        onChange={(v) => updateField(`ctas.${idx}.style.backgroundColor.solid`, v)}
+                      />
+                    )}
+                  </div>
+
+                  {/* Typography */}
+                  <div className="rounded-xl border p-4 space-y-3">
+                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Typography</h4>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <SelectInput
+                        label="Font Weight"
+                        value={cta.style?.fontWeight || "700"}
+                        onChange={(v) => updateField(`ctas.${idx}.style.fontWeight`, v)}
+                        options={fontWeightOptions}
+                      />
+                      <SelectInput
+                        label="Text Transform"
+                        value={cta.style?.textTransform || "uppercase"}
+                        onChange={(v) => updateField(`ctas.${idx}.style.textTransform`, v)}
+                        options={textTransformOptions}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Spacing & Border */}
+                  <div className="rounded-xl border p-4 space-y-3">
+                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Spacing & Border</h4>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-medium text-slate-600">Padding</label>
+                        <input
+                          type="text"
+                          value={cta.style?.padding || "12px 28px"}
+                          onChange={(e) => updateField(`ctas.${idx}.style.padding`, e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-medium text-slate-600">Border Radius</label>
+                        <input
+                          type="text"
+                          value={cta.style?.borderRadius || "8px"}
+                          onChange={(e) => updateField(`ctas.${idx}.style.borderRadius`, e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-medium text-slate-600">Border Width</label>
+                        <input
+                          type="text"
+                          value={cta.style?.borderWidth || "0px"}
+                          onChange={(e) => updateField(`ctas.${idx}.style.borderWidth`, e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
+                        />
+                      </div>
+                      <ColorInput
+                        label="Border Color"
+                        value={cta.style?.borderColor}
+                        onChange={(v) => updateField(`ctas.${idx}.style.borderColor`, v)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Effects */}
+                  <div className="rounded-xl border p-4 space-y-3">
+                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Effects</h4>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-medium text-slate-600">Box Shadow</label>
+                      <input
+                        type="text"
+                        value={cta.style?.boxShadow || "none"}
+                        onChange={(e) => updateField(`ctas.${idx}.style.boxShadow`, e.target.value)}
+                        placeholder="e.g. 0 4px 12px rgba(0,0,0,0.15)"
+                        className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
+                      />
+                    </div>
+                    <RangeInput
+                      label="Hover Scale"
+                      value={parseFloat(cta.style?.hoverScale || 1.05)}
+                      onChange={(v) => updateField(`ctas.${idx}.style.hoverScale`, v)}
+                      min={0.9}
+                      max={3.0}
+                      step={0.01}
+                      unit="x"
+                    />
+                  </div>
+
+                  {/* Preview */}
+                  <div className="rounded-2xl border p-5 bg-slate-900">
+                    <h4 className="text-xs text-slate-400 mb-3 uppercase tracking-wider">Preview</h4>
+                    <button
+                      style={{
+                        color: cta.style?.fontColor || "#fff",
+                        background: cta.style?.backgroundColor?.mediatype === "GRADIENT"
+                          ? (cta.style?.backgroundColor?.gradient?.gradientType === "radial"
+                              ? `radial-gradient(circle, ${cta.style?.backgroundColor?.gradient?.gradientColorStarts}, ${cta.style?.backgroundColor?.gradient?.gradientColorEnds})`
+                              : `linear-gradient(${cta.style?.backgroundColor?.gradient?.gradientDirection || "to right"}, ${cta.style?.backgroundColor?.gradient?.gradientColorStarts}, ${cta.style?.backgroundColor?.gradient?.gradientColorEnds})`)
+                          : (cta.style?.backgroundColor?.solid || "#1e3a8a"),
+                        padding: cta.style?.padding || "12px 28px",
+                        borderRadius: cta.style?.borderRadius || "8px",
+                        fontWeight: cta.style?.fontWeight || "700",
+                        letterSpacing: cta.style?.letterSpacing || "0.05em",
+                        textTransform: cta.style?.textTransform || "uppercase",
+                        transition: cta.style?.transition || "all 0.3s ease",
+                        borderWidth: cta.style?.borderWidth || "0px",
+                        borderColor: cta.style?.borderColor || "transparent",
+                        borderStyle: "solid",
+                        boxShadow: cta.style?.boxShadow || "none",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {cta.text || "Button Text"}
+                    </button>
+                  </div>
+                </CollapsibleSection>
+              ))}
             </div>
           )}
 

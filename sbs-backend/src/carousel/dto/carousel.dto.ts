@@ -76,6 +76,13 @@ export class CreateCarouselSlideDto {
   @IsBoolean()
   ctaOpenInNewTab?: boolean;
 
+  // New: multiple CTA buttons. Each item: { id, text, link, openInNewTab, style }.
+  // Validated loosely (array of plain objects) since each button's `style` shape
+  // is deep/free-form, same philosophy as the `styles` catch-all field below.
+  @IsOptional()
+  @IsArray()
+  ctas?: Record<string, any>[];
+
   @IsOptional()
   @IsObject()
   styles?: Record<string, any>;

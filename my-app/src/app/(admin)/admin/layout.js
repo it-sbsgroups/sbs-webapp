@@ -141,13 +141,6 @@ const navTree = [
         type: "link",
       },
       {
-        id: "comp-carousel",
-        name: "Hero Carousel",
-        icon: Images,
-        href: "/admin/carousel",
-        type: "link",
-      },
-      {
         id: "comp-whychooseus",
         name: "Why Choose Us",
         icon: Star,

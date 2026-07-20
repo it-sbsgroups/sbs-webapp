@@ -646,9 +646,10 @@ model CarouselSlide {
   badge           String?  @db.Text
   title           String?  @db.Text
   description     String?  @db.LongText
-  ctaText         String?  
+  ctaText         String?  // legacy single-CTA fields, kept for backward compat
   ctaLink         String?  @db.Text
   ctaOpenInNewTab Boolean  @default(false)
+  ctas            Json?    // new: array of { id, text, link, openInNewTab, style } — multiple CTA buttons
   styles          Json?    
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

@@ -9,7 +9,7 @@ const unwrap = (r) => (Array.isArray(r) ? r : r?.data ?? r);
 const FIRST_CLASS = [
   'order', 'isActive', 'nextSlideIn', 'mediaType', 'mediaUrl', 'videoLoop',
   'videoSound', 'solidColor', 'layoutType', 'badge', 'title', 'description',
-  'ctaText', 'ctaLink', 'ctaOpenInNewTab',
+  'ctaText', 'ctaLink', 'ctaOpenInNewTab', 'ctas',
 ];
 
 // flat editor slide  →  { ...firstClass, styles }

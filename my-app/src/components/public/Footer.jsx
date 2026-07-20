@@ -134,15 +134,14 @@ export default function Footer() {
     { name: "About Us", href: "/about" },
     { name: "Products", href: "/products" },
     { name: "Our Clients", href: "/clients" },
-    { name: "Our Employees", href: "/employees" },
+    { name: "Valuable Employees", href: "/employees" },
   ];
 
   const servicesLinks = data.footer.servicesLinks.length > 0 ? data.footer.servicesLinks : [
     { name: "Authorised Distributor", href: "/brands" },
     { name: "Contact Us", href: "/contact" },
+    { name: "Own Brands", href: "/own-brands" },
     { name: "FAQ's", href: "/contact/faqs" },
-    { name: "Brands", href: "/brands" },
-    { name: "Own Brands", href: "own-brands" },
   ];
 
   if (loading) {

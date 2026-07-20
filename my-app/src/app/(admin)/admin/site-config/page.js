@@ -26,6 +26,7 @@ import WhyContact from "@/components/admin/contactComp/WhyContactUs";
 import PartnershipAdvantages from "@/components/admin/distributorComp/PartnershipAdvantages";
 import PartnershipWork from "@/components/admin/distributorComp/PartnershipWork";
 import AboutManager from "@/components/admin/aboutComp/AboutManager";
+import CarouselSection from "@/components/admin/site-config/CarouselSection";
 import RichTextEditor from "@/components/shared/RichTextEditor";
 import { uploadImage } from "@/lib/uploadApi";
 
@@ -98,6 +99,7 @@ function AddRemoveList({ items, setItems, renderItem, newItem }) {
 // ─── TAB DEFINITIONS (Branding removed) ─────────────────────────────────────
 const TABS = [
   { key: "header",                        label: "Header & Nav"            },
+  { key: "carousel",                      label: "Hero Carousel"           },
   { key: "contact",                       label: "Contact & Footer"        },
   { key: "about",                         label: "About Us"                },
   { key: "apiKeys",                       label: "API Keys"                },
@@ -846,6 +848,7 @@ export default function SiteConfigPage() {
   const renderSection = () => {
     switch (currentTab) {
       case "header":                       return <HeaderSection />;
+      case "carousel":                     return <CarouselSection />;
       case "contact":                      return <ContactSection />;
       case "about":                        return <AboutManager />;
       case "apiKeys":                      return <ApiKeysSection />;
@@ -870,7 +873,7 @@ export default function SiteConfigPage() {
       <div className="bg-white border-b border-slate-200 px-6 py-5">
         <h1 className="text-lg font-black text-slate-900 tracking-tight">⚙️ Central Site Configuration</h1>
         <p className="text-xs text-slate-500 font-medium mt-0.5">
-          Header & Nav · Contact · About Us · API Keys · Founders · Font · Location
+          Header & Nav · Hero Carousel · Contact · About Us · API Keys · Founders · Location
         </p>
       </div>
 
