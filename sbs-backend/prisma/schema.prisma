@@ -86,6 +86,7 @@ model Brand {
   name           String    
   slug           String    @unique
   logo           String?   @db.Text
+  logobgcolor    String?   @db.Text
   website        String?   @db.Text
   email          String?   
   phone          String?   
@@ -724,6 +725,7 @@ model Client {
   email          String?                    // optional — contact details are not required
   phone          String?                    // optional — contact details are not required
   logo           String?  @db.Text
+  logobgcolor    String?  @db.Text
   website        String?  @db.Text
   gallery        Json?    // string[]
   isActive       Boolean  @default(true)

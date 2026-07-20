@@ -20,6 +20,9 @@ import productsApi from "@/lib/productsApi";
 import categoriesApi from "@/lib/categoriesApi";
 import brandsApi from "@/lib/brands/Api";
 
+// ─── NEW: Import TableExportImport ──────────────────────────────────────
+import TableExportImport from "@/components/admin/shared/TableExportImport";
+
 // STORAGE KEYS
 const STORAGE_KEY_TAB = "sbs_admin_products_tab";
 const STORAGE_KEY_FORM = "sbs_admin_product_form_state";
@@ -289,6 +292,25 @@ export default function ProductsAdminPage() {
     fetchProducts(page, pageSize);
   };
 
+  // ─── NEW: Export columns for Products ──────────────────────────────────
+  const PRODUCT_EXPORT_COLUMNS = [
+    { key: "name", label: "Name" },
+    { key: "sku", label: "SKU" },
+    { key: "model", label: "Model" },
+    { key: "category", label: "Category", exportValue: (row) => getCategoryName(row.categoryId) },
+    { key: "subcategory", label: "Subcategory", exportValue: (row) => getSubcategoryName(row.subcategoryId) },
+    { key: "brand", label: "Brand", exportValue: (row) => getBrandName(row.brandId) },
+    { key: "keyFeatures", label: "Key Features" },
+    { key: "material", label: "Material" },
+    { key: "manufacturer", label: "Manufacturer" },
+    { key: "isActive", label: "Active", exportValue: (row) => (row.isActive !== false ? "Yes" : "No") },
+    { key: "isFeatured", label: "Featured", exportValue: (row) => (row.isFeatured ? "Yes" : "No") },
+  ];
+
+  const getCategoryName = (catId) => categories.find((c) => c.id === catId)?.name || "—";
+  const getSubcategoryName = (subId) => subcategories.find((s) => s.id === subId)?.name || "—";
+  const getBrandName = (brandId) => brands.find((b) => b.id === brandId)?.name || "—";
+
   const renderContent = () => {
     if (loading && activeTab === "products") {
       return (
@@ -301,20 +323,65 @@ export default function ProductsAdminPage() {
     switch (activeTab) {
       case "products":
         return (
-          <ProductsTable
-            products={products}
-            categories={categories}
-            subcategories={subcategories}
-            brands={brands}
-            onEdit={handleEditProduct}
-            onDelete={handleDeleteProduct}
-            onDuplicate={handleDuplicateProduct}
-            onCreate={handleCreateProduct}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            pagination={pagination}
-            onPageChange={handlePageChange}
-          />
+          <>
+            {/* ─── NEW: TableExportImport toolbar ──────────────────────── */}
+            <TableExportImport
+              data={products}
+              columns={PRODUCT_EXPORT_COLUMNS}
+              filenamePrefix="products"
+              onImportRow={async (row) => {
+                const name = row["Name"]?.trim();
+                if (!name) throw new Error("Name is required");
+                const categoryName = row["Category"]?.trim();
+                const category = categories.find(c => c.name.toLowerCase() === categoryName?.toLowerCase());
+                if (!category) throw new Error(`Category "${categoryName}" not found`);
+                let subcategoryId = undefined;
+                const subcategoryName = row["Subcategory"]?.trim();
+                if (subcategoryName) {
+                  const sub = subcategories.find(s => s.name.toLowerCase() === subcategoryName?.toLowerCase() && s.categoryId === category.id);
+                  if (!sub) throw new Error(`Subcategory "${subcategoryName}" not found under category "${category.name}"`);
+                  subcategoryId = sub.id;
+                }
+                let brandId = undefined;
+                const brandName = row["Brand"]?.trim();
+                if (brandName) {
+                  const brand = brands.find(b => b.name.toLowerCase() === brandName?.toLowerCase());
+                  if (!brand) throw new Error(`Brand "${brandName}" not found`);
+                  brandId = brand.id;
+                }
+                const isActive = (row["Active"] || "Yes").trim().toLowerCase() !== "no";
+                const isFeatured = (row["Featured"] || "No").trim().toLowerCase() === "yes";
+                await productsApi.create({
+                  name,
+                  sku: row["SKU"]?.trim() || undefined,
+                  model: row["Model"]?.trim() || undefined,
+                  categoryId: category.id,
+                  subcategoryId,
+                  brandId,
+                  keyFeatures: row["Key Features"]?.trim() || undefined,
+                  material: row["Material"]?.trim() || undefined,
+                  manufacturer: row["Manufacturer"]?.trim() || undefined,
+                  isActive,
+                  isFeatured,
+                });
+              }}
+              onImported={fetchAllData}
+            />
+            <ProductsTable
+              products={products}
+              categories={categories}
+              subcategories={subcategories}
+              brands={brands}
+              onEdit={handleEditProduct}
+              onDelete={handleDeleteProduct}
+              onDuplicate={handleDuplicateProduct}
+              onCreate={handleCreateProduct}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              pagination={pagination}
+              onPageChange={handlePageChange}
+            />
+          </>
         );
       case "categories":
         return <CategoriesManager />;

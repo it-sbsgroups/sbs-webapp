@@ -160,15 +160,7 @@ export default function HeroCarousel() {
             <div key={slide.id || idx} className="relative h-full w-full flex-shrink-0">
               {/* BACKGROUND */}
               {type === "VIDEO" ? (
-                <video
-                  ref={isActive ? videoRef : null}
-                  className="absolute inset-0 h-full w-full object-cover"
-                  muted={!toBool(slide.videoSound)}
-                  playsInline 
-                  preload="none"
-                  loop={toBool(slide.videoLoop)}
-                  onEnded={isActive ? handleVideoEnded : undefined}
-                >
+                <video ref={isActive ? videoRef : null} className="absolute inset-0 h-full w-full object-cover" muted={!toBool(slide.videoSound)} playsInline  preload="none" loop={toBool(slide.videoLoop)} onEnded={isActive ? handleVideoEnded : undefined} >
                   <source loading="lazy" src={slide.mediaUrl} type="video/mp4" />
                 </video>
               ) : (
@@ -176,18 +168,14 @@ export default function HeroCarousel() {
               )}
 
               {/* OVERLAY */}
-              <div
-                className="absolute inset-0 bg-black"
-                style={{ opacity: settings.overlayOpacity ?? 0 }}
-              />
+              <div className="absolute inset-0 bg-black" style={{ opacity: settings.overlayOpacity ?? 0 }} />
 
               {/* CONTENT */}
               <div className="relative mx-auto flex h-full max-w-7xl items-center px-6 sm:px-12 lg:px-16">
                 <div className={`max-w-2xl text-white space-y-4 md:space-y-6 flex flex-col ${getAlignmentClass(slide.layoutType)}`}>
                   {/* BADGE — only rendered when the admin actually filled it in */}
                   {slide.badge && (
-                    <span
-                      className="inline-block"
+                    <span className="inline-block"
                       style={{
                         color: slide.badgeStyle?.fontColor || "#fff",
                         backgroundColor: slide.badgeStyle?.backgroundColor || "#e98a0f",
@@ -206,8 +194,7 @@ export default function HeroCarousel() {
 
                   {/* TITLE — only rendered when the admin actually filled it in */}
                   {slide.title && (
-                    <h1
-                      className="text-balance"
+                    <h1 className="text-balance"
                       style={{
                         color: slide.titleStyle?.fontColor || "#fff",
                         fontWeight: slide.titleStyle?.fontWeight || "900",
@@ -230,8 +217,7 @@ export default function HeroCarousel() {
 
                   {/* DESCRIPTION — only rendered when the admin actually filled it in */}
                   {slide.description && (
-                    <p
-                      className="max-w-xl"
+                    <p className="max-w-xl"
                       style={{
                         color: slide.descriptionStyle?.fontColor || "#e2e8f0",
                         fontWeight: slide.descriptionStyle?.fontWeight || "400",
@@ -314,11 +300,9 @@ export default function HeroCarousel() {
 
       {/* NEXT BUTTON */}
       {settings.nextButton && (
-        <button
-          onClick={nextSlide}
+        <button onClick={nextSlide}
           className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-2.5 text-white backdrop-blur-sm hover:bg-white/40 transition-all z-10"
-          aria-label="Next slide"
-        >
+          aria-label="Next slide" >
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
           </svg>
