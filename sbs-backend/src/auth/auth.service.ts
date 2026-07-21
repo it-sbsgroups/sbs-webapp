@@ -28,4 +28,48 @@ export class AuthService {
     const { password, ...safeUser } = user;
     return safeUser;
   }
+
+  // ── Admin profile (Task: editable admin profile) ───────────────────────
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('User not found.');
+    const { password, ...safeUser } = user;
+    return safeUser;
+  }
+
+  async updateProfile(
+    userId: string,
+    data: { name?: string; email?: string; image?: string; designation?: string; currentPassword?: string; newPassword?: string },
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('User not found.');
+
+    const updateData: any = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.image !== undefined) updateData.image = data.image;
+    if (data.designation !== undefined) updateData.designation = data.designation;
+
+    if (data.email && data.email !== user.email) {
+      const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
+      if (existing && existing.id !== userId) {
+        throw new UnauthorizedException('That email is already in use.');
+      }
+      updateData.email = data.email;
+    }
+
+    if (data.newPassword) {
+      const currentMatches = await bcrypt.compare(data.currentPassword || '', user.password);
+      if (!currentMatches) {
+        throw new UnauthorizedException('Current password is incorrect.');
+      }
+      if (data.newPassword.length < 8) {
+        throw new UnauthorizedException('New password must be at least 8 characters.');
+      }
+      updateData.password = await bcrypt.hash(data.newPassword, 10);
+    }
+
+    const updated = await this.prisma.user.update({ where: { id: userId }, data: updateData });
+    const { password, ...safeUser } = updated;
+    return safeUser;
+  }
 }

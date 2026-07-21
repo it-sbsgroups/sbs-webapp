@@ -269,6 +269,72 @@ export class NewsService {
     return this.prisma.newsPost.delete({ where: { id } });
   }
 
+  // ============================================
+  // IMPORT / EXPORT (mirrors ProductsService.exportToCSV/bulkImport)
+  // ============================================
+  async exportToCSV() {
+    const posts = await this.prisma.newsPost.findMany({
+      include: { category: { select: { name: true } }, subcategory: { select: { name: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return posts.map((p) => ({
+      ID: p.id,
+      Title: p.title,
+      Slug: p.slug,
+      Category: p.category?.name || '',
+      Subcategory: p.subcategory?.name || '',
+      Status: p.status,
+      Excerpt: p.excerpt || '',
+      CoverImage: p.coverImage || '',
+      IsFeatured: p.isFeatured ? 'Yes' : 'No',
+      PublishedAt: p.publishedAt ? p.publishedAt.toISOString() : '',
+    }));
+  }
+
+  // Each imported row becomes a DRAFT post with a single text block (its
+  // "Excerpt"/body column) so it immediately shows up in the admin list for
+  // review/editing before publishing — matches how bulk-imported products
+  // land as regular editable rows rather than being auto-published.
+  async bulkImportPosts(rows: Array<Record<string, any>>) {
+    const results: { success: number; failed: number; errors: Array<{ row: number; title: string; error: string }> } = {
+      success: 0,
+      failed: 0,
+      errors: [],
+    };
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      try {
+        const title = row['Title'] || row['title'];
+        if (!title) throw new Error('Title is required');
+
+        let categoryId = row['CategoryId'] || row['categoryId'];
+        if (!categoryId) {
+          const categoryName = row['Category'] || row['category'];
+          if (!categoryName) throw new Error('Category or CategoryId is required');
+          const category = await this.prisma.newsCategory.findFirst({ where: { name: categoryName } });
+          if (!category) throw new Error(`Unknown category: ${categoryName}`);
+          categoryId = category.id;
+        }
+
+        const body = row['Excerpt'] || row['excerpt'] || row['Body'] || row['body'] || '';
+
+        await this.createPost({
+          title,
+          categoryId,
+          blocks: body ? [{ type: 'text', content: body }] : [],
+        });
+        results.success++;
+      } catch (error: any) {
+        results.failed++;
+        results.errors.push({ row: i + 1, title: rows[i]['Title'] || rows[i]['title'] || '', error: error.message });
+      }
+    }
+
+    return results;
+  }
+
   async publishPost(id: string) {
     const post = await this.prisma.newsPost.update({
       where: { id },

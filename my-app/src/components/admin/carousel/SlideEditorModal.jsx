@@ -6,6 +6,7 @@ import {
   X, Save, Upload, Image, Video, Palette, Type, Link2,
   ChevronDown, ChevronUp, Eye, EyeOff, Trash2, Plus
 } from "lucide-react";
+import { uploadImage } from "@/lib/uploadApi";
 
 // ============================================
 // DEFAULT EMPTY SLIDE TEMPLATE
@@ -217,6 +218,7 @@ export default function SlideEditorModal({ open, onClose, onSave, initialData })
   const [activeTab, setActiveTab] = useState("media"); // media | content | badge | title | description | cta
   const videoInputRef = useRef(null);
   const imageInputRef = useRef(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -264,14 +266,19 @@ export default function SlideEditorModal({ open, onClose, onSave, initialData })
     });
   };
 
-  // Handle file upload (mock - replace with Cloudinary upload)
-  const handleFileUpload = (e, type) => {
+  // Handle file upload — images go through the same backend endpoint used
+  // elsewhere in the app (/uploads/image), which converts to WebP and
+  // compresses via Sharp/Cloudinary server-side. The old client-side
+  // "reject anything over 200KB" pre-check was blocking valid photos before
+  // they ever reached that compression step — now we just cap the upload at
+  // a sane 15MB and let the backend do the compressing, matching every
+  // other image uploader in the app (products, employees, branding, etc.).
+  const handleFileUpload = async (e, type) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Mock validation
-    if (type === "IMAGE" && file.size > 200 * 1024) {
-      alert("Image must be under 200KB after compression");
+    if (type === "IMAGE" && file.size > 15 * 1024 * 1024) {
+      alert("Image must be under 15MB.");
       return;
     }
     if (type === "VIDEO" && file.size > 5 * 1024 * 1024) {
@@ -279,7 +286,24 @@ export default function SlideEditorModal({ open, onClose, onSave, initialData })
       return;
     }
 
-    // Mock URL (replace with Cloudinary upload)
+    if (type === "IMAGE") {
+      setUploadingMedia(true);
+      try {
+        const url = await uploadImage(file, "carousel");
+        updateField("mediaUrl", url);
+        updateField("mediaType", "IMAGE");
+      } catch (err) {
+        alert("Image upload failed: " + err.message);
+      } finally {
+        setUploadingMedia(false);
+        if (imageInputRef.current) imageInputRef.current.value = "";
+      }
+      return;
+    }
+
+    // Video: no dedicated compressed-video pipeline yet — kept as a local
+    // preview URL like before. Wire this up to a real video upload endpoint
+    // if/when one exists.
     const mockUrl = URL.createObjectURL(file);
     updateField("mediaUrl", mockUrl);
     updateField("mediaType", type.toUpperCase());
@@ -418,10 +442,11 @@ export default function SlideEditorModal({ open, onClose, onSave, initialData })
                     />
                     <button
                       onClick={() => form.mediaType === "IMAGE" ? imageInputRef.current?.click() : videoInputRef.current?.click()}
-                      className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-medium text-white hover:bg-blue-700"
+                      disabled={uploadingMedia}
+                      className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                     >
                       <Upload size={16} />
-                      Upload {form.mediaType === "IMAGE" ? "Image" : "Video"}
+                      {uploadingMedia ? "Uploading & compressing…" : `Upload ${form.mediaType === "IMAGE" ? "Image" : "Video"}`}
                     </button>
                     {form.mediaUrl && (
                       <button
@@ -436,7 +461,7 @@ export default function SlideEditorModal({ open, onClose, onSave, initialData })
                   {/* File Requirements */}
                   <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-700">
                     {form.mediaType === "IMAGE" ? (
-                      <p>📸 Image max size: <strong>200KB</strong> (auto-compressed). Formats: JPG, PNG, WebP.</p>
+                      <p>📸 Image max size: <strong>15MB</strong> (auto-compressed to WebP on upload). Formats: JPG, PNG, WebP.</p>
                     ) : (
                       <p>🎬 Video max size: <strong>5MB</strong>, max length: <strong>10 seconds</strong>. Format: MP4.</p>
                     )}

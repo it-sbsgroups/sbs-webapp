@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Put } from '@nestjs/common';
+import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
 import { SiteConfigService } from './site-config.service';
 import { Public } from '../auth/decorators/public.decorator';
+import { SiteConfigOtpGuard } from '../admin-otp/site-config-otp.guard';
 
 @Controller('footer')
 export class FooterController {
@@ -16,6 +17,7 @@ export class FooterController {
   // Admin: PUT the FULL footer config object as the JSON body (logoUrl, brandText,
   // contacts, quickLinks, servicesLinks, newsletterSettings, socialLinks, styling,
   // bottomBar, …). Stored verbatim — same shape as @/data/footerData.
+  @UseGuards(SiteConfigOtpGuard)
   @Put()
   update(@Body() body: Record<string, any>) {
     return this.siteConfig.set('footer', body);

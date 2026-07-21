@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Put } from '@nestjs/common';
+import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
 import { SiteConfigService } from './site-config.service';
 import { Public } from '../auth/decorators/public.decorator';
+import { SiteConfigOtpGuard } from '../admin-otp/site-config-otp.guard';
 
 /**
  * Single source of truth for company-wide details: logo (used by BOTH header and
@@ -21,6 +22,7 @@ export class CompanyController {
     return this.siteConfig.get('company');
   }
 
+  @UseGuards(SiteConfigOtpGuard)
   @Put()
   update(@Body() body: Record<string, any>) {
     return this.siteConfig.set('company', body);

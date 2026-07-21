@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import publicNewsApi from "@/lib/news/publicNewsApi";
 import LazyCacheImage from "@/components/shared/LazyCacheImage";
 
@@ -14,7 +15,11 @@ const fmtDate = (iso) => {
   });
 };
 
-export default function PublicNewsPage() {
+function PublicNewsPageContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   // ============================================
   // DATA STATES
   // ============================================
@@ -36,13 +41,27 @@ export default function PublicNewsPage() {
   const [fetching, setFetching] = useState(false); // subsequent filter/page fetches
 
   // ============================================
-  // FILTER STATES
+  // FILTER STATES — initialized from the URL so a filtered/tabbed view can
+  // be linked and shared directly (?category=...&subcategory=...&search=...&page=...)
   // ============================================
-  const [searchInput, setSearchInput] = useState(""); // raw input, updates instantly
-  const [search, setSearch] = useState(""); // debounced value actually sent to the API
-  const [categoryId, setCategoryId] = useState("ALL");
-  const [subcategoryId, setSubcategoryId] = useState("ALL");
-  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState(searchParams.get("search") || ""); // raw input, updates instantly
+  const [search, setSearch] = useState(searchParams.get("search") || ""); // debounced value actually sent to the API
+  const [categoryId, setCategoryId] = useState(searchParams.get("category") || "ALL");
+  const [subcategoryId, setSubcategoryId] = useState(searchParams.get("subcategory") || "ALL");
+  const [page, setPage] = useState(Number(searchParams.get("page")) || 1);
+
+  // Keep the URL in sync whenever filters/page change, so the current view
+  // is always a shareable link (e.g. /news?category=cat_123&page=2).
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (categoryId && categoryId !== "ALL") params.set("category", categoryId);
+    if (subcategoryId && subcategoryId !== "ALL") params.set("subcategory", subcategoryId);
+    if (search) params.set("search", search);
+    if (page > 1) params.set("page", String(page));
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryId, subcategoryId, search, page]);
 
   // ============================================
   // DEBOUNCE SEARCH (avoid firing a request on every keystroke)
@@ -316,5 +335,13 @@ export default function PublicNewsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PublicNewsPage() {
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-xs font-black text-slate-400 uppercase tracking-widest">Loading news…</div>}>
+      <PublicNewsPageContent />
+    </Suspense>
   );
 }

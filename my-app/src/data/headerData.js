@@ -67,22 +67,6 @@ const headerDummyData = {
       hasDropdown: false,
       dropdownItems: [],
     },
-    {
-      id: 5,
-      name: "Clients",
-      link: "/clients",
-      order: 4,
-      status: true,
-      fontSize: 12,
-      fontWeight: "900",
-      fontColor: "#4B5563",
-      hoverFontColor: "#1E3A8A",
-      hoverBgColor: "#F9FAFB",
-      activeFontColor: "#FFFFFF",
-      activeBgColor: "#1E3A8A",
-      hasDropdown: false,
-      dropdownItems: [],
-    },
   ],
 
   // Dropdown "Other Services" navigation

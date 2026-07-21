@@ -8,6 +8,7 @@ import {
   Post,
   UploadedFile,
   UseInterceptors,
+  UseGuards,
   Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -17,12 +18,13 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import * as streamifier from 'streamifier';
 import { v2 as cloudinary } from 'cloudinary';
 import * as multer from 'multer';
+import { SiteConfigOtpGuard } from '../admin-otp/site-config-otp.guard';
  
 const VALID_KEYS = new Set([
   'branding', 'header', 'contact', 'about', 'apiKeys', 'founders', 'font',
   'company', 'footer', 'homeAbout', 'homePrinciples', 'AuthorizedNetwork', 
   'IndustriesManager', 'ProtectionProven', 'WhyContact', 'PartnershipAdvantages', 
-  'PartnershipWork',
+  'PartnershipWork', 'whyChooseUs', 'rfqEmailRecipients', 'breadcrumbBanners',
 ]);
  
 @Controller('site')
@@ -48,6 +50,7 @@ export class CentralSiteController {
   }
  
   @Put(':key')
+  @UseGuards(SiteConfigOtpGuard)
   update(@Param('key') key: string, @Body() body: Record<string, any>) {
     if (!VALID_KEYS.has(key)) throw new BadRequestException(`Unknown config key: ${key}`);
     return this.siteConfig.set(key, body);

@@ -2,6 +2,22 @@ import apiClient from '../client';
 
 const newsApi = {
   // ============================================
+  // IMPORT / EXPORT / TEMPLATE
+  // ============================================
+  async bulkImport(posts) {
+    const res = await apiClient.post('/news/bulk-import', { posts });
+    return res?.data || res;
+  },
+
+  exportCsvUrl() {
+    return `${apiClient.baseUrl || ''}/news/export/csv`;
+  },
+
+  templateUrl() {
+    return `${apiClient.baseUrl || ''}/news/export/template`;
+  },
+
+  // ============================================
   // CATEGORIES
   // ============================================
   async getCategories() {

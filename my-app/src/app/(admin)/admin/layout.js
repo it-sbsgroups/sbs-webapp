@@ -37,6 +37,8 @@ import {
   Mail,
   Factory,
   Bell,
+  ScrollText,
+  UserCog,
 } from "lucide-react";
 
 // ============================================
@@ -169,6 +171,31 @@ const navTree = [
       //   href: "admin/industry-innovation",
       //   type: "link",
       // }
+    ],
+  },
+
+  // ---- SYSTEM GROUP ----
+  {
+    id: "system",
+    name: "System",
+    icon: UserCog,
+    type: "group",
+    defaultOpen: true,
+    children: [
+      {
+        id: "system-logs",
+        name: "System Logs",
+        icon: ScrollText,
+        href: "/admin/system-logs",
+        type: "link",
+      },
+      {
+        id: "system-profile",
+        name: "My Profile",
+        icon: UserCog,
+        href: "/admin/profile",
+        type: "link",
+      },
     ],
   },
 

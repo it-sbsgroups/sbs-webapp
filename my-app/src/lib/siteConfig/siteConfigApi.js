@@ -17,10 +17,59 @@ async function fetchSection(key) {
   }
 }
 
-async function saveSection(key, data) {
-  const r = await apiClient.put(`/site/${key}`, data);
-  return r?.data ?? r;
+// The verified OTP session id is kept in module memory + sessionStorage so a
+// page refresh within the same tab doesn't force re-verification, but it's
+// never persisted anywhere long-lived (matches the 30-minute server window).
+const OTP_STORAGE_KEY = "sbs_site_config_otp_id";
+
+function getOtpToken() {
+  if (typeof window === "undefined") return null;
+  return sessionStorage.getItem(OTP_STORAGE_KEY);
 }
+
+function setOtpToken(otpId) {
+  if (typeof window === "undefined") return;
+  if (otpId) sessionStorage.setItem(OTP_STORAGE_KEY, otpId);
+  else sessionStorage.removeItem(OTP_STORAGE_KEY);
+}
+
+async function saveSection(key, data) {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("sbs_auth_token") : null;
+  const otpToken = getOtpToken();
+  const res = await fetch(`${apiBase()}/site/${key}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(otpToken ? { "x-otp-token": otpToken } : {}),
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const err = new Error(body.message || "Save failed");
+    err.status = res.status;
+    throw err;
+  }
+  const d = await res.json();
+  return d?.data ?? d;
+}
+
+const otpApi = {
+  async request() {
+    const r = await apiClient.post("/admin-otp/request", { purpose: "site-config" });
+    return r?.data ?? r;
+  },
+  async verify(otpId, code) {
+    const r = await apiClient.post("/admin-otp/verify", { otpId, code, purpose: "site-config" });
+    setOtpToken(otpId);
+    return r?.data ?? r;
+  },
+  isVerified: () => !!getOtpToken(),
+  clear: () => setOtpToken(null),
+};
 
 async function uploadRaw(file, folder = "branding") {
   const form = new FormData();
@@ -104,6 +153,9 @@ const siteConfigApi = {
   getWhyContact: () => fetchSection("WhyContact"),
   getPartnershipAdvantages: () => fetchSection("PartnershipAdvantages"),
   getPartnershipWork: () => fetchSection("PartnershipWork"),
+  getWhyChooseUs: () => fetchSection("whyChooseUs"),
+  getRfqEmailRecipients: () => fetchSection("rfqEmailRecipients"),
+  getBreadcrumbBanners: () => fetchSection("breadcrumbBanners"),
   getAll:       async () => { try { const r = await apiClient.get("/site"); return r?.data ?? r ?? {}; } catch { return {}; } },
 
   saveBranding:       (d) => saveSection("branding", d),
@@ -120,6 +172,11 @@ const siteConfigApi = {
   saveWhyContact:    (d) => saveSection("WhyContact", d),
   savePartnershipAdvantages:    (d) => saveSection("PartnershipAdvantages", d),
   savePartnershipWork:    (d) => saveSection("PartnershipWork", d),
+  saveWhyChooseUs: (d) => saveSection("whyChooseUs", d),
+  saveRfqEmailRecipients: (d) => saveSection("rfqEmailRecipients", d),
+  saveBreadcrumbBanners: (d) => saveSection("breadcrumbBanners", d),
+
+  otp: otpApi,
 
   uploadLogo:         (file) => uploadUncompressed(file, "branding/logo"),
   uploadFavicon,

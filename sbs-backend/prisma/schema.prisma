@@ -86,7 +86,6 @@ model Brand {
   name           String    
   slug           String    @unique
   logo           String?   @db.Text
-  logobgcolor    String?   @db.Text
   website        String?   @db.Text
   email          String?   
   phone          String?   
@@ -725,7 +724,6 @@ model Client {
   email          String?                    // optional — contact details are not required
   phone          String?                    // optional — contact details are not required
   logo           String?  @db.Text
-  logobgcolor    String?  @db.Text
   website        String?  @db.Text
   gallery        Json?    // string[]
   isActive       Boolean  @default(true)
@@ -943,6 +941,50 @@ model ourPrinciple {
 
 model AuthoriedNetwork {
   id                  String    @id @default(cuid())
+}
+
+// ============================================
+// SYSTEM LOGS (Task: admin sidebar log viewer)
+// Logs auto-delete 24h after being marked reviewed — enforced by a
+// scheduled job in SystemLogsService (see system-logs.service.ts).
+// ============================================
+model SystemLog {
+  id         String    @id @default(cuid())
+  level      LogLevel  @default(INFO)
+  source     String    // e.g. "auth", "rfq", "site-config", "carousel"
+  message    String    @db.Text
+  meta       Json?
+  reviewed   Boolean   @default(false)
+  reviewedAt DateTime?
+  createdAt  DateTime  @default(now())
+  @@index([reviewed, reviewedAt])
+  @@index([createdAt])
+  @@map("system_logs")
+}
+
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+}
+
+// ============================================
+// ADMIN OTP (Task: OTP-gated Site Config access)
+// Short-lived one-time codes emailed to the requesting admin's own account
+// email before they can view/save Site Config.
+// ============================================
+model AdminOtp {
+  id        String   @id @default(cuid())
+  userId    String
+  email     String
+  codeHash  String
+  purpose   String   @default("site-config")
+  consumed  Boolean  @default(false)
+  consumedAt DateTime?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([userId, purpose])
+  @@map("admin_otps")
 }
 
 model PageSection {

@@ -3,7 +3,18 @@
 
 import { useState, useRef, useEffect } from "react";
 import productsApi from "@/lib/productsApi";
+import { downloadCsv, toCsv } from "@/lib/csv";
 import { Download, Upload, FileSpreadsheet, FileText, CheckCircle, X } from "lucide-react";
+
+const TEMPLATE_COLUMNS = [
+  { key: "Name", label: "Name" },
+  { key: "Model", label: "Model" },
+  { key: "Category ID", label: "Category ID" },
+  { key: "Brand ID", label: "Brand ID" },
+  { key: "Key Features", label: "Key Features" },
+  { key: "Manufacturer", label: "Manufacturer" },
+  { key: "Material", label: "Material" },
+];
 
 const STORAGE_KEY = "sbs_admin_import_state";
 
@@ -40,6 +51,11 @@ export default function ProductImportExport({ products, setProducts }) {
     } catch (error) {
       alert("Failed to export: " + error.message);
     }
+  };
+
+  const handleDownloadTemplate = () => {
+    const csv = toCsv([], TEMPLATE_COLUMNS);
+    downloadCsv("products-import-template.csv", csv);
   };
 
   const parseCSV = (text) => {
@@ -110,6 +126,9 @@ export default function ProductImportExport({ products, setProducts }) {
           <div className="flex items-center gap-2"><Download size={20} className="text-blue-600" /><h3 className="text-lg font-semibold">Export</h3></div>
           <button onClick={handleExportCSV} className="flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 px-5 py-4 font-medium hover:bg-slate-50 w-full">
             <FileText size={20} className="text-green-600" /> Export CSV
+          </button>
+          <button onClick={handleDownloadTemplate} className="flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 px-5 py-4 font-medium hover:bg-slate-50 w-full">
+            <FileSpreadsheet size={20} className="text-blue-600" /> Download Template
           </button>
         </div>
 

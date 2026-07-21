@@ -9,12 +9,14 @@ import { CentralSiteController } from './central.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { ApiKeysModule } from '../api-keys/api-keys.module';       // ← NEW
 import { CloudinaryModule } from '../cloudinary/cloudinary.module';
+import { AdminOtpModule } from '../admin-otp/admin-otp.module';
 
 @Module({
   imports: [
     PrismaModule,
     ApiKeysModule,   // gives SiteConfigController access to ApiKeysService.invalidate()
     CloudinaryModule, // gives CentralSiteController access to CloudinaryService (logo/favicon/founder/journey uploads)
+    AdminOtpModule,   // gives *Controller access to SiteConfigOtpGuard
   ],
   controllers: [
     SiteConfigController,   // handles /site-config/:section (GET + PUT)

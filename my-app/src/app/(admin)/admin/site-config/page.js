@@ -29,6 +29,10 @@ import AboutManager from "@/components/admin/aboutComp/AboutManager";
 import CarouselSection from "@/components/admin/site-config/CarouselSection";
 import RichTextEditor from "@/components/shared/RichTextEditor";
 import { uploadImage } from "@/lib/uploadApi";
+import WhyChooseUsManager from "@/components/admin/whychooseus/WhyChooseUsManager";
+import RfqEmailRecipients from "@/components/admin/site-config/RfqEmailRecipients";
+import BreadcrumbBannerManager from "@/components/admin/site-config/BreadcrumbBannerManager";
+import SiteConfigOtpGate from "@/components/admin/site-config/SiteConfigOtpGate";
 
 // ─── Material Symbol icon helper ──────────────────────────────────────────────
 const Icon = ({ name, className = "text-lg" }) => (
@@ -114,6 +118,9 @@ const TABS = [
   { key: "WhyContact",                    label: "Why Contact"             },
   { key: "PartnershipAdvantages",         label: "Partnership Advantages"  },
   { key: "PartnershipWork",               label: "Partnership Work"        },
+  { key: "whyChooseUs",                   label: "Why Choose Us"           },
+  { key: "rfqEmails",                     label: "RFQ Email Recipients"    },
+  { key: "breadcrumbBanners",             label: "Breadcrumb Banners"      },
 ];
 
 // ─── SECTION: HEADER & NAVIGATION ──────────────────────────────────────────
@@ -863,11 +870,15 @@ export default function SiteConfigPage() {
       case "WhyContact":                   return <WhyContact />;
       case "PartnershipAdvantages":        return <PartnershipAdvantages />;
       case "PartnershipWork":              return <PartnershipWork />;
+      case "whyChooseUs":                  return <WhyChooseUsManager />;
+      case "rfqEmails":                    return <RfqEmailRecipients />;
+      case "breadcrumbBanners":            return <BreadcrumbBannerManager />;
       default:                             return <HeaderSection />;
     }
   };
 
   return (
+    <SiteConfigOtpGate>
     <div className="min-h-full bg-slate-50">
       {/* Page header */}
       <div className="bg-white border-b border-slate-200 px-6 py-5">
@@ -900,5 +911,6 @@ export default function SiteConfigPage() {
         </main>
       </div>
     </div>
+    </SiteConfigOtpGate>
   );
 }

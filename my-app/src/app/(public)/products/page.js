@@ -107,7 +107,18 @@ function ProductsCatalogContent() {
   const [selectedItems, setSelectedItems] = useState({});
 
   // Brand filter
-  const [distributorFilter, setDistributorFilter] = useState("ALL");
+  const [distributorFilter, setDistributorFilter] = useState(searchParams.get("distributor") || "ALL");
+
+  // Keep `distributor` in the URL alongside the existing category/subcategory/search
+  // params so a fully-filtered product view (incl. distributor tab) is shareable.
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (distributorFilter && distributorFilter !== "ALL") params.set("distributor", distributorFilter);
+    else params.delete("distributor");
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [distributorFilter]);
 
   // Support ?brand=<id> deep-links (e.g. from a Brand detail page's
   // "See All Products" CTA) — same underlying filter as the sidebar dropdown.

@@ -1,10 +1,46 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode, HttpStatus, Ip } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode, HttpStatus, Ip, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { NewsService } from './news.service';
 import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('/news')
 export class NewsController {
   constructor(private readonly newsService: NewsService) {}
+
+  // ============================================
+  // IMPORT / EXPORT / TEMPLATE (mirrors /products/export/csv + bulk-import)
+  // ============================================
+  @Get('export/csv')
+  async exportCSV(@Res() res: Response) {
+    const data = await this.newsService.exportToCSV();
+    const headers = Object.keys(data[0] || { Title: '', Category: '', Excerpt: '' }).join(',');
+    const rows = data.map((row: any) =>
+      Object.values(row).map((v) => `"${String(v || '').replace(/"/g, '""')}"`).join(','),
+    );
+    const csv = '\uFEFF' + [headers, ...rows].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=news_export_${new Date().toISOString().split('T')[0]}.csv`,
+    );
+    res.send(csv);
+  }
+
+  @Get('export/template')
+  async downloadTemplate(@Res() res: Response) {
+    const headers = ['Title', 'Category', 'Excerpt'];
+    const sample = ['"Sample Article Title"', '"Company Updates"', '"One paragraph summary of the article body."'];
+    const csv = '\uFEFF' + [headers.join(','), sample.join(',')].join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename=news_import_template.csv');
+    res.send(csv);
+  }
+
+  @Post('bulk-import')
+  async bulkImport(@Body() body: { posts: Array<Record<string, any>> }) {
+    return this.newsService.bulkImportPosts(body.posts || []);
+  }
 
   // ============================================
   // PUBLIC ENDPOINTS

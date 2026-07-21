@@ -5,13 +5,21 @@ import newsApi from "@/lib/news/newsApi";
 import productsApi from "@/lib/productsApi";
 import { uploadImage } from "@/lib/uploadApi";
 import RichTextEditor from "@/components/shared/RichTextEditor";
-import { Plus, Edit, Trash2, X, Save, Search, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, CheckCircle, XCircle, Archive, Upload, GripVertical, Loader2, Settings, SquarePen } from "lucide-react";
-
-// ─── NEW: Import TableExportImport ──────────────────────────────────────
 import TableExportImport from "@/components/admin/shared/TableExportImport";
+import { Plus, Edit, Trash2, X, Save, Search, Eye, EyeOff, RefreshCw, ChevronDown, ChevronRight, CheckCircle, XCircle, Archive, Upload, GripVertical, Loader2, Settings } from "lucide-react";
 
 const slugify = (text) =>
   text?.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-').replace(/-+/g, '-') || '';
+
+// Columns for the News "Download Template / Export / Import" toolbar —
+// mirrors BRAND_EXPORT_COLUMNS on the Distributors page. `categoryName` is
+// precomputed onto each row before being passed to <TableExportImport data=.../>.
+const NEWS_EXPORT_COLUMNS = [
+  { key: "title", label: "Title" },
+  { key: "categoryName", label: "Category" },
+  { key: "status", label: "Status" },
+  { key: "excerpt", label: "Excerpt" },
+];
 
 // ─── Multi-image Gallery Block Editor ──────────────────────────────────────────
 // Replaces the old single-image-only editor. Supports unlimited images,
@@ -627,16 +635,6 @@ export default function AdminNewsManage() {
     // { id: "ads", label: "Suggested Products", icon: "🎯" },
   ];
 
-  // ─── NEW: Export columns for News ──────────────────────────────────────
-  const NEWS_EXPORT_COLUMNS = [
-    { key: "title", label: "Title" },
-    { key: "category", label: "Category", exportValue: (row) => getCategoryName(row.categoryId) },
-    { key: "subcategory", label: "Subcategory", exportValue: (row) => getSubcategoryName(row.subcategoryId) },
-    { key: "status", label: "Status" },
-    { key: "isFeatured", label: "Featured", exportValue: (row) => (row.isFeatured ? "Yes" : "No") },
-    { key: "publishedAt", label: "Published Date", exportValue: (row) => (row.publishedAt ? new Date(row.publishedAt).toLocaleDateString() : "") },
-  ];
-
   // ============================================
   // LOADING
   // ============================================
@@ -663,38 +661,6 @@ export default function AdminNewsManage() {
         </button>
       </div>
 
-      {/* ─── NEW: TableExportImport toolbar ───────────────────────────────── */}
-      <TableExportImport
-        data={posts}
-        columns={NEWS_EXPORT_COLUMNS}
-        filenamePrefix="news"
-        onImportRow={async (row) => {
-          const title = row["Title"]?.trim();
-          if (!title) throw new Error("Title is required");
-          const categoryName = row["Category"]?.trim();
-          const category = categories.find(c => c.name.toLowerCase() === categoryName?.toLowerCase());
-          if (!category) throw new Error(`Category "${categoryName}" not found`);
-          let subcategoryId = undefined;
-          const subcategoryName = row["Subcategory"]?.trim();
-          if (subcategoryName) {
-            const sub = subcategories.find(s => s.name.toLowerCase() === subcategoryName?.toLowerCase() && s.categoryId === category.id);
-            if (!sub) throw new Error(`Subcategory "${subcategoryName}" not found under category "${category.name}"`);
-            subcategoryId = sub.id;
-          }
-          const status = row["Status"]?.toUpperCase() === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
-          const isFeatured = (row["Featured"] || "No").trim().toLowerCase() === "yes";
-          await newsApi.createPost({
-            title,
-            categoryId: category.id,
-            subcategoryId,
-            status,
-            isFeatured,
-            blocks: [], // no blocks initially
-          });
-        }}
-        onImported={loadAllData}
-      />
-
       {/* Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2">
         {tabs.map((tab) => (
@@ -715,7 +681,6 @@ export default function AdminNewsManage() {
       {/* ============================================ */}
       {activeTab === "composer" && (
         <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-6">
-          {/* ... existing composer content ... */}
           <div className="flex items-center justify-between border-b pb-3">
             <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">
               {editingPostId ? "Edit Article" : "Compose New Article"}
@@ -848,6 +813,26 @@ export default function AdminNewsManage() {
               className="flex items-center gap-1 bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-blue-700">
               <Plus size={14} /> New Post
             </button>
+          </div>
+          <div className="p-5 border-b">
+            <TableExportImport
+              data={posts.map((p) => ({ ...p, categoryName: getCategoryName(p.categoryId) }))}
+              columns={NEWS_EXPORT_COLUMNS}
+              filenamePrefix="news"
+              onImportRow={async (row) => {
+                const title = row["Title"]?.trim();
+                if (!title) throw new Error("Title is required");
+                const categoryName = row["Category"]?.trim();
+                const match = categories.find((c) => c.name?.toLowerCase() === categoryName?.toLowerCase());
+                if (!match) throw new Error(`Unknown category: ${categoryName || "(blank)"}`);
+                await newsApi.createPost({
+                  title,
+                  categoryId: match.id,
+                  blocks: row["Excerpt"] ? [{ type: "text", content: row["Excerpt"] }] : [],
+                });
+              }}
+              onImported={loadAllData}
+            />
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left">

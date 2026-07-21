@@ -36,6 +36,7 @@ export default function IndustryInnovation() {
     <section className="bg-slate-50 py-16 md:py-24 border-b border-gray-100">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-16 items-center">
+          {/* Image */}
           {innovation.image && (
             <div className="lg:col-span-5">
               <div className="rounded-2xl overflow-hidden shadow-lg border border-slate-200/60 aspect-[4/3]">
@@ -47,7 +48,9 @@ export default function IndustryInnovation() {
           {/* Content */}
           <div className={innovation.image ? "lg:col-span-7 space-y-6" : "lg:col-span-12 space-y-6"}>
             {innovation.title && (
-              <h2 className="text-3xl font-extrabold tracking-tight text-blue-950 sm:text-4xl">{innovation.title}</h2>
+              <h2 className="text-3xl font-extrabold tracking-tight text-blue-950 sm:text-4xl">
+                {innovation.title}
+              </h2>
             )}
             {innovation.description && (
               <RichTextRenderer html={innovation.description} className="text-sm text-gray-600 leading-relaxed" />

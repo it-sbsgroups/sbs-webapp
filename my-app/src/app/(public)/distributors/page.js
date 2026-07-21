@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { DISTRIBUTORS } from "@/data/distributors";
+import DistributorTrustSections from "@/components/public/DistributorTrustSections";
 
 /* ============================ DYNAMIC CONFIG ============================== */
 const PAGE_CONFIG = {
@@ -93,6 +94,8 @@ export default function PublicDistributorsDirectoryPage() {
 
   return (
     <div className="bg-slate-50 min-h-screen font-sans text-slate-800 antialiased">
+      {/* Previously-orphaned Site Config content — see components/public/DistributorTrustSections.jsx */}
+      <DistributorTrustSections />
 
       {/* ==================== HERO HEADER ==================== */}
       <div className="bg-white border-b border-slate-200">

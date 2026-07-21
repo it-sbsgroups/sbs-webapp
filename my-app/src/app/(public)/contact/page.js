@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Breadcrumb from "@/components/shared/Breadcrumb";
+import PageBreadcrumb from "@/components/shared/PageBreadcrumb";
 import { Toaster } from "react-hot-toast";
 import siteConfigApi from "@/lib/siteConfigApi";
 import { createContact } from "@/lib/contacts/api";
@@ -161,7 +161,8 @@ export default function PublicContactUsPage() {
   return (
     <div className="bg-slate-50/50 min-h-screen font-sans text-slate-800 antialiased">
       {/* ── BREADCRUMB HEADER ── */}
-      <Breadcrumb
+      <PageBreadcrumb
+        pageKey="contact"
         title="Contact Us"
         items={[{ label: "Contact Us" }]}
         backgroundImage="https://res.cloudinary.com/dhrnoojwo/image/upload/v1783946951/contact_nrlvqo.png"

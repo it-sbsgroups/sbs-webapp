@@ -36,6 +36,8 @@ import { EmailTemplatesService } from './mail/email-templates.service';
 import { SubscribersController } from './subscribers/subscribers.controller';
 import { WhyChooseUsModule } from './why-choose-us/why-choose-us.module';
 import { SearchModule } from './search/search.module';
+import { SystemLogsModule } from './system-logs/system-logs.module';
+import { AdminOtpModule } from './admin-otp/admin-otp.module';
 
 @Module({
   imports: [
@@ -74,6 +76,8 @@ import { SearchModule } from './search/search.module';
     IndustryInnovationModule,
     WhyChooseUsModule,
     SearchModule,
+    SystemLogsModule,
+    AdminOtpModule,
   ],
   controllers: [AppController, MailController, SubscribersController],
   providers: [AppService, PrismaService, MailService, EmailTemplatesService],
