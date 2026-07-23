@@ -1,26 +1,18 @@
-// src/components/public/HeroCarousel.jsx
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import carouselApi from "@/lib/carouselApi";
-
-const DEFAULT_SETTINGS = {
-  autoplay: true,
-  overlayOpacity: 0,
-  carouselHeight: "650vh",
-  prevButton: true,
-  nextButton: true,
-  bottomDots: true,
-};
+import { CAROUSEL_DEFAULTS } from "@/config/carouselDefaults";
 
 export default function HeroCarousel() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
-  const [slides, setSlides] = useState([]);          // no more dummy slides
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [slides, setSlides] = useState([]);
+  const [settings, setSettings] = useState(CAROUSEL_DEFAULTS);
 
   const videoRef = useRef(null);
 
+  // बैकएंड से डेटा लोड करें
   useEffect(() => {
     (async () => {
       try {
@@ -30,24 +22,26 @@ export default function HeroCarousel() {
           setSettings((prev) => ({ ...prev, ...cfg }));
         }
       } catch {
+        // एरर होने पर डिफ़ॉल्ट सेटिंग्स के साथ रहें
       }
     })();
   }, []);
 
-  // Listen for real‑time admin updates (custom event).
+  // रियल-टाइम एडमिन अपडेट सुनें
   useEffect(() => {
     const handleUpdate = (e) => {
       if (e.detail?.slides) setSlides(e.detail.slides);
-      if (e.detail?.settings) setSettings(e.detail.settings);
+      if (e.detail?.settings) {
+        setSettings((prev) => ({ ...prev, ...e.detail.settings }));
+      }
     };
     window.addEventListener("carousel-admin-update", handleUpdate);
     return () => window.removeEventListener("carousel-admin-update", handleUpdate);
   }, []);
 
-  // Guard against empty slides
   const currentSlide = slides[currentIndex] || slides[0];
 
-  // ----- HELPERS (unchanged) -----
+  // ----- हेल्पर्स -----
   const toBool = (v) => v === true || v === "true";
   const mediaType = (currentSlide?.mediaType || "IMAGE").toUpperCase();
   const isVideo = mediaType === "VIDEO";
@@ -65,7 +59,7 @@ export default function HeroCarousel() {
     if (isVideo && !isLoopingVideo) nextSlide();
   };
 
-  // Reload video when slide changes
+  // स्लाइड बदलने पर वीडियो रीलोड करें
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.load();
@@ -73,15 +67,24 @@ export default function HeroCarousel() {
     }
   }, [currentIndex]);
 
-  // Autoplay timer
+  // ऑटोप्ले टाइमर
   useEffect(() => {
     if (isHovered || isLoopingVideo || isVideo || !settings.autoplay) return;
-    const duration = (currentSlide?.nextSlideIn || 5) * 1000;
+    const duration = (currentSlide?.nextSlideIn || settings.slideDuration) * 1000;
     const timer = setTimeout(() => nextSlide(), duration);
     return () => clearTimeout(timer);
-  }, [currentIndex, isHovered, isVideo, isLoopingVideo, settings.autoplay, currentSlide, nextSlide]);
+  }, [
+    currentIndex,
+    isHovered,
+    isVideo,
+    isLoopingVideo,
+    settings.autoplay,
+    settings.slideDuration,
+    currentSlide,
+    nextSlide,
+  ]);
 
-  // ----- STYLING HELPERS (unchanged) -----
+  // ----- स्टाइलिंग हेल्पर्स (अपरिवर्तित) -----
   const getAlignmentClass = (layout) => {
     const val = (layout || "LEFT").toUpperCase();
     if (val === "CENTER") return "items-center text-center mx-auto";
@@ -129,7 +132,59 @@ export default function HeroCarousel() {
     return bg.solid || "#1e3a8a";
   };
 
-  // ----- EMPTY STATE -----
+  // ----- ट्रांज़िशन स्टाइल के अनुसार स्लाइड का CSS -----
+  const getSlideStyle = (index) => {
+    const diff = index - currentIndex;
+    const baseTransition = "all 0.7s ease-out";
+    const style = settings.transitionStyle || "slide";
+
+    switch (style) {
+      case "fade":
+        return {
+          opacity: diff === 0 ? 1 : 0,
+          transform: "none",
+          transition: baseTransition,
+          zIndex: diff === 0 ? 10 : 0,
+        };
+      case "flip":
+        return {
+          transform: `rotateY(${diff * 180}deg)`,
+          backfaceVisibility: "hidden",
+          transition: baseTransition,
+          zIndex: diff === 0 ? 10 : 0,
+        };
+      case "book":
+        // पेज बाईं ओर से पलटता है
+        return {
+          transform: `rotateY(${diff > 0 ? 0 : diff < 0 ? -180 : 0}deg)`,
+          transformOrigin: "left center",
+          backfaceVisibility: "hidden",
+          transition: baseTransition,
+          zIndex: diff === 0 ? 10 : 0,
+        };
+      case "cube":
+        return {
+          transform: `rotateY(${diff * -90}deg) translateZ(50vw)`,
+          backfaceVisibility: "hidden",
+          transition: baseTransition,
+          zIndex: diff === 0 ? 10 : 0,
+        };
+      case "drop":
+        return {
+          transform: `translateY(${diff * 100}%)`,
+          transition: baseTransition,
+          zIndex: diff === 0 ? 10 : 0,
+        };
+      default: // "slide"
+        return {
+          transform: `translateX(${diff * 100}%)`,
+          transition: baseTransition,
+          zIndex: 0,
+        };
+    }
+  };
+
+  // ----- खाली स्टेट -----
   if (!slides.length) {
     return (
       <div className="flex h-[400px] items-center justify-center bg-slate-900 text-white">
@@ -138,53 +193,81 @@ export default function HeroCarousel() {
     );
   }
 
-  // ----- RENDER -----
+  // ----- रेंडर -----
   return (
     <div
-      id="hero"
       className="relative w-full overflow-hidden bg-gray-900"
-      style={{ height: settings.carouselHeight || "650px" }}
+      style={{ height: settings.carouselHeight }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* SLIDES WRAPPER */}
+      {/* 3D पर्सपेक्टिव कंटेनर */}
       <div
-        className="flex h-full w-full transition-transform duration-700 ease-out"
-        style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+        className="relative h-full w-full"
+        style={{
+          perspective: "1200px",
+          transformStyle: "preserve-3d",
+        }}
       >
         {slides.map((slide, idx) => {
           const type = (slide.mediaType || "IMAGE").toUpperCase();
           const isActive = idx === currentIndex;
+          const hasTextContent = slide.badge || slide.title || slide.description;
+          const slideStyle = getSlideStyle(idx);
 
           return (
-            <div key={slide.id || idx} className="relative h-full w-full flex-shrink-0">
-              {/* BACKGROUND */}
+            <div
+              key={slide.id || idx}
+              className="absolute inset-0 h-full w-full"
+              style={{
+                ...slideStyle,
+                pointerEvents: isActive ? "auto" : "none",
+                // फ़्लिप/बुक/क्यूब के लिए बैकफ़ेस हिडेन ज़रूरी
+                backfaceVisibility:
+                  settings.transitionStyle === "flip" ||
+                  settings.transitionStyle === "book" ||
+                  settings.transitionStyle === "cube"
+                    ? "hidden"
+                    : "visible",
+              }}
+            >
+              {/* बैकग्राउंड */}
               {type === "VIDEO" ? (
                 <video
                   ref={isActive ? videoRef : null}
                   className="absolute inset-0 h-full w-full object-cover"
                   muted={!toBool(slide.videoSound)}
-                  playsInline 
+                  playsInline
                   preload="none"
                   loop={toBool(slide.videoLoop)}
                   onEnded={isActive ? handleVideoEnded : undefined}
                 >
-                  <source loading="lazy" src={slide.mediaUrl} type="video/mp4" />
+                  <source src={slide.mediaUrl} type="video/mp4" />
                 </video>
               ) : (
                 <div className="absolute inset-0 h-full w-full" style={getBackgroundStyle(slide)} />
               )}
 
-              {/* OVERLAY */}
+              {/* ओवरले */}
               <div
                 className="absolute inset-0 bg-black"
                 style={{ opacity: settings.overlayOpacity ?? 0 }}
               />
 
-              {/* CONTENT */}
-              <div className="relative mx-auto flex h-full max-w-7xl items-center px-6 sm:px-12 lg:px-16">
-                <div className={`max-w-2xl text-white space-y-4 md:space-y-6 flex flex-col ${getAlignmentClass(slide.layoutType)}`}>
-                  {/* BADGE — only rendered when the admin actually filled it in */}
+              {/* कंटेंट */}
+              <div
+                className={`relative mx-auto flex h-full max-w-7xl px-6 sm:px-12 lg:px-16 ${
+                  hasTextContent ? "items-center" : "items-end pb-8"
+                }`}
+              >
+                <div
+                  className={`max-w-2xl text-white space-y-4 md:space-y-6 flex flex-col ${
+                    hasTextContent
+                      ? getAlignmentClass(slide.layoutType)
+                      : "items-center text-center mx-auto"
+                  }`}
+                >
+                  {/* बैज */}
                   {slide.badge && (
                     <span
                       className="inline-block"
@@ -204,7 +287,7 @@ export default function HeroCarousel() {
                     </span>
                   )}
 
-                  {/* TITLE — only rendered when the admin actually filled it in */}
+                  {/* टाइटल */}
                   {slide.title && (
                     <h1
                       className="text-balance"
@@ -228,7 +311,7 @@ export default function HeroCarousel() {
                     </h1>
                   )}
 
-                  {/* DESCRIPTION — only rendered when the admin actually filled it in */}
+                  {/* डिस्क्रिप्शन */}
                   {slide.description && (
                     <p
                       className="max-w-xl"
@@ -250,9 +333,7 @@ export default function HeroCarousel() {
                     </p>
                   )}
 
-                  {/* CTA BUTTONS — zero, one, or many. Each button has its own
-                      color/style. Falls back to the legacy single-CTA fields
-                      for slides saved before multi-CTA support existed. */}
+                  {/* CTA बटन */}
                   {(() => {
                     const ctas = Array.isArray(slide.ctas) && slide.ctas.length
                       ? slide.ctas
@@ -299,11 +380,11 @@ export default function HeroCarousel() {
         })}
       </div>
 
-      {/* PREV BUTTON */}
+      {/* पिछला बटन */}
       {settings.prevButton && (
         <button
           onClick={prevSlide}
-          className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-2.5 text-white backdrop-blur-sm hover:bg-white/40 transition-all z-10"
+          className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-2.5 text-white backdrop-blur-sm hover:bg-white/40 transition-all z-20"
           aria-label="Previous slide"
         >
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -312,11 +393,11 @@ export default function HeroCarousel() {
         </button>
       )}
 
-      {/* NEXT BUTTON */}
+      {/* अगला बटन */}
       {settings.nextButton && (
         <button
           onClick={nextSlide}
-          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-2.5 text-white backdrop-blur-sm hover:bg-white/40 transition-all z-10"
+          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/20 p-2.5 text-white backdrop-blur-sm hover:bg-white/40 transition-all z-20"
           aria-label="Next slide"
         >
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -325,9 +406,9 @@ export default function HeroCarousel() {
         </button>
       )}
 
-      {/* BOTTOM DOTS */}
+      {/* डॉट्स */}
       {settings.bottomDots && (
-        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-2.5 z-10">
+        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-2.5 z-20">
           {slides.map((_, index) => (
             <button
               key={index}
