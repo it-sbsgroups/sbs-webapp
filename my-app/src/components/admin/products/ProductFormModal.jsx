@@ -15,7 +15,7 @@ export default function ProductFormModal({ open, initialData, categories, subcat
     id: "", categoryId: "", subcategoryId: "", distributorId: "",
     model: "", name: "", keyFeatures: "", brand: "",
     specifications: {}, certifications: [], images: [],
-    description: "",
+    description: "", videoUrl: "",
   });
 
   const [newCert, setNewCert] = useState("");
@@ -70,6 +70,7 @@ export default function ProductFormModal({ open, initialData, categories, subcat
         brand: resolvedBrandName,
         specifications: specs,
         certifications: certs,
+        videoUrl: initialData.videoUrl || "",
       });
     } else {
       // New product defaults
@@ -78,6 +79,7 @@ export default function ProductFormModal({ open, initialData, categories, subcat
         brandId: brands[0]?.id || "",
         model: "", name: "", keyFeatures: "", brand: brands[0]?.name || "",
         specifications: {}, certifications: [], images: [], description: "",
+        videoUrl: "",
       });
     }
   }, [initialData, categories, brands]);
@@ -143,6 +145,7 @@ export default function ProductFormModal({ open, initialData, categories, subcat
       images,
       specifications,
       certifications,
+      videoUrl: form.videoUrl || undefined,
     };
     clearDraft(); // clear draft on successful submit
     onSave(payload, pendingBrochure);
@@ -212,14 +215,19 @@ export default function ProductFormModal({ open, initialData, categories, subcat
             </div>
             <div className="mt-4">
               <label className="mb-1.5 block text-xs font-medium">Key Features (Short summary)</label>
-              <textarea rows={2} value={form.keyFeatures || ""} onChange={(e) => updateField("keyFeatures", e.target.value)}
-                placeholder="Brief key features for card display" className="w-full rounded-xl border px-4 py-3 text-sm resize-none" />
+              <RichTextEditor
+                value={form.keyFeatures || ""}
+                onChange={(html) => updateField("keyFeatures", html)}
+                placeholder="Brief key features for card display – supports formatting"
+                uploadFolder="product-key-features"
+                resetKey={form.id || "new-product"}
+              />
             </div>
           </div>
 
           {/* ===== BROCHURE UPLOAD ===== */}
           <div className="rounded-2xl border p-5">
-            <h3 className="text-base font-semibold mb-4">📄 Product Brochure / Catalog</h3>
+            <h3 className="text-base font-semibold mb-4">Product Brochure</h3>
             {initialData ? (
               <BrochureUploader
                 product={initialData}
@@ -250,6 +258,17 @@ export default function ProductFormModal({ open, initialData, categories, subcat
                 onClear={() => setPendingBrochure(null)}
               />
             )}
+          </div>
+          {/* ======= VIDEO URL ======== */}
+          <div>
+            <label className="mb-1.5 block text-xs font-medium">Video URL (YouTube / Vimeo embed)</label>
+            <input
+              type="text"
+              value={form.videoUrl || ""}
+              onChange={(e) => updateField("videoUrl", e.target.value)}
+              placeholder="https://www.youtube.com/embed/..."
+              className="w-full rounded-xl border px-4 py-3 text-sm"
+            />
           </div>
 
           {/* ===== DESCRIPTION ===== */}

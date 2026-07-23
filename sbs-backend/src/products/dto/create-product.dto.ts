@@ -1,7 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsString, IsOptional, IsBoolean, IsArray, IsObject,
-  ValidateNested, IsNumber, Min, Max,
+  ValidateNested, IsNumber, Min, Max, IsUrl,
 } from 'class-validator';
 
 export class CreateImageDto {
@@ -103,4 +103,8 @@ export class CreateProductDto {
   @IsArray()
   @IsOptional()
   certifications?: string[];
+
+  @IsOptional()
+  @IsString()
+  videoUrl?: string;
 }

@@ -136,9 +136,10 @@ model Product {
   brand           Brand?                 @relation(fields: [brandId], references: [id], onDelete: SetNull)
   images          ProductImage[]         
   specifications  ProductSpecification[] 
-  certifications  ProductCertification[] 
+  certifications  ProductCertification[]
   rfqItems        RfqItem[]              
   brochureUrl     String?                @db.Text       // Cloudinary URL for brochure/catalog
+  videoUrl        String?                @db.Text 
   brochureName    String?                // Original file name
   brochureSize    Int?                   // File size in bytes
   brochureFormat  String?                // pdf, doc, etc.

@@ -3,56 +3,22 @@
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-
-// ✅ LIVE DATA — fetched from the NestJS backend (no more static dummy data)
 import publicCatalogApi from "@/lib/publicCatalogApi";
 import rfqApi from "@/lib/rfqApi";
 import LazyCacheImage from "@/components/shared/LazyCacheImage";
-
-// ✅ SETTINGS — admin-controlled recommendation mode (all / category / selected)
-import {
-  loadProductsSettings,
-  resolveRecommendations,
-} from "@/lib/productsSettings";
+import { loadProductsSettings, resolveRecommendations } from "@/lib/productsSettings";
 import RichTextRenderer from "@/components/shared/RichTextRenderer";
 
+// ─── PAGE CONFIG ──────────────────────────────────────────────────────────────
 const PAGE_CONFIG = {
-  layout: {
-    container: "max-w-7xl",      // page width
-    contentSplit: "lg:grid-cols-3", // left 2 cols + right sticky col
-  },
-  card: {
-    variant: "elevated",          // "elevated" | "outlined" | "flat"
-    radius: "xl",                 // "md" | "lg" | "xl"
-    padding: "lg",                // "sm" | "md" | "lg"
-  },
-  heading: {
-    productName: "lg",            // "sm" | "md" | "lg"  → product title size
-    section: "md",                // section eyebrow size
-  },
-  gallery: {
-    aspect: "square",             // "square" | "landscape" | "wide"
-    thumbSize: "md",              // "sm" | "md" | "lg"
-    showAngleLabels: true,        // angle badge on main image
-    showCounter: true,            // 1/4 counter badge
-  },
-  description: {
-    maxChars: 260,                // truncate after N chars
-    expandable: true,             // show "Read more / Read less"
-  },
-  specs: {
-    columns: 2,                   // 1 | 2  (spec grid columns)
-    mergeCustomAttributes: true,  // merge product.attributes into spec table
-  },
-  reviews: {
-    maxVisiblePerClient: 2,       // reviews shown per client before "view all"
-    showSummary: true,            // average-rating strip
-  },
-  related: {
-    enabled: true,
-    maxItems: 3,                  // related products from same subcategory
-  },
-  sections: {                     // turn whole sections on/off
+  layout: { container: "max-w-7xl", contentSplit: "lg:grid-cols-3" },
+  card: { variant: "elevated", radius: "xl", padding: "lg" },
+  heading: { productName: "lg", section: "md" },
+  gallery: { aspect: "square", thumbSize: "md", showAngleLabels: true, showCounter: true },
+  description: { maxChars: 260, expandable: true },
+  specs: { columns: 2, mergeCustomAttributes: true },
+  related: { enabled: true, maxItems: 3 },
+  sections: {
     gallery: true,
     overview: true,
     description: true,
@@ -60,25 +26,19 @@ const PAGE_CONFIG = {
     certifications: true,
     brochure: true,
     brand: true,
-    clients: true,
     related: true,
   },
 };
 
-/* JIT-safe full class strings — PAGE_CONFIG keys map into these */
 const UI = {
   cardVariants: {
     elevated: "bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow",
     outlined: "bg-white border-2 border-slate-200",
-    flat:     "bg-white border border-slate-100",
+    flat: "bg-white border border-slate-100",
   },
-  radii:    { md: "rounded-lg", lg: "rounded-xl", xl: "rounded-2xl" },
+  radii: { md: "rounded-lg", lg: "rounded-xl", xl: "rounded-2xl" },
   paddings: { sm: "p-4", md: "p-6", lg: "p-6 md:p-8" },
-  productNameSizes: {
-    sm: "text-xl md:text-2xl",
-    md: "text-2xl md:text-3xl",
-    lg: "text-3xl md:text-4xl",
-  },
+  productNameSizes: { sm: "text-xl md:text-2xl", md: "text-2xl md:text-3xl", lg: "text-3xl md:text-4xl" },
   sectionTitleSizes: { sm: "text-[10px]", md: "text-xs", lg: "text-sm" },
   galleryAspects: { square: "aspect-square", landscape: "aspect-[4/3]", wide: "aspect-video" },
   thumbSizes: { sm: "w-14 h-14", md: "w-16 h-16", lg: "w-20 h-20" },
@@ -88,65 +48,7 @@ const UI = {
 const cardClass = () =>
   `${UI.cardVariants[PAGE_CONFIG.card.variant]} ${UI.radii[PAGE_CONFIG.card.radius]} ${UI.paddings[PAGE_CONFIG.card.padding]}`;
 
-/* ============================================================================
-   2–5. DATA LAYER — LIVE FROM BACKEND
-   ----------------------------------------------------------------------------
-   Lookups (category / subcategory / brand) and the product list are loaded
-   from the API inside the component. `reshapeProduct` maps a backend product
-   into the structure this page's render expects.
-   ========================================================================== */
-
-// Reshape a live backend product into the structure this page's render expects.
-function reshapeProduct(p) {
-  const brandName =
-    p.brand && typeof p.brand === "object" ? p.brand.name : p.brand || "";
-  // specifications may arrive as an array [{key,value}] or an object map.
-  let attributes = {};
-  if (Array.isArray(p.specifications)) {
-    attributes = p.specifications.reduce((acc, s) => {
-      if (s?.key) acc[s.key] = s.value;
-      return acc;
-    }, {});
-  } else if (p.specifications && typeof p.specifications === "object") {
-    attributes = p.specifications;
-  }
-  const certifications = Array.isArray(p.certifications)
-    ? p.certifications.map((c) => (typeof c === "string" ? c : c?.name)).filter(Boolean)
-    : [];
-  return {
-    sku: p.id,
-    id: p.id,
-    model: p.model || "",
-    name: p.name,
-    categoryId: p.categoryId,
-    subCategoryId: p.subcategoryId || p.subCategoryId || "",
-    subcategoryId: p.subcategoryId || "",
-    brandId: p.brandId || p.distributorId || (p.brand && p.brand.id) || "",
-    distributorId: p.brandId || p.distributorId || (p.brand && p.brand.id) || "",
-    clientIds: [],
-    brandName,
-    specification: p.keyFeatures || "",
-    description: p.description || p.keyFeatures || "",
-    manufacturer: p.manufacturer || "",
-    material: p.material || "",
-    certifications,
-    attributes,
-    images: Array.isArray(p.images) ? p.images : [],
-    // Brochure (now surfaced on the public detail page).
-    brochure: p.brochureUrl
-      ? {
-          url: p.brochureUrl,
-          label: p.brochureName || "Download Brochure",
-          size: p.brochureSize ? `${(p.brochureSize / 1024).toFixed(0)} KB` : "",
-        }
-      : undefined,
-  };
-}
-
-/* ============================================================================
-   6. SMALL REUSABLE PIECES (all read PAGE_CONFIG)
-   ========================================================================== */
-
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
 const Eyebrow = ({ children }) => (
   <p className={`${UI.sectionTitleSizes[PAGE_CONFIG.heading.section]} font-black text-slate-400 uppercase tracking-widest`}>
     {children}
@@ -168,43 +70,32 @@ const fallbackImg = (e) => {
   e.currentTarget.src = "https://placehold.co/600x600/f1f5f9/94a3b8?text=Image+Unavailable";
 };
 
-/* Expandable description, length controlled by PAGE_CONFIG.description */
+// ─── DESCRIPTION BLOCK ──────────────────────────────────────────────────────
 function DescriptionBlock({ text }) {
   const [expanded, setExpanded] = useState(false);
   const { maxChars, expandable } = PAGE_CONFIG.description;
   if (!text) return null;
-
-  // Measure length off the plain text (tags stripped) so long/short detection
-  // still works the same way it did for plain-text descriptions.
   const plain = text.replace(/<[^>]+>/g, "");
   const isLong = plain.length > maxChars;
-
   if (!isLong || expanded) {
     return (
       <div>
         <RichTextRenderer html={text} />
         {isLong && expandable && (
-          <button
-            onClick={() => setExpanded(false)}
-            className="mt-2 text-xs font-black text-blue-700 uppercase tracking-wider hover:text-blue-900 transition-colors"
-          >
+          <button onClick={() => setExpanded(false)} className="mt-2 text-xs font-black text-blue-700 uppercase tracking-wider hover:text-blue-900">
             − Read less
           </button>
         )}
       </div>
     );
   }
-
   return (
     <div>
       <p className="text-sm text-slate-700 leading-relaxed font-medium whitespace-pre-line">
         {plain.slice(0, maxChars).trimEnd()}…
       </p>
       {expandable && (
-        <button
-          onClick={() => setExpanded(true)}
-          className="mt-2 text-xs font-black text-blue-700 uppercase tracking-wider hover:text-blue-900 transition-colors"
-        >
+        <button onClick={() => setExpanded(true)} className="mt-2 text-xs font-black text-blue-700 uppercase tracking-wider hover:text-blue-900">
           + Read more
         </button>
       )}
@@ -212,8 +103,8 @@ function DescriptionBlock({ text }) {
   );
 }
 
-/* Image gallery — main image + thumbnail rail */
-function ImageGallery({ images, productName }) {
+// ─── IMAGE GALLERY ───────────────────────────────────────────────────────────
+function ImageGallery({ images, productName, onImageClick }) {
   const [active, setActive] = useState(0);
   if (!images || images.length === 0) {
     return (
@@ -226,8 +117,10 @@ function ImageGallery({ images, productName }) {
   const img = images[active];
   return (
     <div className="space-y-3">
-      {/* Main image */}
-      <div className={`relative ${UI.galleryAspects[PAGE_CONFIG.gallery.aspect]} bg-slate-50 ${UI.radii[PAGE_CONFIG.card.radius]} overflow-hidden border border-slate-200/80 group flex items-center justify-center p-4`}>
+      <div
+        className={`relative ${UI.galleryAspects[PAGE_CONFIG.gallery.aspect]} bg-slate-50 ${UI.radii[PAGE_CONFIG.card.radius]} overflow-hidden border border-slate-200/80 group flex items-center justify-center p-4 cursor-pointer`}
+        onClick={() => onImageClick(active)}
+      >
         <LazyCacheImage
           src={img.url}
           alt={`${productName} — ${img.angle || "view"}`}
@@ -245,7 +138,6 @@ function ImageGallery({ images, productName }) {
           </span>
         )}
       </div>
-      {/* Thumbnails */}
       {images.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
           {images.map((im, i) => (
@@ -266,7 +158,7 @@ function ImageGallery({ images, productName }) {
   );
 }
 
-/* Generic spec row */
+// ─── SPEC ITEM ──────────────────────────────────────────────────────────────
 const SpecItem = ({ label, value }) => (
   <div className="flex flex-col gap-0.5 py-2.5 px-3 bg-slate-50 rounded-lg border border-slate-200/60">
     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
@@ -274,16 +166,63 @@ const SpecItem = ({ label, value }) => (
   </div>
 );
 
-/* ============================================================================
-   7. PAGE COMPONENT
-   ========================================================================== */
+// ─── LIGHTBOX ──────────────────────────────────────────────────────────────
+function Lightbox({ images, initialIndex, onClose }) {
+  const [index, setIndex] = useState(initialIndex);
+  const total = images.length;
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") setIndex((i) => (i + 1) % total);
+      if (e.key === "ArrowLeft") setIndex((i) => (i - 1 + total) % total);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [total, onClose]);
+
+  if (!images.length) return null;
+
+  return (
+    <div className="fixed inset-0 z-[999] bg-black/95 flex items-center justify-center p-4" onClick={onClose}>
+      <button onClick={onClose} className="absolute top-5 right-5 text-white/70 hover:text-white text-3xl font-bold">✕</button>
+      {total > 1 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setIndex((i) => (i - 1 + total) % total); }}
+          className="absolute left-4 text-white/60 hover:text-white text-4xl font-black"
+        >
+          ‹
+        </button>
+      )}
+      <div className="max-w-5xl max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+        <img
+          src={images[index].url}
+          alt={images[index].title || `Image ${index + 1}`}
+          className="max-h-[85vh] max-w-full object-contain rounded-lg"
+        />
+        <p className="text-white/60 text-sm text-center mt-2">
+          {index + 1} / {total}
+          {images[index].angle && ` · ${images[index].angle}`}
+        </p>
+      </div>
+      {total > 1 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setIndex((i) => (i + 1) % total); }}
+          className="absolute right-4 text-white/60 hover:text-white text-4xl font-black"
+        >
+          ›
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
 export default function ProductDetailPage() {
   const params = useParams();
-  // Folder is /products/[sku], so the route param key is `sku`,
-  // but its VALUE is the real product id (e.g. "PROD-0001").
   const productId = params.sku;
 
-  /* ---- live catalog load ---- */
+  // ── Data ──
   const [products, setProducts] = useState([]);
   const [categoriesMap, setCategoriesMap] = useState({});
   const [subcategoriesMap, setSubcategoriesMap] = useState({});
@@ -300,49 +239,33 @@ export default function ProductDetailPage() {
         setProducts(products.map(reshapeProduct));
         setCategoriesMap(
           Object.fromEntries(
-            categories.map((c) => [
-              c.id,
-              { name: c.name, image: c.image || "", icon: c.icon || "📦", description: "" },
-            ])
+            categories.map((c) => [c.id, { name: c.name, image: c.image || "", icon: c.icon || "📦", description: "" }])
           )
         );
         setSubcategoriesMap(
           Object.fromEntries(
             categories.flatMap((c) =>
-              (c.subcategories || []).map((s) => [
-                s.id,
-                { name: s.name, categoryId: c.id },
-              ])
+              (c.subcategories || []).map((s) => [s.id, { name: s.name, categoryId: c.id }])
             )
           )
         );
         setBrandsMap(
           Object.fromEntries(
-            brands.map((b) => [b.id, { id: b.id, name: b.name, productCount: b.productCount }])
+            brands.map((b) => [b.id, { id: b.id, name: b.name, logo: b.logo, productCount: b.productCount }])
           )
         );
       })
       .catch((err) => console.error("Failed to load product:", err))
       .finally(() => !cancelled && setLoadingData(false));
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [productId]);
 
-  /* ---- look up product + linked entities ---- */
-  const product = useMemo(
-    () => products.find((p) => p.id === productId) || null,
-    [products, productId]
-  );
+  const product = useMemo(() => products.find((p) => p.id === productId) || null, [products, productId]);
   const category = product ? categoriesMap[product.categoryId] : null;
   const subCategory = product ? subcategoriesMap[product.subCategoryId] : null;
-  const brand = product?.brandId
-    ? brandsMap[product.brandId] || { name: product.brandName }
-    : product?.brandName
-    ? { name: product.brandName }
-    : null;
-  const clients = [];
-  // ✅ Recommendations obey the admin's settings (all / category / selected).
+  const brand = product?.brandId ? brandsMap[product.brandId] || { name: product.brandName } : product?.brandName ? { name: product.brandName } : null;
+
+  // ── Recommendations ──
   const [prodSettings, setProdSettings] = useState(loadProductsSettings);
   useEffect(() => {
     const reload = () => setProdSettings(loadProductsSettings());
@@ -361,19 +284,28 @@ export default function ProductDetailPage() {
     return resolveRecommendations(prodSettings, products, realCurrent);
   }, [product, prodSettings, products]);
 
-  /* ---- review aggregates ---- */
-  const allReviews = clients.flatMap((c) => (c.reviews || []).map((r) => ({ ...r, client: c })));
-  const avgRating = allReviews.length
-    ? (allReviews.reduce((s, r) => s + r.rating, 0) / allReviews.length).toFixed(1)
-    : null;
-
-  /* ---- RFQ cart state (unchanged behaviour, nicer toast) ---- */
+  // ── RFQ Cart ──
   const [rfqCart, setRfqCart] = useState([]);
   const [quantities, setQuantities] = useState({});
   const [showFormModal, setShowFormModal] = useState(false);
   const [toast, setToast] = useState(null);
   const [expandedReviews, setExpandedReviews] = useState({});
   const [formData, setFormData] = useState({ fullName: "", email: "", mobile: "", companyName: "", address: "", remarks: "" });
+
+  // ── Lightbox ──
+  const [lightboxIndex, setLightboxIndex] = useState(null);
+
+  // ── Tabs ──
+  const tabs = [
+    { id: "overview", label: "Overview" },
+    { id: "specifications", label: "Specifications" },
+    { id: "brand", label: "Brand" },
+  ];
+  // Add Video tab if videoUrl exists
+  if (product?.videoUrl) tabs.push({ id: "video", label: "Video" });
+  tabs.push({ id: "related", label: "Related" });
+
+  const [activeTab, setActiveTab] = useState("overview");
 
   const showToast = (msg) => {
     setToast(msg);
@@ -391,7 +323,7 @@ export default function ProductDetailPage() {
 
   const addToRfqCart = (p) => {
     const selectedQty = quantities[p.sku] || 1;
-    const pid = p.id || p.sku; // reshapeProduct sets both to the backend product id
+    const pid = p.id || p.sku;
     setRfqCart((prevCart) => {
       const existing = prevCart.find((item) => item.id === pid);
       if (existing) {
@@ -434,15 +366,56 @@ export default function ProductDetailPage() {
     }
   };
 
-  /* ---------------------------------------------------------------------- */
-  /* NOT FOUND                                                               */
-  /* ---------------------------------------------------------------------- */
+  // ── Reshape product ──
+  function reshapeProduct(p) {
+    const brandName = p.brand && typeof p.brand === "object" ? p.brand.name : p.brand || "";
+    let attributes = {};
+    if (Array.isArray(p.specifications)) {
+      attributes = p.specifications.reduce((acc, s) => {
+        if (s?.key) acc[s.key] = s.value;
+        return acc;
+      }, {});
+    } else if (p.specifications && typeof p.specifications === "object") {
+      attributes = p.specifications;
+    }
+    const certifications = Array.isArray(p.certifications)
+      ? p.certifications.map((c) => (typeof c === "string" ? c : c?.name)).filter(Boolean)
+      : [];
+    return {
+      sku: p.id,
+      id: p.id,
+      model: p.model || "",
+      name: p.name,
+      categoryId: p.categoryId,
+      subCategoryId: p.subcategoryId || p.subCategoryId || "",
+      subcategoryId: p.subcategoryId || "",
+      brandId: p.brandId || p.distributorId || (p.brand && p.brand.id) || "",
+      distributorId: p.brandId || p.distributorId || (p.brand && p.brand.id) || "",
+      clientIds: [],
+      brandName,
+      specification: p.keyFeatures || "",
+      description: p.description || p.keyFeatures || "",
+      manufacturer: p.manufacturer || "",
+      material: p.material || "",
+      certifications,
+      attributes,
+      images: Array.isArray(p.images) ? p.images : [],
+      brochure: p.brochureUrl
+        ? {
+            url: p.brochureUrl,
+            label: p.brochureName || "Download Brochure",
+            size: p.brochureSize ? `${(p.brochureSize / 1024).toFixed(0)} KB` : "",
+          }
+        : undefined,
+      videoUrl: p.videoUrl || null,
+    };
+  }
+
+  // ── Loading / Not Found ──
   if (loadingData) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
-          Loading product…
-        </p>
+        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Loading product…</p>
       </div>
     );
   }
@@ -451,9 +424,7 @@ export default function ProductDetailPage() {
       <div className="min-h-screen bg-slate-50 font-sans antialiased text-slate-800">
         <div className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
           <div className={`${PAGE_CONFIG.layout.container} mx-auto px-4 md:px-8 py-6`}>
-            <Link href="/products" className="text-blue-600 hover:text-blue-900 font-semibold text-sm">
-              ← Back to Products
-            </Link>
+            <Link href="/products" className="text-blue-600 hover:text-blue-900 font-semibold text-sm">← Back to Products</Link>
           </div>
         </div>
         <div className={`${PAGE_CONFIG.layout.container} mx-auto px-4 md:px-8 py-20 flex flex-col items-center justify-center`}>
@@ -476,9 +447,183 @@ export default function ProductDetailPage() {
   const isAlreadyInCart = !!cartItem;
   const S = PAGE_CONFIG.sections;
 
-  /* ---------------------------------------------------------------------- */
-  /* MAIN RENDER                                                             */
-  /* ---------------------------------------------------------------------- */
+  // ── Render Tabs Content ──
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "overview":
+        return (
+          <>
+            {S.description && product.description && (
+              <Card>
+                <Eyebrow>Product Description</Eyebrow>
+                <div className="mt-3">
+                  <DescriptionBlock text={product.description} />
+                </div>
+              </Card>
+            )}
+            {S.brochure && product.brochure && (
+              <Card>
+                <Eyebrow>Brochure / Catalog</Eyebrow>
+                <div className="mt-3 flex gap-3 flex-wrap">
+                  <a
+                    href={product.brochure.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 font-black text-xs px-4 py-2 rounded-xl hover:bg-blue-100 transition-colors"
+                  >
+                    👁️ Preview
+                  </a>
+                  <a
+                    href={product.brochure.url}
+                    download
+                    className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 font-black text-xs px-4 py-2 rounded-xl hover:bg-emerald-100 transition-colors"
+                  >
+                    ⬇ Download {product.brochure.size ? `(${product.brochure.size})` : ""}
+                  </a>
+                </div>
+              </Card>
+            )}
+          </>
+        );
+      case "specifications":
+        return (
+          <Card>
+            <Eyebrow>Technical Specifications</Eyebrow>
+            <div className={`grid ${UI.specCols[PAGE_CONFIG.specs.columns]} gap-2.5 mt-4`}>
+              {product.manufacturer && <SpecItem label="Manufacturer" value={product.manufacturer} />}
+              {product.material && <SpecItem label="Material" value={product.material} />}
+              {product.weight && <SpecItem label="Weight" value={product.weight} />}
+              {product.capacity && <SpecItem label="Capacity" value={product.capacity} />}
+              {product.wattage && <SpecItem label="Power" value={product.wattage} />}
+              {product.dimensions && (
+                <SpecItem
+                  label="Dimensions (H × W × D)"
+                  value={`${product.dimensions.height} × ${product.dimensions.width} × ${product.dimensions.depth}`}
+                />
+              )}
+              {PAGE_CONFIG.specs.mergeCustomAttributes &&
+                product.attributes &&
+                Object.entries(product.attributes).map(([key, value]) => (
+                  <SpecItem key={key} label={key} value={value} />
+                ))}
+            </div>
+            {S.certifications && product.certifications?.length > 0 && (
+              <div className="mt-6 pt-5 border-t border-slate-100">
+                <Eyebrow>Certifications & Standards</Eyebrow>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {product.certifications.map((cert) => (
+                    <span key={cert} className="flex items-center gap-1.5 text-xs font-bold text-blue-900 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg">
+                      🛡️ {cert}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Card>
+        );
+      case "brand":
+        return brand ? (
+          <Card>
+            <Eyebrow>Distributor Brand</Eyebrow>
+            <div className="flex flex-col sm:flex-row gap-5 mt-4">
+              {brand.logo ? (
+                <LazyCacheImage
+                  src={brand.logo}
+                  alt={brand.name}
+                  onError={fallbackImg}
+                  className="w-16 h-16 rounded-xl object-contain border border-slate-200 shrink-0"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 font-black text-xl shrink-0">
+                  {brand.name?.charAt(0) || "B"}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-black text-slate-900">{brand.name}</h3>
+                  <span className="text-[10px] font-black text-lime-700 bg-lime-50 border border-lime-200 px-2 py-0.5 rounded uppercase tracking-wider">
+                    Authorized Partner
+                  </span>
+                </div>
+                {brand.description && <p className="text-sm text-slate-600 font-medium mt-1.5 leading-relaxed">{brand.description}</p>}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4">
+                  <SpecItem label="Products Listed" value={`${brand.productCount || 0}+`} />
+                </div>
+                {brand.webUrl && (
+                  <a href={brand.webUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-black text-blue-700 uppercase tracking-wider hover:text-blue-900 mt-4 inline-block">
+                    🌐 Visit Website →
+                  </a>
+                )}
+                {brand.email && (
+                  <a href={`mailto:${brand.email}`} className="text-xs font-black text-slate-500 uppercase tracking-wider hover:text-slate-900 ml-4 inline-block">
+                    ✉️ {brand.email}
+                  </a>
+                )}
+                {brand.gallery?.length > 0 && (
+                  <div className="flex gap-2 mt-4 overflow-x-auto custom-scrollbar pb-1">
+                    {brand.gallery.map((g, i) => (
+                      <LazyCacheImage key={i} src={g} alt={`${brand.name} gallery ${i + 1}`} onError={fallbackImg}
+                        className="h-20 rounded-lg object-cover border border-slate-200 shrink-0" containerClassName="h-20 shrink-0" />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+        ) : (
+          <div className="text-center text-slate-400 py-8">No brand information available.</div>
+        );
+      case "video":
+        return (
+          <Card>
+            <Eyebrow>Product Video</Eyebrow>
+            <div className="mt-3 aspect-video w-full overflow-hidden rounded-xl border border-slate-200">
+              <iframe
+                src={product.videoUrl}
+                title="Product video"
+                className="h-full w-full"
+                allowFullScreen
+                loading="lazy"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              />
+            </div>
+          </Card>
+        );
+      case "related":
+        return relatedProducts.length > 0 ? (
+          <Card>
+            <Eyebrow>More in {category?.name} · {subCategory?.name}</Eyebrow>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+              {relatedProducts.map((rp) => (
+                <Link key={rp.id} href={`/products/${rp.id}`} className="group">
+                  <div className="border border-slate-200/80 rounded-xl overflow-hidden bg-white hover:shadow-md hover:border-blue-300 transition-all h-full flex flex-col">
+                    <div className="aspect-square bg-slate-50 overflow-hidden flex items-center justify-center p-3">
+                      <LazyCacheImage src={rp.images?.[0]?.url} alt={rp.name} onError={fallbackImg}
+                        className="max-w-full max-h-full w-auto h-auto object-contain group-hover:scale-105 transition-transform duration-300" />
+                    </div>
+                    <div className="p-3.5 flex flex-col flex-1">
+                      <span className="text-[10px] font-mono font-bold text-slate-400">{rp.id}</span>
+                      <h5 className="text-xs font-black text-slate-900 mt-0.5 leading-snug group-hover:text-blue-900 transition-colors">
+                        {rp.name}
+                      </h5>
+                      <span className="text-[10px] font-black text-blue-600 uppercase tracking-wider mt-auto pt-2">
+                        View Details →
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </Card>
+        ) : (
+          <div className="text-center text-slate-400 py-8">No related products found.</div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // ── Main Render ──
   return (
     <div className="min-h-screen bg-slate-50 font-sans antialiased text-slate-800">
 
@@ -530,14 +675,15 @@ export default function ProductDetailPage() {
             {/* ---- HERO: GALLERY + OVERVIEW ---- */}
             <Card>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-
                 {S.gallery && (
-                  <ImageGallery images={product.images} productName={product.name} />
+                  <ImageGallery
+                    images={product.images}
+                    productName={product.name}
+                    onImageClick={(index) => setLightboxIndex(index)}
+                  />
                 )}
-
                 {S.overview && (
                   <div className="flex flex-col">
-                    {/* SKU + model chips */}
                     <div className="flex flex-wrap items-center gap-2 mb-3">
                       {product.model && (
                         <span className="text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md">
@@ -545,28 +691,29 @@ export default function ProductDetailPage() {
                         </span>
                       )}
                     </div>
-
-                    {/* Product name — size from config */}
                     <h1 className={`${UI.productNameSizes[PAGE_CONFIG.heading.productName]} font-black text-slate-900 tracking-tight leading-tight`}>
                       {product.name}
                     </h1>
-
                     {product.specification && (
-                      <p className="text-sm text-slate-500 font-medium mt-2">{product.specification}</p>
+                      <div className="mt-2">
+                        <RichTextRenderer html={product.specification} className="text-sm text-slate-500 font-medium" />
+                      </div>
                     )}
-
-                    {/* Brand chip (brand allocation) */}
                     {brand && (
                       <div className="flex items-center gap-3 mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200/60 w-fit">
-                        <LazyCacheImage src={brand.logo} alt={brand.name} onError={fallbackImg} className="w-9 h-9 rounded-lg object-cover border border-slate-200" />
+                        {brand.logo ? (
+                          <LazyCacheImage src={brand.logo} alt={brand.name} onError={fallbackImg} className="w-9 h-9 rounded-lg object-contain border border-slate-200" />
+                        ) : (
+                          <div className="w-9 h-9 rounded-lg bg-slate-200 flex items-center justify-center text-slate-500 font-black text-sm">
+                            {brand.name?.charAt(0) || "B"}
+                          </div>
+                        )}
                         <div>
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Brand</p>
                           <p className="text-sm font-black text-slate-900">{brand.name}</p>
                         </div>
                       </div>
                     )}
-
-                    {/* Category / subcategory allocation chips */}
                     <div className="flex flex-wrap gap-2 mt-4">
                       {category && (
                         <span className="text-[10px] font-black uppercase tracking-wider text-blue-900 bg-blue-50 border border-blue-100 px-2.5 py-1.5 rounded-lg">
@@ -579,21 +726,12 @@ export default function ProductDetailPage() {
                         </span>
                       )}
                     </div>
-
-                    {/* Zone + rating row */}
                     <div className="mt-auto pt-5 space-y-2.5">
                       {product.zone && (
                         <div className="flex items-center gap-2 text-sm">
                           <span>📍</span>
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Warehouse:</span>
                           <span className="font-bold text-emerald-700">{product.zone}</span>
-                        </div>
-                      )}
-                      {avgRating && PAGE_CONFIG.reviews.showSummary && (
-                        <div className="flex items-center gap-2">
-                          <Stars rating={Number(avgRating)} />
-                          <span className="text-xs font-black text-slate-900">{avgRating}</span>
-                          <span className="text-xs text-slate-400 font-medium">({allReviews.length} client review{allReviews.length > 1 ? "s" : ""})</span>
                         </div>
                       )}
                       <div className="flex items-center gap-2">
@@ -608,268 +746,28 @@ export default function ProductDetailPage() {
               </div>
             </Card>
 
-            {/* ---- DESCRIPTION ---- */}
-            {S.description && product.description && (
-              <Card>
-                <Eyebrow>Product Description</Eyebrow>
-                <div className="mt-3">
-                  <DescriptionBlock text={product.description} />
-                </div>
-              </Card>
-            )}
+            {/* ---- TABS ---- */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+              <div className="flex overflow-x-auto border-b border-slate-200">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-5 py-3 text-xs font-black uppercase tracking-wider whitespace-nowrap border-b-2 transition-colors ${
+                      activeTab === tab.id
+                        ? "border-blue-950 text-blue-950"
+                        : "border-transparent text-slate-400 hover:text-slate-700"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+              <div className="p-6">
+                {renderTabContent()}
+              </div>
+            </div>
 
-            {/* ---- SPECIFICATIONS (standard fields + custom key/values) ---- */}
-            {S.specifications && (
-              <Card>
-                <Eyebrow>Technical Specifications</Eyebrow>
-                <div className={`grid ${UI.specCols[PAGE_CONFIG.specs.columns]} gap-2.5 mt-4`}>
-                  {product.manufacturer && <SpecItem label="Manufacturer" value={product.manufacturer} />}
-                  {product.material && <SpecItem label="Material" value={product.material} />}
-                  {product.weight && <SpecItem label="Weight" value={product.weight} />}
-                  {product.capacity && <SpecItem label="Capacity" value={product.capacity} />}
-                  {product.wattage && <SpecItem label="Power" value={product.wattage} />}
-                  {product.dimensions && (
-                    <SpecItem
-                      label="Dimensions (H × W × D)"
-                      value={`${product.dimensions.height} × ${product.dimensions.width} × ${product.dimensions.depth}`}
-                    />
-                  )}
-                  {/* CUSTOM KEY/VALUE PAIRS — "we can create our own key and value" */}
-                  {PAGE_CONFIG.specs.mergeCustomAttributes &&
-                    product.attributes &&
-                    Object.entries(product.attributes).map(([key, value]) => (
-                      <SpecItem key={key} label={key} value={value} />
-                    ))}
-                </div>
-
-                {/* Certifications */}
-                {S.certifications && product.certifications?.length > 0 && (
-                  <div className="mt-6 pt-5 border-t border-slate-100">
-                    <Eyebrow>Certifications & Standards</Eyebrow>
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {product.certifications.map((cert) => (
-                        <span key={cert} className="flex items-center gap-1.5 text-xs font-bold text-blue-900 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg">
-                          <span>🛡️</span> {cert}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Brochure download */}
-                {S.brochure && product.brochure && (
-                  <div className="mt-6 pt-5 border-t border-slate-100">
-                    <a
-                      href={product.brochure.url}
-                      download
-                      className="flex items-center justify-between gap-4 p-4 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 rounded-xl transition-colors group"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-2xl shrink-0">📄</span>
-                        <div className="min-w-0">
-                          <p className="text-sm font-black text-slate-900 truncate group-hover:text-blue-900 transition-colors">
-                            {product.brochure.label}
-                          </p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                            PDF {product.brochure.size ? `• ${product.brochure.size}` : ""}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-black text-blue-700 uppercase tracking-wider border border-blue-200 px-3 py-2 rounded-lg group-hover:bg-blue-700 group-hover:text-white transition-colors shrink-0">
-                        ⬇ Download
-                      </span>
-                    </a>
-                  </div>
-                )}
-              </Card>
-            )}
-
-            {/* ---- DISTRIBUTOR BRAND (full node from flow) ---- */}
-            {S.brand && brand && (
-              <Card>
-                <Eyebrow>Distributor Brand</Eyebrow>
-                <div className="flex flex-col sm:flex-row gap-5 mt-4">
-                  <LazyCacheImage src={brand.logo} alt={brand.name} onError={fallbackImg} className="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-black text-slate-900">{brand.name}</h3>
-                      <span className="text-[10px] font-black text-lime-700 bg-lime-50 border border-lime-200 px-2 py-0.5 rounded uppercase tracking-wider">
-                        Authorized Partner
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-600 font-medium mt-1.5 leading-relaxed">{brand.description}</p>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4">
-                      {/* <SpecItem label="Location" value={brand.location} /> */}
-                      <SpecItem label="Products Listed" value={`${brand.productCount}+`} />
-                      {/* <SpecItem label="Operational Zone" value={brand.operationalZone} /> */}
-                    </div>
-
-                    <div className="flex flex-wrap gap-3 mt-4">
-                      {brand.webUrl && (
-                        <a href={brand.webUrl} target="_blank" rel="noopener noreferrer"
-                          className="text-xs font-black text-blue-700 uppercase tracking-wider hover:text-blue-900 transition-colors">
-                          🌐 Visit Website →
-                        </a>
-                      )}
-                      {brand.email && (
-                        <a href={`mailto:${brand.email}`}
-                          className="text-xs font-black text-slate-500 uppercase tracking-wider hover:text-slate-900 transition-colors">
-                          ✉️ {brand.email}
-                        </a>
-                      )}
-                    </div>
-
-                    {brand.gallery?.length > 0 && (
-                      <div className="flex gap-2 mt-4 overflow-x-auto custom-scrollbar pb-1">
-                        {brand.gallery.map((g, i) => (
-                          <LazyCacheImage key={i} src={g} alt={`${brand.name} gallery ${i + 1}`} onError={fallbackImg}
-                            className="h-20 rounded-lg object-cover border border-slate-200 shrink-0" containerClassName="h-20 shrink-0" />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {/* ---- CLIENTS & REVIEWS (full node from flow) ---- */}
-            {S.clients && clients.length > 0 && (
-              <Card>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Eyebrow>Trusted By {clients.length} Client{clients.length > 1 ? "s" : ""}</Eyebrow>
-                  {avgRating && PAGE_CONFIG.reviews.showSummary && (
-                    <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-lg">
-                      <Stars rating={Number(avgRating)} size="text-xs" />
-                      <span className="text-xs font-black text-amber-800">{avgRating} / 5</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-4 mt-4">
-                  {clients.map((client) => {
-                    const reviews = client.reviews || [];
-                    const isExpanded = !!expandedReviews[client.id];
-                    const visibleReviews = isExpanded ? reviews : reviews.slice(0, PAGE_CONFIG.reviews.maxVisiblePerClient);
-                    return (
-                      <div key={client.id} className="border border-slate-200/80 rounded-xl p-4 md:p-5 bg-slate-50/50">
-                        {/* client header */}
-                        <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                          <LazyCacheImage src={client.logo} alt={client.company} onError={fallbackImg}
-                            className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0" containerClassName="shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                              <h4 className="text-sm font-black text-slate-900">{client.company}</h4>
-                              {client.url && (
-                                <a href={client.url} target="_blank" rel="noopener noreferrer"
-                                  className="text-[10px] font-black text-blue-600 uppercase tracking-wider hover:text-blue-900">
-                                  Visit ↗
-                                </a>
-                              )}
-                            </div>
-                            <p className="text-xs text-slate-500 font-semibold">{client.name}</p>
-                            {client.details && (
-                              <p className="text-xs text-slate-600 font-medium mt-1.5 leading-relaxed">{client.details}</p>
-                            )}
-
-                            {/* contacts + socials */}
-                            <div className="flex flex-wrap gap-2 mt-2.5">
-                              {client.contact?.phone && (
-                                <a href={`tel:${client.contact.phone}`} className="text-[10px] font-bold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-md hover:border-blue-300 transition-colors">
-                                  📞 {client.contact.phone}
-                                </a>
-                              )}
-                              {client.contact?.email && (
-                                <a href={`mailto:${client.contact.email}`} className="text-[10px] font-bold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-md hover:border-blue-300 transition-colors">
-                                  ✉️ {client.contact.email}
-                                </a>
-                              )}
-                              {client.social?.linkedin && (
-                                <a href={client.social.linkedin} target="_blank" rel="noopener noreferrer"
-                                  className="text-[10px] font-black text-blue-700 bg-blue-50 border border-blue-100 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors">in LinkedIn</a>
-                              )}
-                              {client.social?.instagram && (
-                                <a href={client.social.instagram} target="_blank" rel="noopener noreferrer"
-                                  className="text-[10px] font-black text-pink-700 bg-pink-50 border border-pink-100 px-2 py-1 rounded-md hover:bg-pink-100 transition-colors">◎ Instagram</a>
-                              )}
-                              {client.social?.twitter && (
-                                <a href={client.social.twitter} target="_blank" rel="noopener noreferrer"
-                                  className="text-[10px] font-black text-slate-700 bg-slate-100 border border-slate-200 px-2 py-1 rounded-md hover:bg-slate-200 transition-colors">𝕏 Twitter</a>
-                              )}
-                            </div>
-
-                            {/* client gallery */}
-                            {client.gallery?.length > 0 && (
-                              <div className="flex gap-2 mt-3 overflow-x-auto custom-scrollbar pb-1">
-                                {client.gallery.map((g, i) => (
-                                  <LazyCacheImage key={i} src={g} alt={`${client.company} site ${i + 1}`} onError={fallbackImg}
-                                    className="h-16 rounded-lg object-cover border border-slate-200 shrink-0" containerClassName="h-16 shrink-0" />
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* reviews */}
-                        {reviews.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-slate-200/70 space-y-3">
-                            {visibleReviews.map((review, i) => (
-                              <div key={i} className="bg-white rounded-lg border border-slate-200/70 p-3.5">
-                                <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-                                  <Stars rating={review.rating} size="text-xs" />
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                    {new Date(review.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-slate-700 font-medium leading-relaxed">"{review.description}"</p>
-                              </div>
-                            ))}
-                            {reviews.length > PAGE_CONFIG.reviews.maxVisiblePerClient && (
-                              <button
-                                onClick={() => setExpandedReviews((prev) => ({ ...prev, [client.id]: !isExpanded }))}
-                                className="text-[10px] font-black text-blue-700 uppercase tracking-wider hover:text-blue-900 transition-colors"
-                              >
-                                {isExpanded ? "− Show fewer reviews" : `+ View all ${reviews.length} reviews`}
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </Card>
-            )}
-
-            {/* ---- RELATED PRODUCTS (same category + subcategory) ---- */}
-            {S.related && relatedProducts.length > 0 && (
-              <Card>
-                <Eyebrow>
-                  More in {category?.name} · {subCategory?.name}
-                </Eyebrow>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                  {relatedProducts.map((rp) => (
-                    <Link key={rp.id} href={`/products/${rp.id}`} className="group">
-                      <div className="border border-slate-200/80 rounded-xl overflow-hidden bg-white hover:shadow-md hover:border-blue-300 transition-all h-full flex flex-col">
-                        <div className="aspect-square bg-slate-50 overflow-hidden flex items-center justify-center p-3">
-                          <LazyCacheImage src={rp.images?.[0]?.url} alt={rp.name} onError={fallbackImg}
-                            className="max-w-full max-h-full w-auto h-auto object-contain group-hover:scale-105 transition-transform duration-300" />
-                        </div>
-                        <div className="p-3.5 flex flex-col flex-1">
-                          <span className="text-[10px] font-mono font-bold text-slate-400">{rp.id}</span>
-                          <h5 className="text-xs font-black text-slate-900 mt-0.5 leading-snug group-hover:text-blue-900 transition-colors">
-                            {rp.name}
-                          </h5>
-                          <span className="text-[10px] font-black text-blue-600 uppercase tracking-wider mt-auto pt-2">
-                            View Details →
-                          </span>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </Card>
-            )}
           </div>
 
           {/* ========== RIGHT COLUMN — STICKY ADD-TO-QUOTE ========== */}
@@ -880,7 +778,6 @@ export default function ProductDetailPage() {
                 B2B bulk pricing • GST invoice
               </p>
 
-              {/* quantity stepper */}
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">
                 Required Quantity (Units)
               </label>
@@ -899,7 +796,6 @@ export default function ProductDetailPage() {
                   aria-label="Increase quantity">+</button>
               </div>
 
-              {/* add to cart */}
               <button
                 onClick={() => addToRfqCart(product)}
                 className={`w-full text-xs font-black uppercase tracking-wider py-3.5 rounded-xl transition-colors border-2 mb-3 ${
@@ -919,7 +815,6 @@ export default function ProductDetailPage() {
                 </div>
               )}
 
-              {/* request quotation */}
               <button
                 onClick={() => { if (rfqCart.length === 0) { showToast("Add items to your Quote Bucket first."); return; } setShowFormModal(true); }}
                 className={`w-full text-xs font-black uppercase tracking-wider py-3.5 rounded-xl border-2 transition-colors ${
@@ -931,7 +826,6 @@ export default function ProductDetailPage() {
                 🚀 Request Quotation
               </button>
 
-              {/* quick facts */}
               <div className="mt-5 pt-5 border-t border-slate-100 space-y-2.5">
                 {[
                   product.zone && ["📍 Warehouse", product.zone],
@@ -947,7 +841,6 @@ export default function ProductDetailPage() {
               </div>
             </Card>
 
-            {/* assurance strip */}
             <Card className="!p-4">
               <div className="grid grid-cols-3 gap-2 text-center">
                 {[["🛡️", "Genuine Brands"], ["📑", "Test Certificates"], ["🚚", "Site Delivery"]].map(([icon, label]) => (
@@ -966,7 +859,6 @@ export default function ProductDetailPage() {
       {showFormModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
-
             <div className="bg-blue-950 text-white px-6 py-4 flex justify-between items-center shrink-0">
               <div>
                 <h2 className="text-sm font-black uppercase tracking-wider">Compile Procurement RFQ Slip</h2>
@@ -974,9 +866,7 @@ export default function ProductDetailPage() {
               </div>
               <button onClick={() => setShowFormModal(false)} className="text-white/60 hover:text-white font-bold text-sm" aria-label="Close">✕</button>
             </div>
-
             <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
-
               <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200/60">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                   Items Bundled Inside Order Line ({rfqCart.length})
@@ -989,69 +879,43 @@ export default function ProductDetailPage() {
                         <span className="block text-[10px] text-slate-400 font-mono">SKU: {item.id}</span>
                       </div>
                       <div className="flex items-center space-x-3 shrink-0">
-                        <span className="bg-blue-50 text-blue-900 font-black px-2 py-0.5 rounded text-[10px]">
-                          QTY: {item.quantity} Units
-                        </span>
+                        <span className="bg-blue-50 text-blue-900 font-black px-2 py-0.5 rounded text-[10px]">QTY: {item.quantity} Units</span>
                         <button onClick={() => removeFromCart(item.id)} className="text-rose-500 font-bold text-xs hover:text-rose-700" aria-label={`Remove ${item.name}`}>🗑️</button>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-
               <form onSubmit={handleQuoteSubmission} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-500 uppercase">Contact Full Name</label>
-                    <input type="text" required value={formData.fullName}
-                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                      placeholder="e.g., Amit Sharma"
-                      className="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-950 font-medium" />
+                    <input type="text" required value={formData.fullName} onChange={(e) => setFormData({ ...formData, fullName: e.target.value })} placeholder="e.g., Amit Sharma" className="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-950 font-medium" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-500 uppercase">Company / Enterprise Entity</label>
-                    <input type="text" required value={formData.companyName}
-                      onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                      placeholder="e.g., Singrauli Minerals Private Ltd"
-                      className="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-950 font-medium" />
+                    <input type="text" required value={formData.companyName} onChange={(e) => setFormData({ ...formData, companyName: e.target.value })} placeholder="e.g., Singrauli Minerals Private Ltd" className="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-950 font-medium" />
                   </div>
                 </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-500 uppercase">Official Email Address</label>
-                    <input type="email" required value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="procurement@company.com"
-                      className="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-950 font-medium" />
+                    <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="procurement@company.com" className="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-950 font-medium" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-500 uppercase">Mobile Number</label>
-                    <input type="tel" required value={formData.mobile}
-                      onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
-                      placeholder="10-digit mobile number"
-                      className="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-950 font-medium" />
+                    <input type="tel" required value={formData.mobile} onChange={(e) => setFormData({ ...formData, mobile: e.target.value })} placeholder="10-digit mobile number" className="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-950 font-medium" />
                   </div>
                 </div>
-
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase">Delivery Address (Optional)</label>
-                  <input type="text" value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="Company address for delivery / quotation"
-                    className="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-950 font-medium" />
+                  <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="Company address for delivery / quotation" className="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-950 font-medium" />
                 </div>
-
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase">Specific Dispatch Requirements / Remarks (Optional)</label>
-                  <textarea rows="3" value={formData.remarks}
-                    onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                    placeholder="Provide warehouse dispatch preferences, timeline constraints, or special packaging protocols..."
-                    className="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-950 font-medium" />
+                  <textarea rows="3" value={formData.remarks} onChange={(e) => setFormData({ ...formData, remarks: e.target.value })} placeholder="Provide warehouse dispatch preferences, timeline constraints, or special packaging protocols..." className="w-full text-xs px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:border-blue-950 font-medium" />
                 </div>
-
-                <button type="submit"
-                  className="w-full bg-blue-950 text-white font-black text-xs py-3.5 rounded-xl uppercase tracking-wider shadow-md hover:bg-blue-900 transition-colors">
+                <button type="submit" className="w-full bg-blue-950 text-white font-black text-xs py-3.5 rounded-xl uppercase tracking-wider shadow-md hover:bg-blue-900 transition-colors">
                   🚀 Dispatch Quotation Slip via Email & SMS
                 </button>
               </form>
@@ -1065,6 +929,15 @@ export default function ProductDetailPage() {
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] bg-slate-900 text-white text-xs font-bold px-5 py-3 rounded-xl shadow-2xl border border-slate-700 max-w-[90vw] text-center animate-[toastIn_.25s_ease-out]">
           {toast}
         </div>
+      )}
+
+      {/* ==================== LIGHTBOX ==================== */}
+      {lightboxIndex !== null && product.images && product.images.length > 0 && (
+        <Lightbox
+          images={product.images}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
       )}
 
       <style jsx global>{`
