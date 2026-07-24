@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef  } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import publicCatalogApi from "@/lib/publicCatalogApi";
@@ -106,22 +106,43 @@ function DescriptionBlock({ text }) {
 // ─── IMAGE GALLERY ───────────────────────────────────────────────────────────
 function ImageGallery({ images, productName, onImageClick }) {
   const [active, setActive] = useState(0);
+  const thumbsRef = useRef(null);
+
   if (!images || images.length === 0) {
     return (
-      <div className={`${UI.galleryAspects[PAGE_CONFIG.gallery.aspect]} bg-slate-100 ${UI.radii[PAGE_CONFIG.card.radius]} flex flex-col items-center justify-center text-slate-400`}>
+      <div
+        className={`${UI.galleryAspects[PAGE_CONFIG.gallery.aspect]} bg-slate-100 ${
+          UI.radii[PAGE_CONFIG.card.radius]
+        } flex flex-col items-center justify-center text-slate-400`}
+      >
         <span className="text-4xl mb-2">🖼️</span>
         <span className="text-xs font-bold uppercase tracking-wider">Images coming soon</span>
       </div>
     );
   }
+
   const img = images[active];
+
+  const scrollThumbs = (direction) => {
+    if (thumbsRef.current) {
+      thumbsRef.current.scrollBy({
+        left: direction === "left" ? -200 : 200,
+        behavior: "smooth",
+      });
+    }
+  };
+
   return (
     <div className="space-y-3">
+      {/* Large Image */}
       <div
-        className={`relative ${UI.galleryAspects[PAGE_CONFIG.gallery.aspect]} bg-slate-50 ${UI.radii[PAGE_CONFIG.card.radius]} overflow-hidden border border-slate-200/80 group flex items-center justify-center p-4 cursor-pointer`}
+        className={`relative ${UI.galleryAspects[PAGE_CONFIG.gallery.aspect]} bg-slate-50 ${
+          UI.radii[PAGE_CONFIG.card.radius]
+        } overflow-hidden border border-slate-200/80 group flex items-center justify-center p-4 cursor-pointer`}
         onClick={() => onImageClick(active)}
       >
         <LazyCacheImage
+          key={active}
           src={img.url}
           alt={`${productName} — ${img.angle || "view"}`}
           onError={fallbackImg}
@@ -138,20 +159,55 @@ function ImageGallery({ images, productName, onImageClick }) {
           </span>
         )}
       </div>
+
+      {/* Thumbnail Strip with Buttons Below */}
       {images.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
-          {images.map((im, i) => (
+        <div className="space-y-2">
+          {/* Scrollable Thumbnails (no side margins) */}
+          <div
+            ref={thumbsRef}
+            className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar"
+          >
+            {images.map((im, i) => (
+              <button
+                key={i}
+                onClick={() => setActive(i)}
+                title={im.angle}
+                className={`${
+                  UI.thumbSizes[PAGE_CONFIG.gallery.thumbSize]
+                } shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
+                  i === active
+                    ? "border-blue-900 ring-2 ring-blue-900/20"
+                    : "border-slate-200 hover:border-slate-400 opacity-70 hover:opacity-100"
+                }`}
+              >
+                <LazyCacheImage
+                  src={im.url}
+                  alt={im.angle || `view ${i + 1}`}
+                  onError={fallbackImg}
+                  className="w-full h-full object-contain bg-slate-50 p-1"
+                />
+              </button>
+            ))}
+          </div>
+
+          {/* Navigation Buttons Below */}
+          <div className="flex justify-center gap-3">
             <button
-              key={i}
-              onClick={() => setActive(i)}
-              title={im.angle}
-              className={`${UI.thumbSizes[PAGE_CONFIG.gallery.thumbSize]} shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
-                i === active ? "border-blue-900 ring-2 ring-blue-900/20" : "border-slate-200 hover:border-slate-400 opacity-70 hover:opacity-100"
-              }`}
+              onClick={() => scrollThumbs("left")}
+              className="bg-white border border-slate-200 hover:bg-slate-50 rounded-full w-9 h-9 flex items-center justify-center text-slate-700 shadow-sm transition-colors"
+              aria-label="Scroll left"
             >
-              <LazyCacheImage src={im.url} alt={im.angle || `view ${i + 1}`} onError={fallbackImg} className="w-full h-full object-contain bg-slate-50 p-1" />
+              ‹
             </button>
-          ))}
+            <button
+              onClick={() => scrollThumbs("right")}
+              className="bg-white border border-slate-200 hover:bg-slate-50 rounded-full w-9 h-9 flex items-center justify-center text-slate-700 shadow-sm transition-colors"
+              aria-label="Scroll right"
+            >
+              ›
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -174,8 +230,10 @@ function Lightbox({ images, initialIndex, onClose }) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") onClose();
-      if (e.key === "ArrowRight") setIndex((i) => (i + 1) % total);
-      if (e.key === "ArrowLeft") setIndex((i) => (i - 1 + total) % total);
+      if (total > 1) {
+        if (e.key === "ArrowRight") setIndex((i) => (i + 1) % total);
+        if (e.key === "ArrowLeft") setIndex((i) => (i - 1 + total) % total);
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -183,18 +241,31 @@ function Lightbox({ images, initialIndex, onClose }) {
 
   if (!images.length) return null;
 
+  // Detect left/right half of the viewport and navigate
+  const handleImageClick = (e) => {
+    e.stopPropagation(); // prevent closing the lightbox
+    if (total <= 1) return;
+    if (e.clientX < window.innerWidth / 2) {
+      setIndex((i) => (i - 1 + total) % total); // left half → prev
+    } else {
+      setIndex((i) => (i + 1) % total); // right half → next
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-[999] bg-black/95 flex items-center justify-center p-4" onClick={onClose}>
-      <button onClick={onClose} className="absolute top-5 right-5 text-white/70 hover:text-white text-3xl font-bold">✕</button>
-      {total > 1 && (
-        <button
-          onClick={(e) => { e.stopPropagation(); setIndex((i) => (i - 1 + total) % total); }}
-          className="absolute left-4 text-white/60 hover:text-white text-4xl font-black"
-        >
-          ‹
-        </button>
-      )}
-      <div className="max-w-5xl max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-[999] bg-black/95 flex items-center justify-center p-4"
+      onClick={onClose} // clicking background closes
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-5 right-5 text-white/70 hover:text-white text-3xl font-bold"
+        aria-label="Close lightbox"
+      >
+        ✕
+      </button>
+
+      <div className="max-w-5xl max-h-[85vh]" onClick={handleImageClick}>
         <img
           src={images[index].url}
           alt={images[index].title || `Image ${index + 1}`}
@@ -205,14 +276,6 @@ function Lightbox({ images, initialIndex, onClose }) {
           {images[index].angle && ` · ${images[index].angle}`}
         </p>
       </div>
-      {total > 1 && (
-        <button
-          onClick={(e) => { e.stopPropagation(); setIndex((i) => (i + 1) % total); }}
-          className="absolute right-4 text-white/60 hover:text-white text-4xl font-black"
-        >
-          ›
-        </button>
-      )}
     </div>
   );
 }
@@ -451,40 +514,40 @@ export default function ProductDetailPage() {
   const renderTabContent = () => {
     switch (activeTab) {
       case "overview":
-        return (
-          <>
-            {S.description && product.description && (
-              <Card>
-                <Eyebrow>Product Description</Eyebrow>
-                <div className="mt-3">
-                  <DescriptionBlock text={product.description} />
-                </div>
-              </Card>
-            )}
-            {S.brochure && product.brochure && (
-              <Card>
-                <Eyebrow>Brochure / Catalog</Eyebrow>
-                <div className="mt-3 flex gap-3 flex-wrap">
-                  <a
-                    href={product.brochure.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 font-black text-xs px-4 py-2 rounded-xl hover:bg-blue-100 transition-colors"
-                  >
-                    👁️ Preview
-                  </a>
-                  <a
-                    href={product.brochure.url}
-                    download
-                    className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 font-black text-xs px-4 py-2 rounded-xl hover:bg-emerald-100 transition-colors"
-                  >
-                    ⬇ Download {product.brochure.size ? `(${product.brochure.size})` : ""}
-                  </a>
-                </div>
-              </Card>
-            )}
-          </>
-        );
+      return (
+        <div className="flex flex-col gap-4">
+          {S.description && product.description && (
+            <Card>
+              <Eyebrow>Product Description</Eyebrow>
+              <div className="mt-3">
+                <DescriptionBlock text={product.description} />
+              </div>
+            </Card>
+          )}
+          {S.brochure && product.brochure && (
+            <Card>
+              <Eyebrow>Brochure / Catalog</Eyebrow>
+              <div className="mt-3 flex gap-3 flex-wrap">
+                <a
+                  href={product.brochure.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 font-black text-xs px-4 py-2 rounded-xl hover:bg-blue-100 transition-colors"
+                >
+                  Preview
+                </a>
+                <a
+                  href={product.brochure.url}
+                  download
+                  className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 font-black text-xs px-4 py-2 rounded-xl hover:bg-emerald-100 transition-colors"
+                >
+                  Download {product.brochure.size ? `(${product.brochure.size})` : ""}
+                </a>
+              </div>
+            </Card>
+          )}
+        </div>
+      );
       case "specifications":
         return (
           <Card>
@@ -525,45 +588,76 @@ export default function ProductDetailPage() {
         return brand ? (
           <Card>
             <Eyebrow>Distributor Brand</Eyebrow>
-            <div className="flex flex-col sm:flex-row gap-5 mt-4">
-              {brand.logo ? (
-                <LazyCacheImage
-                  src={brand.logo}
-                  alt={brand.name}
-                  onError={fallbackImg}
-                  className="w-16 h-16 rounded-xl object-contain border border-slate-200 shrink-0"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 font-black text-xl shrink-0">
-                  {brand.name?.charAt(0) || "B"}
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-black text-slate-900">{brand.name}</h3>
-                  <span className="text-[10px] font-black text-lime-700 bg-lime-50 border border-lime-200 px-2 py-0.5 rounded uppercase tracking-wider">
+            <div className="flex flex-col sm:flex-row gap-6 mt-4">
+              {/* Logo */}
+              <div className="shrink-0">
+                {brand.logo ? (
+                  <LazyCacheImage
+                    src={brand.logo}
+                    alt={brand.name}
+                    onError={fallbackImg}
+                    className="w-20 h-20 rounded-2xl object-contain border border-slate-200 bg-white shadow-sm"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-500 font-black text-2xl shadow-sm">
+                    {brand.name?.charAt(0) || "B"}
+                  </div>
+                )}
+              </div>
+
+              {/* Brand details */}
+              <div className="flex-1 min-w-0 space-y-3">
+                {/* Name & badge */}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+                    {brand.name}
+                  </h3>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-emerald-700 ring-1 ring-inset ring-emerald-200">
                     Authorized Partner
                   </span>
                 </div>
-                {brand.description && <p className="text-sm text-slate-600 font-medium mt-1.5 leading-relaxed">{brand.description}</p>}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4">
-                  <SpecItem label="Products Listed" value={`${brand.productCount || 0}+`} />
+
+                {/* Description */}
+                {brand.description && (
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    {brand.description}
+                  </p>
+                )}
+
+                {/* Quick stats */}
+                <div className="flex flex-wrap gap-2 pt-0.5">
+                  <div className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                    {brand.productCount || 0}+ products listed
+                  </div>
+                  {/* You can add more stat chips here if needed */}
                 </div>
-                {brand.webUrl && (
-                  <a href={brand.webUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-black text-blue-700 uppercase tracking-wider hover:text-blue-900 mt-4 inline-block">
-                    🌐 Visit Website →
-                  </a>
-                )}
-                {brand.email && (
-                  <a href={`mailto:${brand.email}`} className="text-xs font-black text-slate-500 uppercase tracking-wider hover:text-slate-900 ml-4 inline-block">
-                    ✉️ {brand.email}
-                  </a>
-                )}
+
+                {/* Contact links */}
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-1 pt-1 text-xs font-semibold">
+                  {brand.webUrl && (
+                    <a
+                      href={brand.webUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-blue-700 hover:text-blue-900 transition-colors"
+                    >
+                      Visit website
+                    </a>
+                  )}
+                </div>
+
+                {/* Gallery */}
                 {brand.gallery?.length > 0 && (
-                  <div className="flex gap-2 mt-4 overflow-x-auto custom-scrollbar pb-1">
+                  <div className="flex gap-2.5 overflow-x-auto custom-scrollbar pb-1 pt-2">
                     {brand.gallery.map((g, i) => (
-                      <LazyCacheImage key={i} src={g} alt={`${brand.name} gallery ${i + 1}`} onError={fallbackImg}
-                        className="h-20 rounded-lg object-cover border border-slate-200 shrink-0" containerClassName="h-20 shrink-0" />
+                      <LazyCacheImage
+                        key={i}
+                        src={g}
+                        alt={`${brand.name} gallery ${i + 1}`}
+                        onError={fallbackImg}
+                        className="h-24 w-32 rounded-lg object-cover border border-slate-200 shadow-sm shrink-0"
+                        containerClassName="h-24 w-32 shrink-0"
+                      />
                     ))}
                   </div>
                 )}
@@ -571,12 +665,14 @@ export default function ProductDetailPage() {
             </div>
           </Card>
         ) : (
-          <div className="text-center text-slate-400 py-8">No brand information available.</div>
+          <div className="text-center text-slate-400 py-10 text-sm font-medium">
+            No brand information available.
+          </div>
         );
       case "video":
         return (
           <Card>
-            <Eyebrow>Product Video</Eyebrow>
+            {/* <Eyebrow>Product Video</Eyebrow> */}
             <div className="mt-3 aspect-video w-full overflow-hidden rounded-xl border border-slate-200">
               <iframe
                 src={product.videoUrl}
