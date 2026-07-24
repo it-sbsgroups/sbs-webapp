@@ -1,10 +1,13 @@
+// sbs-backend/src/products/products.controller.ts
 import {
   Controller, Get, Post, Put, Delete, Body, Param, Query,
-  HttpCode, HttpStatus, Res, UseInterceptors, UploadedFile, BadRequestException, NotFoundException,
+  HttpCode, HttpStatus, Res, UseInterceptors, UploadedFile,
+  BadRequestException, NotFoundException,
 } from '@nestjs/common';
-import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
-import * as multer from 'multer';
+import multer from 'multer'; // <-- import multer as default
+import { extname, join, basename } from 'path'; // <-- import basename
+import type { Response } from 'express';
 import { ProductsService } from './products.service';
 import { CataloguePdfService } from './catalogue-pdf.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -19,20 +22,21 @@ export class ProductsController {
     private readonly cataloguePdfService: CataloguePdfService,
   ) {}
 
-  // Full catalogue as a real, downloadable PDF — category/subcategory-wise,
-  // one image + name + model + certifications + key features per product.
+  // ---- Catalogue PDF ----
   @Public()
   @Get('catalogue/download')
   async downloadCatalogue(@Res() res: Response) {
     await this.cataloguePdfService.streamCatalogue(res);
   }
 
+  // ---- Product list & search ----
   @Public()
   @Get()
   async findAll(@Query() query: QueryProductsDto) {
     return this.productsService.findAll(query);
   }
 
+  // ---- CSV Export ----
   @Get('export/csv')
   async exportCSV(@Res() res: Response) {
     const data = await this.productsService.exportToCSV();
@@ -50,18 +54,21 @@ export class ProductsController {
     res.send(csv);
   }
 
+  // ---- Public SKU lookup ----
   @Public()
   @Get('sku/:sku')
   async findBySku(@Param('sku') sku: string) {
     return this.productsService.findBySku(sku);
   }
 
+  // ---- Single product ----
   @Public()
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.productsService.findOne(id);
   }
 
+  // ---- Related products ----
   @Public()
   @Get(':id/related')
   async getRelated(
@@ -73,15 +80,14 @@ export class ProductsController {
   }
 
   // ============================================
-  // IMAGE UPLOAD ENDPOINTS (server-side WebP + compression to <100KB)
+  // IMAGE UPLOAD (unchanged – Cloudinary)
   // ============================================
 
-  // Standalone upload — used while CREATING a product (no id yet).
   @Post('images/upload')
   @UseInterceptors(
     FileInterceptor('image', {
       storage: multer.memoryStorage(),
-      limits: { fileSize: 25 * 1024 * 1024 }, // 25MB raw input allowed
+      limits: { fileSize: 25 * 1024 * 1024 },
     }),
   )
   async uploadImageStandalone(@UploadedFile() file: Express.Multer.File) {
@@ -92,7 +98,6 @@ export class ProductsController {
     return this.productsService.uploadImage(file);
   }
 
-  // Upload tied to an existing product (used while EDITING).
   @Post(':id/images/upload')
   @UseInterceptors(
     FileInterceptor('image', {
@@ -112,14 +117,27 @@ export class ProductsController {
   }
 
   // ============================================
-  // BROCHURE ENDPOINTS
+  // BROCHURE – LOCAL STORAGE & COMPRESSION
   // ============================================
 
+  /**
+   * Upload a brochure file (PDF, DOC, DOCX, JPG, PNG, WebP, XLS, XLSX)
+   * – stored in `public/products/brochure/`
+   * – compressed (PDF via pdf‑lib, images via sharp)
+   * – database updated with local path
+   */
   @Post(':id/brochure')
   @UseInterceptors(
     FileInterceptor('brochure', {
-      storage: multer.memoryStorage(),
-      limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+      storage: multer.diskStorage({
+        destination: './public/products/brochure',
+        filename: (req, file, cb) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+        },
+      }),
+      limits: { fileSize: 20 * 1024 * 1024 },
     }),
   )
   async uploadBrochure(
@@ -127,38 +145,76 @@ export class ProductsController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
-    return this.productsService.uploadBrochure(id, file);
+    const compressedPath = await this.productsService.compressBrochure(file);
+    // ✅ store relative path (no leading slash)
+    const relativePath = `products/brochure/${basename(compressedPath)}`;
+    const product = await this.productsService.updateBrochure(id, {
+      url: relativePath,
+      name: file.originalname,
+      size: file.size,
+      format: extname(file.originalname).slice(1),
+    });
+    return product;
   }
 
+  /**
+   * Serve a brochure for preview or download.
+   * ?mode=preview → inline, ?mode=download (default) → attachment
+   */
+  @Public()
+  @Get(':id/brochure/download')
+  async getBrochure(
+    @Param('id') id: string,
+    @Query('mode') mode: 'download' | 'preview' = 'download',
+    @Res() res: Response,
+  ) {
+    const product = await this.productsService.findOne(id);
+    if (!product.brochureUrl) {
+      throw new NotFoundException('No brochure available for this product');
+    }
+
+    // ✅ resolve absolute file path correctly
+    const filePath = join(process.cwd(), 'public', product.brochureUrl);
+    const fileName = product.brochureName || 'brochure';
+
+    if (mode === 'preview') {
+      res.setHeader('Content-Type', this.getMimeType(fileName));
+      res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+    } else {
+      res.setHeader('Content-Type', this.getMimeType(fileName));
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    }
+    return res.sendFile(filePath);
+  }
+
+  /**
+   * Delete brochure – removes file from disk and clears DB fields.
+   */
   @Delete(':id/brochure')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteBrochure(@Param('id') id: string) {
     await this.productsService.deleteBrochure(id);
   }
 
-  @Public()
-  @Get(':id/brochure/download')
-  async downloadBrochure(
-    @Param('id') id: string,
-    @Query('mode') mode: string,
-    @Res() res: Response,
-  ) {
-    const product = await this.productsService.findOne(id);
-
-    if (!product.brochureUrl) {
-      throw new NotFoundException('No brochure available for this product');
-    }
-
-    // If mode is 'preview', modify URL to show inline instead of download
-    const url = mode === 'preview'
-      ? product.brochureUrl.replace('/upload/', '/upload/fl_attachment:false/')
-      : product.brochureUrl.replace('/upload/', '/upload/fl_attachment/');
-
-    res.redirect(url);
+  // ---- Helper for MIME type (optional) ----
+  private getMimeType(fileName: string): string {
+    const ext = extname(fileName).toLowerCase();
+    const map: Record<string, string> = {
+      '.pdf': 'application/pdf',
+      '.doc': 'application/msword',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.xls': 'application/vnd.ms-excel',
+      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.webp': 'image/webp',
+    };
+    return map[ext] || 'application/octet-stream';
   }
 
   // ============================================
-  // CRUD ENDPOINTS
+  // CRUD (unchanged)
   // ============================================
 
   @Post()

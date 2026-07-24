@@ -1,3 +1,4 @@
+// sbs-backend/src/products/products.service.ts
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
@@ -6,6 +7,10 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductsDto } from './dto/query-products.dto';
 import { Prisma } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
+import * as fs from 'fs';
+import * as path from 'path';
+import sharp from 'sharp'; // <-- default import
+import { PDFDocument } from 'pdf-lib';
 
 @Injectable()
 export class ProductsService {
@@ -379,21 +384,14 @@ export class ProductsService {
   }
 
   // ============================================
-  // BROCHURE METHODS
+  // IMAGE UPLOAD (Cloudinary – unchanged)
   // ============================================
 
-  /**
-   * Compress + convert an uploaded image to WebP (<100KB) via Cloudinary.
-   * Returns a payload shaped like a product image so the frontend can append
-   * it straight into the form's images array.
-   */
   async uploadImage(file: Express.Multer.File, productId?: string) {
     if (!file.mimetype?.startsWith('image/')) {
       throw new BadRequestException('File must be an image');
     }
 
-    // When tied to an existing product, validate it exists and namespace the
-    // Cloudinary folder by its id.
     if (productId) {
       await this.findOne(productId);
     }
@@ -413,73 +411,70 @@ export class ProductsService {
     };
   }
 
-  async uploadBrochure(productId: string, file: Express.Multer.File) {
-    const product = await this.findOne(productId);
+  // ============================================
+  // BROCHURE – LOCAL STORAGE & COMPRESSION
+  // ============================================
 
-    // Delete old brochure if exists — use the STORED publicId/resourceType,
-    // never re-derive it from the URL (that was the source of silent failures).
-    if (product.brochurePublicId) {
-      await this.cloudinary
-        .deleteBrochure(product.brochurePublicId, product.brochureResourceType || 'raw')
-        .catch(() => {});
-    } else if (product.brochureUrl) {
-      const publicId = this.cloudinary.getPublicIdFromUrl(product.brochureUrl);
-      if (publicId) {
-        await this.cloudinary.deleteBrochure(publicId).catch(() => {});
-      }
+  /**
+   * Compress the uploaded file:
+   * - PDF → pdf‑lib (optimises)
+   * - Image → sharp (WebP, quality 80)
+   * Returns the final file path (the same as the original after replacement).
+   */
+  async compressBrochure(file: Express.Multer.File): Promise<string> {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const inputPath = file.path;
+    const outputPath = inputPath + '.compressed' + ext;
+    const inputBuffer = fs.readFileSync(inputPath);
+
+    if (ext === '.pdf') {
+      const pdfDoc = await PDFDocument.load(inputBuffer);
+      const compressedBytes = await pdfDoc.save({ useObjectStreams: false });
+      fs.writeFileSync(outputPath, compressedBytes);
+      fs.unlinkSync(inputPath);
+      fs.renameSync(outputPath, inputPath);
+    } else if (['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
+      const output = await sharp(inputPath).webp({ quality: 80 }).toBuffer();
+      fs.writeFileSync(outputPath, output);
+      fs.unlinkSync(inputPath);
+      fs.renameSync(outputPath, inputPath);
     }
+    return inputPath;
+  }
 
-    // Validate file size (max 20MB)
-    if (file.size > 20 * 1024 * 1024) {
-      throw new BadRequestException('File size must be under 20MB');
-    }
-
-    // Validate file type
-    const allowedTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'image/jpeg',
-      'image/png',
-      'image/webp',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    ];
-    if (!allowedTypes.includes(file.mimetype)) {
-      throw new BadRequestException('Invalid file type. Allowed: PDF, DOC, DOCX, JPG, PNG, WebP, XLS, XLSX');
-    }
-
-    // Upload to Cloudinary
-    const result = await this.cloudinary.uploadBrochure(file, productId);
-
-    // Update product with brochure info
+  /**
+   * Update product with brochure metadata (local path).
+   */
+  async updateBrochure(productId: string, data: {
+    url: string;
+    name: string;
+    size: number;
+    format: string;
+  }) {
     return this.prisma.product.update({
       where: { id: productId },
       data: {
-        brochureUrl: result.url,
-        brochureName: result.name,
-        brochureSize: result.size,
-        brochureFormat: result.format,
-        brochurePublicId: result.publicId,
-        brochureResourceType: result.resourceType,
+        brochureUrl: data.url,             // relative path, e.g. "products/brochure/..."
+        brochureName: data.name,
+        brochureSize: data.size,
+        brochureFormat: data.format,
+        brochurePublicId: null,
+        brochureResourceType: null,
       },
     });
   }
 
+  /**
+   * Delete brochure – remove file from disk and clear DB fields.
+   */
   async deleteBrochure(productId: string) {
     const product = await this.findOne(productId);
-
-    if (product.brochurePublicId) {
-      await this.cloudinary
-        .deleteBrochure(product.brochurePublicId, product.brochureResourceType || 'raw')
-        .catch(() => {});
-    } else if (product.brochureUrl) {
-      const publicId = this.cloudinary.getPublicIdFromUrl(product.brochureUrl);
-      if (publicId) {
-        await this.cloudinary.deleteBrochure(publicId).catch(() => {});
+    if (product.brochureUrl) {
+      const filePath = path.join(process.cwd(), 'public', product.brochureUrl);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
       }
     }
-
     return this.prisma.product.update({
       where: { id: productId },
       data: {
