@@ -8,7 +8,7 @@ export class AdminOtpController {
 
   @Post('request')
   async request(@CurrentUser() user: AuthUser, @Body('purpose') purpose?: string) {
-    return this.otp.request(user.sub, `prem.shah8120@gmail.com`, purpose || 'site-config');
+    return this.otp.request(user.sub, user.email, purpose || 'site-config');
   }
 
   @Post('verify')
