@@ -7,6 +7,7 @@ import testimonialsApi from "@/lib/testimonialsApi";
 import toast from "react-hot-toast";
 import { Plus, Edit, Trash2, X, Save, Search, Building2, Mail, Phone, Globe, ChevronLeft, ChevronRight, MessageSquareQuote } from "lucide-react";
 import BrandGalleryUploader from "@/components/admin/brand/BrandGalleryUploader";
+import BrandLogoUploader from "@/components/admin/brand/BrandLogoUploader";
 import BrandBrochureUploader from "@/components/admin/brand/BrandBrochureUploader";
 import RichTextEditor from "@/components/shared/RichTextEditor";
 import TableExportImport from "@/components/admin/shared/TableExportImport";
@@ -51,10 +52,17 @@ export default function BrandsManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
-  const [requestingId, setRequestingId] = useState(null);
+
+  // ---- Testimonial request modal state ----
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [requestingBrand, setRequestingBrand] = useState(null);
+  const [requestName, setRequestName] = useState("");
+  const [requestEmail, setRequestEmail] = useState("");
+  const [requestSending, setRequestSending] = useState(false);
 
   const modalOpenRef = useRef(false);
 
+  // ---- Restore session state (existing) ----
   useEffect(() => {
     const saved = sessionStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -214,24 +222,51 @@ export default function BrandsManagementPage() {
     }
   };
 
-  const handleRequestTestimonial = async (brand) => {
+  // ---- Open request modal ----
+  const handleRequestTestimonial = (brand) => {
     if (brand.isOwnBrand) {
       toast.error("Testimonial requests can't be sent to your own brand.");
       return;
     }
-    if (!brand.email) {
-      toast.error("This brand has no email on file.");
+    setRequestingBrand(brand);
+    setRequestName(brand.name || "");
+    setRequestEmail("");
+    setRequestModalOpen(true);
+  };
+
+  // ---- Send requests to multiple emails ----
+  const sendRequest = async () => {
+    // Parse emails: split by comma, trim, filter empty
+    const emails = requestEmail.split(',').map((e) => e.trim()).filter(Boolean);
+    if (emails.length === 0) {
+      toast.error("Please enter at least one email address.");
       return;
     }
-    if (!confirm(`Send a testimonial request email to ${brand.name} (${brand.email})?`)) return;
-    setRequestingId(brand.id);
-    try {
-      await testimonialsApi.requestForBrand(brand.id);
-      toast.success(`Testimonial request sent to ${brand.email}`);
-    } catch (error) {
-      toast.error(error.message || "Failed to send testimonial request.");
-    } finally {
-      setRequestingId(null);
+
+    setRequestSending(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const email of emails) {
+      try {
+        await testimonialsApi.requestForBrand(requestingBrand.id, {
+          name: requestName.trim() || undefined,
+          email: email,
+        });
+        successCount++;
+      } catch (err) {
+        console.error(`Failed to send to ${email}:`, err);
+        errorCount++;
+      }
+    }
+
+    setRequestSending(false);
+    if (errorCount === 0) {
+      toast.success(`Testimonial requests sent to ${successCount} recipient(s).`);
+      setRequestModalOpen(false);
+    } else {
+      toast.error(`Sent to ${successCount} recipient(s), failed for ${errorCount}.`);
+      // Keep modal open so the admin can retry
     }
   };
 
@@ -368,7 +403,7 @@ export default function BrandsManagementPage() {
                     <div className="flex justify-end gap-1">
                       <button
                         onClick={() => handleRequestTestimonial(brand)}
-                        disabled={brand.isOwnBrand || requestingId === brand.id}
+                        disabled={brand.isOwnBrand || requestSending}
                         title={brand.isOwnBrand ? "Not available for your own brand" : "Send testimonial request email"}
                         className="rounded-lg p-2 text-slate-400 hover:bg-purple-50 hover:text-purple-600 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
                       >
@@ -431,8 +466,11 @@ export default function BrandsManagementPage() {
                     <input type="text" required value={formData.name} onChange={(e) => handleFieldChange("name", e.target.value)} placeholder="e.g., Makita Corporation" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Logo URL</label>
-                    <input type="text" value={formData.logo} onChange={(e) => handleFieldChange("logo", e.target.value)} placeholder="https://example.com/logo.png" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
+                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Logo</label>
+                    <BrandLogoUploader
+                      value={formData.logo}
+                      onChange={(url) => handleFieldChange("logo", url)}
+                    />
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Website</label>
@@ -442,7 +480,7 @@ export default function BrandsManagementPage() {
               </div>
 
               {/* Contact Information */}
-              <div className="space-y-4">
+              {/* <div className="space-y-4">
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b pb-2">Contact Information</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -454,7 +492,7 @@ export default function BrandsManagementPage() {
                     <input type="text" value={formData.phone} onChange={(e) => handleFieldChange("phone", e.target.value)} placeholder="+91-22-12345678" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               {/* Status Toggles */}
               <div className="space-y-4">
@@ -504,6 +542,69 @@ export default function BrandsManagementPage() {
               <button type="submit" className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors"><Save size={14} /> {editingId ? "Update Brand" : "Register Brand"}</button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* ---- Testimonial Request Modal (multiple recipients) ---- */}
+      {requestModalOpen && requestingBrand && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
+                Send Testimonial Requests
+              </h2>
+              <button onClick={() => setRequestModalOpen(false)} className="text-slate-400 hover:text-slate-600 font-bold">
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-xs text-slate-500">
+              Request testimonials from <strong>{requestingBrand.name}</strong>.
+              Enter one or more email addresses (comma‑separated). Each recipient will receive a unique link.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase mb-1 block">Recipient Name (optional)</label>
+                <input
+                  type="text"
+                  value={requestName}
+                  onChange={(e) => setRequestName(e.target.value)}
+                  placeholder="Leave blank to use brand's name"
+                  className="w-full text-xs px-3 py-2 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500"
+                />
+                <p className="text-[9px] text-slate-400 mt-1">
+                  If left blank, the brand’s name will be used.
+                </p>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase mb-1 block">Recipient Emails *</label>
+                <textarea
+                  value={requestEmail}
+                  onChange={(e) => setRequestEmail(e.target.value)}
+                  placeholder="e.g. john@company.com, jane@company.com, procurement@company.com"
+                  rows={3}
+                  className="w-full text-xs px-3 py-2 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500 resize-none"
+                />
+                <p className="text-[9px] text-slate-400 mt-1">
+                  Separate multiple emails with commas.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setRequestModalOpen(false)}
+                className="px-4 py-2 text-xs font-bold rounded-xl border border-slate-300 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={sendRequest}
+                disabled={requestSending}
+                className="px-4 py-2 text-xs font-bold rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {requestSending ? "Sending…" : "Send Requests"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

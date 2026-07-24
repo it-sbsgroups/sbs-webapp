@@ -91,17 +91,25 @@ export class TestimonialsService {
     });
   }
 
-  /** Send a testimonial request to an existing Client, using their record's email. */
-  async requestForClient(clientId: string) {
+  /**
+   * Send a testimonial request to an existing Client, optionally overriding
+   * the recipient name and email.
+   */
+  async requestForClient(clientId: string, overrideName?: string, overrideEmail?: string) {
     const client = await this.prisma.client.findUnique({
       where: { id: clientId },
     });
     if (!client) throw new NotFoundException('Client not found');
 
+    const email = overrideEmail ?? client.email;
+    if (!email) {
+      throw new BadRequestException('No email address available for this client.');
+    }
+
     return this.issuePasscodeInternal({
       sourceType: 'CLIENT',
       companyName: client.companyName,
-      email: client.email,
+      email,
       clientId: client.id,
     });
   }
@@ -111,7 +119,7 @@ export class TestimonialsService {
    * record's email. Blocked for brands flagged as our own (isOwnBrand=true) —
    * we don't ask ourselves for a testimonial.
    */
-  async requestForBrand(brandId: string) {
+  async requestForBrand(brandId: string, overrideName?: string, overrideEmail?: string) {
     const brand = await this.prisma.brand.findUnique({
       where: { id: brandId },
     });
@@ -123,10 +131,15 @@ export class TestimonialsService {
       );
     }
 
+    const email = overrideEmail ?? brand.email;
+    if (!email) {
+      throw new BadRequestException('No email address available for this brand.');
+    }
+
     return this.issuePasscodeInternal({
       sourceType: 'BRAND',
       companyName: brand.name,
-      email: brand.email,
+      email,
       brandId: brand.id,
     });
   }

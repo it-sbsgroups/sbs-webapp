@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import clientsApi from "@/lib/clientsApi";
 import testimonialsApi from "@/lib/testimonialsApi";
 import TableExportImport from "@/components/admin/shared/TableExportImport";
+import ClientLogoUploader from "@/components/admin/clientsComp/ClientLogoUploader";
 import toast from "react-hot-toast";
 import {
   Plus, Edit, Trash2, X, Save, Search, Building2, Mail, Phone,
@@ -50,6 +51,13 @@ export default function AdminClientsManagementDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [requestingId, setRequestingId] = useState(null);
   const pageSize = 10;
+
+  // ---- Testimonial request modal state ----
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [requestingClient, setRequestingClient] = useState(null);
+  const [requestName, setRequestName] = useState("");
+  const [requestEmail, setRequestEmail] = useState("");
+  const [requestSending, setRequestSending] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -107,8 +115,6 @@ export default function AdminClientsManagementDashboard() {
   const handleFormSubmitAction = async (e) => {
     e.preventDefault();
     if (!formData.companyName.trim()) { toast.error("Company name is required"); return; }
-    // Contact details are optional — a client can be saved with just company info.
-
     setSaving(true);
     const payload = {
       contactName: formData.contactName.trim() || undefined,
@@ -154,17 +160,47 @@ export default function AdminClientsManagementDashboard() {
     }
   };
 
-  const handleRequestTestimonial = async (client) => {
-    if (!client.email) { toast.error("This client has no email on file."); return; }
-    if (!confirm(`Send a testimonial request email to ${client.contactName} (${client.email})?`)) return;
-    setRequestingId(client.id);
-    try {
-      await testimonialsApi.requestForClient(client.id);
-      toast.success(`Testimonial request sent to ${client.email}`);
-    } catch (err) {
-      toast.error(err.message || "Failed to send testimonial request.");
-    } finally {
-      setRequestingId(null);
+  // ---- Open request modal ----
+  const handleRequestTestimonial = (client) => {
+    setRequestingClient(client);
+    setRequestName(client.contactName || "");
+    setRequestEmail("");
+    setRequestModalOpen(true);
+  };
+
+  // ---- Send requests to multiple emails ----
+  const sendRequest = async () => {
+    // Parse emails: split by comma, trim, filter empty
+    const emails = requestEmail.split(',').map((e) => e.trim()).filter(Boolean);
+    if (emails.length === 0) {
+      toast.error("Please enter at least one email address.");
+      return;
+    }
+
+    setRequestSending(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const email of emails) {
+      try {
+        await testimonialsApi.requestForClient(requestingClient.id, {
+          name: requestName.trim() || undefined,
+          email: email,
+        });
+        successCount++;
+      } catch (err) {
+        console.error(`Failed to send to ${email}:`, err);
+        errorCount++;
+      }
+    }
+
+    setRequestSending(false);
+    if (errorCount === 0) {
+      toast.success(`Testimonial requests sent to ${successCount} recipient(s).`);
+      setRequestModalOpen(false);
+    } else {
+      toast.error(`Sent to ${successCount} recipient(s), failed for ${errorCount}.`);
+      // Keep modal open so the admin can retry
     }
   };
 
@@ -325,6 +361,7 @@ export default function AdminClientsManagementDashboard() {
         </div>
       )}
 
+      {/* ---- Client Edit Modal ---- */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 z-50 overflow-y-auto">
           <form onSubmit={handleFormSubmitAction} className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -345,11 +382,14 @@ export default function AdminClientsManagementDashboard() {
                     <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Company Address</label>
                     <textarea value={formData.companyAddress} onChange={(e) => handleField("companyAddress", e.target.value)} placeholder="Street, city, state, PIN" rows={2} className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500 resize-none" />
                   </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Company Logo URL</label>
-                    <input type="text" value={formData.logo} onChange={(e) => handleField("logo", e.target.value)} placeholder="https://example.com/logo.png" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
+                  <div className="col-span-1">
+                    <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Company Logo</label>
+                    <ClientLogoUploader
+                      value={formData.logo}
+                      onChange={(url) => handleField("logo", url)}
+                    />
                   </div>
-                  <div>
+                  <div className="col-span-1">
                     <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Company Website</label>
                     <input type="text" value={formData.website} onChange={(e) => handleField("website", e.target.value)} placeholder="https://www.company.com" className="w-full text-xs px-3 py-2.5 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500" />
                   </div>
@@ -390,6 +430,69 @@ export default function AdminClientsManagementDashboard() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* ---- Testimonial Request Modal (multiple recipients) ---- */}
+      {requestModalOpen && requestingClient && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
+                Send Testimonial Requests
+              </h2>
+              <button onClick={() => setRequestModalOpen(false)} className="text-slate-400 hover:text-slate-600 font-bold">
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-xs text-slate-500">
+              Request testimonials from <strong>{requestingClient.companyName}</strong>.
+              Enter one or more email addresses (comma‑separated). Each recipient will receive a unique link.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase mb-1 block">Recipient Name (optional)</label>
+                <input
+                  type="text"
+                  value={requestName}
+                  onChange={(e) => setRequestName(e.target.value)}
+                  placeholder="Leave blank to use client's contact name"
+                  className="w-full text-xs px-3 py-2 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500"
+                />
+                <p className="text-[9px] text-slate-400 mt-1">
+                  If left blank, the client’s stored contact name will be used.
+                </p>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase mb-1 block">Recipient Emails *</label>
+                <textarea
+                  value={requestEmail}
+                  onChange={(e) => setRequestEmail(e.target.value)}
+                  placeholder="e.g. john@company.com, jane@company.com, procurement@company.com"
+                  rows={3}
+                  className="w-full text-xs px-3 py-2 rounded-xl border bg-slate-50 focus:outline-none focus:border-blue-500 resize-none"
+                />
+                <p className="text-[9px] text-slate-400 mt-1">
+                  Separate multiple emails with commas.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setRequestModalOpen(false)}
+                className="px-4 py-2 text-xs font-bold rounded-xl border border-slate-300 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={sendRequest}
+                disabled={requestSending}
+                className="px-4 py-2 text-xs font-bold rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {requestSending ? "Sending…" : "Send Requests"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -60,13 +60,19 @@ export class TestimonialsController {
   // ---- Admin: request a testimonial from an existing Client/Brand ----
 
   @Post('request/client/:clientId')
-  requestForClient(@Param('clientId') clientId: string) {
-    return this.testimonials.requestForClient(clientId);
+  requestForClient(
+    @Param('clientId') clientId: string,
+    @Body() body?: { name?: string; email?: string },
+  ) {
+    return this.testimonials.requestForClient(clientId, body?.name, body?.email);
   }
 
   @Post('request/brand/:brandId')
-  requestForBrand(@Param('brandId') brandId: string) {
-    return this.testimonials.requestForBrand(brandId);
+  requestForBrand(
+    @Param('brandId') brandId: string,
+    @Body() body?: { name?: string; email?: string },
+  ) {
+    return this.testimonials.requestForBrand(brandId, body?.name, body?.email);
   }
 
   // ---- Admin: manually add a standalone testimonial (no passcode flow) ----

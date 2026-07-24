@@ -146,7 +146,7 @@ function ImageGallery({ images, productName, onImageClick }) {
           src={img.url}
           alt={`${productName} — ${img.angle || "view"}`}
           onError={fallbackImg}
-          className="max-w-full max-h-full w-auto h-auto object-contain group-hover:scale-105 transition-transform duration-500"
+          className="max-w-full max-h-full w-auto h-auto object-contain group-hover:scale-105 transition-transform duration-500 brightness-110"
         />
         {PAGE_CONFIG.gallery.showAngleLabels && img.angle && (
           <span className="absolute bottom-3 left-3 bg-slate-900/80 text-white text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md backdrop-blur-sm">

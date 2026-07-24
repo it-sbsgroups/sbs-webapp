@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import clientsApi from "@/lib/clientsApi";
+import { ChevronLeft, ChevronRight, Quote } from "lucide-react";
 
 const fallbackImg = (e) => {
   e.currentTarget.src = "https://placehold.co/800x500/f1f5f9/94a3b8?text=Image+Unavailable";
@@ -25,6 +26,9 @@ export default function PublicClientDynamicProfileView() {
   const [loading, setLoading] = useState(true);
   const [lightboxIndex, setLightboxIndex] = useState(null);
 
+  // Testimonial carousel state
+  const [currentTestimonialIndex, setCurrentTestimonialIndex] = useState(0);
+
   useEffect(() => {
     let alive = true;
     setLoading(true);
@@ -40,6 +44,11 @@ export default function PublicClientDynamicProfileView() {
     })();
     return () => { alive = false; };
   }, [slug]);
+
+  // Reset carousel when client changes
+  useEffect(() => {
+    setCurrentTestimonialIndex(0);
+  }, [client]);
 
   if (loading) {
     return (
@@ -75,6 +84,18 @@ export default function PublicClientDynamicProfileView() {
   const testimonials = client.testimonials || [];
   const gallery = client.gallery || [];
 
+  // Carousel controls
+  const goToPrevTestimonial = () => {
+    setCurrentTestimonialIndex((prev) =>
+      prev === 0 ? testimonials.length - 1 : prev - 1
+    );
+  };
+  const goToNextTestimonial = () => {
+    setCurrentTestimonialIndex((prev) =>
+      prev === testimonials.length - 1 ? 0 : prev + 1
+    );
+  };
+
   return (
     <div className="bg-slate-50 min-h-screen font-sans text-slate-800 antialiased">
       <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-10 space-y-6">
@@ -89,9 +110,9 @@ export default function PublicClientDynamicProfileView() {
           <div className="relative flex flex-col sm:flex-row gap-5 md:gap-6">
             {isImageUrl(client.logo) ? (
               <img loading="lazy" src={client.logo} alt={`${client.companyName} logo`} onError={fallbackImg}
-                className="w-20 h-20 md:w-24 md:h-24 rounded-2xl object-cover border border-slate-200 shadow-sm shrink-0" />
+                className="w-28 h-28 md:w-32 md:h-32 rounded-2xl object-contain border border-slate-200 shadow-sm bg-white p-2 shrink-0" />
             ) : (
-              <span className="w-20 h-20 md:w-24 md:h-24 text-4xl flex items-center justify-center bg-slate-50 border border-slate-200 rounded-2xl shrink-0">
+              <span className="w-28 h-28 md:w-32 md:h-32 text-5xl flex items-center justify-center bg-slate-50 border border-slate-200 rounded-2xl shrink-0">
                 🏢
               </span>
             )}
@@ -134,9 +155,9 @@ export default function PublicClientDynamicProfileView() {
           </div>
         )}
 
-        {/* REAL TESTIMONIALS — bound to this client via Testimonial.clientId */}
+        {/* TESTIMONIALS - Enhanced Carousel */}
         <div className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-6 md:p-8">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
             <Eyebrow>Client Testimonials ({testimonials.length})</Eyebrow>
             {testimonials.length === 0 && (
               <span className="text-[10px] text-slate-400 font-medium">No approved testimonials yet</span>
@@ -144,14 +165,86 @@ export default function PublicClientDynamicProfileView() {
           </div>
 
           {testimonials.length > 0 && (
-            <div className="space-y-3 mt-4">
-              {testimonials.map((t) => (
-                <div key={t.id} className="bg-slate-50 border border-slate-200/70 rounded-xl p-4">
-                  <p className="text-xs md:text-sm text-slate-700 font-medium leading-relaxed">
-                    "{t.testimony}"
-                  </p>
+            <div className="relative">
+              {/* Carousel content */}
+              <div className="overflow-hidden">
+                <div
+                  className="flex transition-transform duration-300 ease-in-out"
+                  style={{ transform: `translateX(-${currentTestimonialIndex * 100}%)` }}
+                >
+                  {testimonials.map((t) => (
+                    <div key={t.id} className="w-full flex-shrink-0 px-1">
+                      <div className="bg-slate-50 border border-slate-200/70 rounded-xl p-6 md:p-8">
+                        <div className="flex items-start gap-2 mb-4">
+                          <Quote className="w-8 h-8 text-blue-200 shrink-0" />
+                          <p className="text-sm md:text-base text-slate-700 font-medium leading-relaxed italic">
+                            "{t.testimony}"
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-200/60">
+                          {/* Avatar – client logo or fallback */}
+                          {t.client?.logo ? (
+                            <img
+                              src={t.client.logo}
+                              alt={t.client.companyName}
+                              className="w-10 h-10 rounded-full object-cover border border-slate-200"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
+                              {t.client?.companyName?.[0] || "C"}
+                            </div>
+                          )}
+                          <div>
+                            {/* Name removed – only designation and company */}
+                            {t.designation && (
+                              <p className="text-sm font-medium text-slate-700">{t.designation}</p>
+                            )}
+                            <p className="text-sm font-bold text-slate-900">{t.companyName}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+
+              {/* Navigation buttons (only if more than one) */}
+              {testimonials.length > 1 && (
+                <>
+                  <button
+                    onClick={goToPrevTestimonial}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 -ml-3 md:-ml-5 bg-white/90 rounded-full p-2 shadow-md border border-slate-200 hover:bg-white transition-colors z-10"
+                    aria-label="Previous testimonial"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <button
+                    onClick={goToNextTestimonial}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 -mr-3 md:-mr-5 bg-white/90 rounded-full p-2 shadow-md border border-slate-200 hover:bg-white transition-colors z-10"
+                    aria-label="Next testimonial"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </>
+              )}
+
+              {/* Dots indicator */}
+              {testimonials.length > 1 && (
+                <div className="flex justify-center gap-2 mt-4">
+                  {testimonials.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentTestimonialIndex(idx)}
+                      className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                        idx === currentTestimonialIndex
+                          ? "bg-blue-600"
+                          : "bg-slate-300 hover:bg-slate-400"
+                      }`}
+                      aria-label={`Go to testimonial ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
