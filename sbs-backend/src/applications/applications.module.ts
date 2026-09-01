@@ -1,0 +1,13 @@
+import { Module } from '@nestjs/common';
+import { ApplicationsController } from './applications.controller';
+import { ApplicationsService } from './applications.service';
+import { PrismaModule } from '../prisma/prisma.module';
+import { ApiKeysModule } from '../api-keys/api-keys.module';
+
+@Module({
+  imports: [PrismaModule, ApiKeysModule],
+  controllers: [ApplicationsController],
+  providers: [ApplicationsService],
+  exports: [ApplicationsService],
+})
+export class ApplicationsModule {}

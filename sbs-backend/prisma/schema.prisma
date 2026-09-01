@@ -1,0 +1,1118 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+
+datasource db {
+  provider = "mysql"
+}
+
+
+
+enum Designation {
+  ADMIN        
+  SALES        
+  HUMANRESOURCE
+  IT           
+  FOUNDER      
+  COFOUNDER    
+}
+
+
+
+model User {
+  id          String      @id @default(cuid())
+  name        String?     
+  email       String      @unique
+  password    String      // bcrypt hash — never plaintext
+  image       String?     
+  designation Designation @default(ADMIN)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+
+
+
+// ============================================
+// CATEGORIES
+// ============================================
+
+model Category {
+  id            String        @id @default(cuid())
+  name          String        
+  slug          String        @unique
+  image         String?       @db.Text
+  isActive      Boolean       @default(true)
+  sortOrder     Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  subcategories Subcategory[] 
+  products      Product[]     
+  @@map("categories")
+}
+
+
+
+model Subcategory {
+  id          String    @id @default(cuid())
+  name        String    
+  slug        String    @unique
+  image       String?   @db.Text
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  categoryId  String    
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  products    Product[] 
+  @@map("subcategories")
+}
+
+
+
+// ============================================
+// BRANDS (DISTRIBUTORS)
+// ============================================
+
+model Brand {
+  id             String    @id @default(cuid())
+  name           String    
+  slug           String    @unique
+  logo           String?   @db.Text
+  website        String?   @db.Text
+  email          String?   
+  phone          String?   
+  isActive       Boolean   @default(true)
+  isOwnBrand     Boolean   @default(false)    
+  description    String?   @db.LongText  // rich-text HTML (EditorJS output) — only shown on brand/own-brand detail page when non-empty
+  gallery        Json?     
+  brochureUrl    String?   @db.Text   // local path e.g. /brands/brochure/makita-169999.pdf
+  brochureName   String?              // original uploaded filename
+  brochureSize   Int?                 // bytes
+  brochureFormat String?              // file extension e.g. pdf, docx
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  products       Product[] 
+  variants       ProductVariant[]
+  testimonials         Testimonial[]
+  testimonialPasscodes TestimonialPasscode[]
+  @@map("brands")
+}
+
+
+
+// ============================================
+// PRODUCTS
+// ============================================
+
+model Product {
+  id              String                 @id @default(cuid())
+  sku             String                 @unique
+  name            String                 
+  model           String?                
+  description     String?                @db.LongText
+  keyFeatures     String?                @db.Text
+  material        String?                @db.Text
+  manufacturer    String?                @db.Text
+  isActive        Boolean                @default(true)
+  isFeatured      Boolean                @default(false)
+  // Pre-launch / teaser mode — for Own Brands "coming soon" announcements
+  // (Flipkart-style). While true, the public page shows a countdown +
+  // "Notify Me" capture instead of pricing/RFQ actions.
+  isPrelaunch       Boolean  @default(false)
+  launchDate        DateTime?
+  prelaunchTeaser   String?  @db.Text
+  metaTitle       String?                
+  metaDescription String?                @db.Text
+  slug            String?                
+  keywords        Json?                  
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  categoryId      String                 
+  subcategoryId   String?                
+  brandId         String?                
+  category        Category               @relation(fields: [categoryId], references: [id])
+  subcategory     Subcategory?           @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  brand           Brand?                 @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  images          ProductImage[]         
+  specifications  ProductSpecification[] 
+  certifications  ProductCertification[]
+  applications    Application[]          @relation("ProductApplications")
+  rfqItems        RfqItem[]              
+  variants        ProductVariant[]
+  launchNotifies  ProductLaunchNotify[]
+  brochureUrl     String?                @db.Text       // Cloudinary URL for brochure/catalog
+  videoUrl        String?                @db.Text 
+  brochureName    String?                // Original file name
+  brochureSize    Int?                   // File size in bytes
+  brochureFormat  String?                // pdf, doc, etc.
+  brochurePublicId     String?           // Cloudinary public_id (kept verbatim, not re-derived from URL)
+  brochureResourceType String?           // "raw" (pdf/doc/xls) or "image" — needed for correct delete/serve
+  designFileUrl          String?  @db.Text // Cloudinary URL for the product design file (CAD/artwork)
+  designFileName          String?         // Original file name
+  designFileSize          Int?            // File size in bytes
+  designFileFormat        String?         // pdf, dwg, dxf, ai, psd, eps, svg, jpg, png, webp
+  designFilePublicId      String?         // Cloudinary public_id (kept verbatim, not re-derived from URL)
+  designFileResourceType  String?         // "raw" or "image" — needed for correct delete/serve
+  // Foreign keys
+  // Relations
+  // One-to-many
+  @@map("products")
+}
+
+
+
+model ProductLaunchNotify {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  email     String
+  createdAt DateTime @default(now())
+  @@unique([productId, email])
+  @@map("product_launch_notifies")
+}
+
+model ProductVariant {
+  id          String    @id @default(cuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name        String                          // display name, e.g. "Yellow / Large" — auto-built from attributes but editable
+  // Flexible key→value pairs so admins aren't locked to fixed variant axes —
+  // e.g. { "Color": "Yellow", "Size": "L", "Material": "ABS Plastic", "Warranty": "1 Year" }
+  attributes  Json
+  // Every field below is an OVERRIDE: null/empty means "inherit the parent
+  // product's value" (resolved at read-time by the API, never duplicated at
+  // write-time) — this is what lets an admin fill in only what's different
+  // about a given variant (e.g. just Model + Color) and inherit everything
+  // else (Description, Brochure, Applications, ...) from the base product.
+  model           String?                     // variant-specific model number
+  description     String?   @db.Text
+  keyFeatures     String?   @db.Text
+  specifications  Json?                       // [{ key, value }] — overrides the product's spec table entirely when set
+  images          Json?                       // string[] of image URLs specific to this variant
+  brandId         String?
+  brand           Brand?    @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  applications    Application[] @relation("VariantApplications")
+  brochureUrl           String?  @db.Text
+  brochureName          String?
+  brochureSize          Int?
+  brochureFormat        String?
+  brochurePublicId      String?
+  brochureResourceType  String?
+  designFileUrl          String?  @db.Text
+  designFileName          String?
+  designFileSize          Int?
+  designFileFormat        String?
+  designFilePublicId      String?
+  designFileResourceType  String?
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  rfqItems    RfqItem[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  @@map("product_variants")
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  url       String   @db.Text
+  title     String?  @db.VarChar(500)
+  angle     String?  @db.VarChar(100)
+  altText   String?  @db.VarChar(500)
+  sortOrder Int      @default(0)
+  productId String   
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  @@map("product_images")
+}
+
+
+
+model ProductSpecification {
+  id        String  @id @default(cuid())
+  key       String  
+  value     String  @db.Text
+  productId String  
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  @@unique([productId, key])
+  @@map("product_specifications")
+}
+
+
+
+model ProductCertification {
+  id        String  @id @default(cuid())
+  name      String  @db.VarChar(500)
+  productId String  
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  @@map("product_certifications")
+}
+
+// Reusable, admin-manageable "application area" tags (e.g. "Textile Machinery",
+// "Automotive"). Many-to-many with Product so the same tag can be reused across
+// products instead of being duplicated per-product like ProductCertification.
+model Application {
+  id        String    @id @default(cuid())
+  name      String    @unique @db.VarChar(255)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[] @relation("ProductApplications")
+  variants  ProductVariant[] @relation("VariantApplications")
+
+  @@map("applications")
+}
+
+
+
+// ============================================
+// RFQ (REQUEST FOR QUOTATION)
+// ============================================
+
+model RfqRequest {
+  id           String     @id @default(cuid())
+  reference    String?    @unique   // ← NEW: human‑readable RFQ ref
+  status       RfqStatus  @default(PENDING)
+  fullName     String     
+  companyName  String?    
+  email        String     
+  mobile       String     
+  address      String?    @db.Text
+  remarks      String?    @db.Text
+  customFields Json?      
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  items        RfqItem[]  
+  replies      RfqReply[] 
+  @@map("rfq_requests")
+}
+
+model RfqCounter {
+  date        DateTime @id @default(now())  // date as primary key
+  count       Int      @default(0)
+  @@map("rfq_counters")
+}
+
+enum RfqStatus {
+  PENDING   
+  REPLIED   
+  PROCESSING
+  COMPLETED 
+  CANCELLED 
+}
+
+model RfqItem {
+  id        String     @id @default(cuid())
+  quantity  Int        @default(1)
+  rfqId     String     
+  productId String     
+  variantId String?
+  rfq       RfqRequest @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  product   Product    @relation(fields: [productId], references: [id])
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  @@unique([rfqId, productId, variantId])
+  @@map("rfq_items")
+}
+
+
+
+model RfqReply {
+  id           String     @id @default(cuid())
+  note         String?    @db.Text
+  emailSubject String?    
+  emailBody    String?    @db.Text
+  sentTo       String?    
+  sentAt       DateTime?  
+  rfqId        String     
+  // Structured quotation (per-item pricing/discount) — replaces the old
+  // free-text "Price: X | Discount: Y" note. `items` is a snapshot array of
+  // { rfqItemId, productName, variantName, quantity, unitPrice, discountPercent, lineTotal }
+  // captured at reply time so historical quotes stay accurate even if the
+  // product/variant is edited or deleted later.
+  items                Json?
+  subtotal             Float?
+  overallDiscountPercent Float?   @default(0)
+  discountTotal        Float?
+  grandTotal           Float?
+  termsAndConditions   String?  @db.Text
+  includePrivacyPolicy Boolean  @default(false)
+  createdAt    DateTime   @default(now())
+  rfq          RfqRequest @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  @@map("rfq_replies")
+}
+
+
+
+// ============================================
+// RFQ SETTINGS
+// ============================================
+
+model RfqSettings {
+  id                   String   @id @default("default")
+  enabled              Boolean  @default(true)
+  buttonText           String   @default("Quote Bucket")
+  buttonColor          String   @default("#172554")
+  submitText           String   @default("🚀 Dispatch Quotation Slip")
+  autoReplyEnabled     Boolean  @default(true)
+  customerEmailSubject String?  
+  customerEmailBody    String?  @db.Text
+  teamNotifyEnabled    Boolean  @default(true)
+  teamEmailSubject     String?  
+  teamEmailBody        String?  @db.Text
+  forwardToEmails      Json?    
+  customFields         Json?    
+  defaultTermsAndConditions String? @db.Text
+  privacyPolicyText         String? @db.Text
+  updatedAt            DateTime @updatedAt
+  // General
+  // Auto-reply to customer
+  // Team notification
+  // Forward emails (JSON array)
+  // Custom RFQ form fields (JSON array)
+  @@map("rfq_settings")
+}
+
+
+
+// ============================================
+// PRODUCT SETTINGS (Global Card/Layout Settings)
+// ============================================
+
+model ProductSettings {
+  id                    String   @id @default("default")
+  cardsPerRow           Int      @default(3)
+  gap                   String   @default("md")
+  pageBackground        String   @default("#f8fafc")
+  maxWidth              String   @default("max-w-6xl")
+  productsPerPage       Int      @default(12)
+  cardStyle             String   @default("elevated")
+  cardBackground        String   @default("#ffffff")
+  accentColor           String   @default("#1e3a8a")
+  cornerRadius          String   @default("rounded-2xl")
+  imageFit              String   @default("contain")
+  imageRatio            String   @default("square")
+  imageBackground       String   @default("#f8fafc")
+  showBrandBadge        Boolean  @default(true)
+  showModel             Boolean  @default(true)
+  showKeyFeatures       Boolean  @default(true)
+  showSkuId             Boolean  @default(true)
+  showPricePill         Boolean  @default(true)
+  priceLabel            String   @default("Price On Request")
+  showSearch            Boolean  @default(true)
+  showBrandFilter       Boolean  @default(true)
+  showSidebar           Boolean  @default(true)
+  showPagination        Boolean  @default(true)
+  showQuoteBucketButton Boolean  @default(true)
+  autoRefreshSeconds    Int      @default(0)
+  detailSettings        Json?    
+  notificationSettings  Json?    
+  showBrochureButton    Boolean  @default(true)
+  brochureButtonText    String   @default("Download Brochure")
+  brochureMode          String   @default("download")  // "download" | "preview" | "both"
+  updatedAt             DateTime @updatedAt
+  @@map("product_settings")
+}
+
+
+
+// ============================================
+// AD PLACEMENTS
+// ============================================
+
+// ============================================
+// RFQ OUTBOUND INTEGRATIONS (external API + Google Sheet push)
+// One-way only: we push out, we never read back. So edits made on the
+// external side (the sheet or the partner API) can never change our data.
+// ============================================
+
+model RfqIntegration {
+  id                       String   @id @default("default")
+  externalApiEnabled       Boolean  @default(false)
+  externalApiUrl           String?  @db.Text
+  externalApiKey           String?  @db.Text
+  externalApiSecret        String?  @db.Text
+  sheetEnabled             Boolean  @default(false)
+  sheetId                  String?  @db.Text
+  sheetTabName             String   @default("RFQs")
+  googleServiceAccountJson String?  @db.LongText
+  inboundWebhookEnabled    Boolean  @default(false)
+  inboundWebhookSecret     String?  @db.Text
+  updatedAt                DateTime @updatedAt
+  @@map("rfq_integrations")
+}
+
+
+
+// ============================================
+// SCHEDULED NOTIFICATIONS (Products / News — manual send now, or schedule)
+// ============================================
+
+model ScheduledNotification {
+  id           String    @id @default(cuid())
+  type        String    // "PRODUCT" | "NEWS"
+  targetIds   Json
+  scheduledAt DateTime
+  status      String    @default("pending") // pending | sent | failed | cancelled
+  sentAt      DateTime?
+  error       String?   @db.Text
+  createdAt   DateTime  @default(now())
+  // true for the auto-accumulating "today's daily digest" row created by the
+  // batch notification mode (see NotificationSettings); false/omitted for a
+  // one-off admin-scheduled send. Lets us find "today's batch row" for a type
+  // without confusing it with manual schedules.
+  isDailyBatch Boolean  @default(false)
+  @@map("scheduled_notifications")
+}
+
+// Universal notification timing settings — one place to control whether new
+// products / news posts email subscribers the instant they're added, or get
+// batched into a single once-a-day digest sent at a configured time.
+model NotificationSettings {
+  id                String   @id @default("default")
+  productsMode      String   @default("INSTANT") // "INSTANT" | "BATCH"
+  productsBatchTime String   @default("18:00")    // 24h "HH:mm", server local time
+  newsMode          String   @default("INSTANT")
+  newsBatchTime     String   @default("18:00")
+  updatedAt         DateTime @updatedAt
+  @@map("notification_settings")
+}
+
+
+
+// ============================================
+// API KEYS
+// ============================================
+
+model ApiKey {
+  id           String    @id @default(cuid())
+  name         String    
+  key          String    @unique  @db.VarChar(500)
+  permissions  Json?     
+  allowedIps   Json?     
+  isActive     Boolean   @default(true)
+  lastUsedAt   DateTime? 
+  requestCount Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  @@map("api_keys")
+}
+
+
+
+// ============================================
+// SEARCH LOGS
+// ============================================
+
+model SearchLog {
+  id        String   @id @default(cuid())
+  keyword   String   
+  results   Int      @default(0)
+  ipAddress String?  
+  createdAt DateTime @default(now())
+  @@map("search_logs")
+}
+
+
+
+// ============================================
+// SUBSCRIBERS
+// ============================================
+
+model Subscriber {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  isActive       Boolean   @default(true)
+  subscribedAt   DateTime  @default(now())
+  unsubscribedAt DateTime? 
+  @@map("subscribers")
+}
+
+
+
+// ============================================
+// NOTIFICATION LOGS
+// ============================================
+
+model NotificationLog {
+  id         String   @id @default(cuid())
+  type       String   
+  subject    String?  
+  body       String?  @db.Text
+  recipients Json?    
+  status     String   @default("sent")
+  productIds Json?    
+  error      String?  @db.Text
+  createdAt  DateTime @default(now())
+  @@map("notification_logs")
+}
+
+
+
+// ============================================
+// NEWS & MEDIA
+// ============================================
+
+
+model NewsCategory {
+  id            String            @id @default(cuid())
+  name          String            
+  slug          String            @unique
+  icon          String?           
+  isActive      Boolean           @default(true)
+  sortOrder     Int               @default(0)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  subcategories NewsSubcategory[] 
+  posts         NewsPost[]        
+  @@map("news_categories")
+}
+
+
+
+model NewsSubcategory {
+  id         String       @id @default(cuid())
+  name       String       
+  slug       String       @unique
+  categoryId String       
+  isActive   Boolean      @default(true)
+  sortOrder  Int          @default(0)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  category   NewsCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  posts      NewsPost[]   
+  @@map("news_subcategories")
+}
+
+
+
+model NewsPost {
+  id              String           @id @default(cuid())
+  title           String           
+  slug            String           @unique
+  categoryId      String           
+  subcategoryId   String?          
+  status          PostStatus       @default(DRAFT)
+  allowVersioning Boolean          @default(true)
+  isFeatured      Boolean          @default(false)
+  // Denormalized fields for fast list/card rendering — kept in sync with
+  // `blocks` in NewsService.createPost/updatePost so the list endpoint
+  // never has to pull full block content (which can be large LongText).
+  excerpt         String?          @db.VarChar(300)
+  coverImage      String?          @db.VarChar(500)
+  metaTitle       String?          @db.VarChar(191)
+  metaDescription String?          @db.Text
+  publishedAt     DateTime?        
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  category        NewsCategory     @relation(fields: [categoryId], references: [id])
+  subcategory     NewsSubcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  blocks          NewsBlock[]      
+  versions        NewsVersion[]    
+  comments        NewsComment[]    
+  likesCount      Int              @default(0)
+  likes           NewsLike[]
+  @@index([status, createdAt])
+  @@map("news_posts")
+}
+
+
+
+enum PostStatus {
+  DRAFT    
+  PUBLISHED
+  ARCHIVED 
+}
+
+// One row per (post, ip) — the unique constraint is what actually enforces
+// "one like per IP per article"; the API layer just toggles this row's
+// existence and keeps NewsPost.likesCount in sync alongside it.
+model NewsLike {
+  id        String   @id @default(cuid())
+  postId    String
+  ip        String
+  createdAt DateTime @default(now())
+  post      NewsPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  @@unique([postId, ip])
+  @@map("news_likes")
+}
+
+
+
+model NewsBlock {
+  id        String   @id @default(cuid())
+  postId    String   
+  type      String   // "text" | "imageRow" | "video" | "quote"
+  content   String?  @db.LongText
+  sortOrder Int      @default(0)
+  style     Json?    // { fontFamily, color, fontSize }
+  images    Json?    // [{ src, caption }] for imageRow type
+  createdAt DateTime @default(now())
+  post      NewsPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  @@map("news_blocks")
+}
+
+
+
+model NewsVersion {
+  id         String   @id @default(cuid())
+  postId     String   
+  version    Int      
+  title      String   
+  blocks     Json     // Snapshot of blocks at time of edit
+  editorNote String?  
+  createdAt  DateTime @default(now())
+  post       NewsPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  @@map("news_versions")
+}
+
+
+
+model NewsComment {
+  id            String        @id @default(cuid())
+  postId        String        
+  parentId      String?       // For nested replies
+  name          String        
+  email         String        
+  body          String        @db.Text
+  depth         Int           @default(0)
+  status        CommentStatus @default(PENDING)
+  isDeleted     Boolean       @default(false)
+  isHardDeleted Boolean       @default(false)
+  geolocation   Json?         // { city, country, ip }
+  editHistory   Json?         // [{ body, editedAt }]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  post          NewsPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent        NewsComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies       NewsComment[] @relation("CommentReplies")
+  @@map("news_comments")
+}
+
+
+
+enum CommentStatus {
+  PENDING 
+  APPROVED
+  REJECTED
+}
+
+
+
+model NewsSettings {
+  id                      String   @id @default("default")
+  cardsPerRow             Int      @default(3)
+  cardsPerPage            Int      @default(9)
+  showSearch              Boolean  @default(true)
+  showCategoryFilter      Boolean  @default(true)
+  showSubcategoryFilter   Boolean  @default(true)
+  carouselVisibleCards    Int      @default(4)
+  carouselTotalToPull     Int      @default(10)
+  carouselAutoPlay        Boolean  @default(true)
+  carouselPauseOnHover    Boolean  @default(true)
+  carouselIntervalMs      Int      @default(3000)
+  commentsRequireApproval Boolean  @default(true)
+  commentsAllowReplies    Boolean  @default(true)
+  latestNewsEnabled       Boolean  @default(true)
+  latestNewsCount         Int      @default(5)
+  updatedAt               DateTime @updatedAt
+  @@map("news_settings")
+}
+
+
+
+model Employee {
+  id          String   @id @default(uuid())
+  name        String   @map("first_name") @db.VarChar(149)
+  email       String   @unique @db.VarChar(100)
+  mobile      String   @db.VarChar(15)
+  image       String?  @db.Text
+  designation String?  @map("designation") @db.VarChar(100)
+  department  String?  @map("department") @db.VarChar(100)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  @@map("employees")
+}
+
+
+
+model newsletterSubscriber {
+  id                  String    @id @default(cuid())
+  firstName           String?   @db.VarChar(50)    //first name
+  middleName          String?   @db.VarChar(50)    //middle name
+  lastName            String?   @db.VarChar(50)    //last name
+  email               String    @unique @db.VarChar(250)
+  mobile              String?   @unique @db.VarChar(13)
+  whatsapp            String?   @db.VarChar(13)
+  subscribed          Boolean   @default(true)
+  notifyProducts      Boolean   @default(true)   // receive new-product alerts
+  notifyNews          Boolean   @default(true)   // receive new-news alerts
+  unsubscribeToken    String?   @unique   // ← NEW: for unsubscribe links
+  unsubscribedAt      DateTime? 
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  // name with first middle and last name
+}
+
+
+
+// ============================================
+// CAROUSEL (hero slider)
+// ============================================
+
+model CarouselSlide {
+  id              String   @id @default(cuid())
+  order           Int      @default(0)
+  isActive        Boolean  @default(true)
+  nextSlideIn     Int      @default(5)
+  mediaType       String   @default("IMAGE") // IMAGE | VIDEO | COLOR
+  mediaUrl        String?  @db.Text
+  videoLoop       Boolean  @default(false)
+  videoSound      Boolean  @default(false)
+  solidColor      String?  
+  layoutType      String   @default("LEFT")
+  badge           String?  @db.Text
+  title           String?  @db.Text
+  description     String?  @db.LongText
+  ctaText         String?  // legacy single-CTA fields, kept for backward compat
+  ctaLink         String?  @db.Text
+  ctaOpenInNewTab Boolean  @default(false)
+  ctas            Json?    // new: array of { id, text, link, openInNewTab, style } — multiple CTA buttons
+  styles          Json?    
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  // Deep styling kept verbatim: gradientColor, badgeStyle, titleStyle,
+  // descriptionStyle, ctaButtonStyle, etc. Preserves the rich admin shape
+  // without exploding into dozens of columns.
+  @@index([order])
+  @@map("carousel_slides")
+}
+
+
+
+model CarouselSettings {
+  id             String   @id @default("default")
+  prevButton     Boolean  @default(true)
+  nextButton     Boolean  @default(true)
+  bottomDots     Boolean  @default(true)
+  autoplay       Boolean  @default(true)
+  carouselHeight String   @default("650px")
+  overlayOpacity Float    @default(0.55)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@map("carousel_settings")
+}
+
+
+
+// ============================================
+// CLIENTS
+// ============================================
+
+model Client {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  contactName    String?                    // person to contact at the client's company (optional)
+  companyName    String
+  companyAddress String?  @db.Text
+  email          String?                    // optional — contact details are not required
+  phone          String?                    // optional — contact details are not required
+  logo           String?  @db.Text
+  website        String?  @db.Text
+  gallery        Json?    // string[]
+  isActive       Boolean  @default(true)
+  order          Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  testimonials         Testimonial[]
+  testimonialPasscodes TestimonialPasscode[]
+  @@map("clients")
+}
+
+
+
+// ============================================
+// TESTIMONIALS (passcode-gated, moderated)
+// ============================================
+
+enum TestimonialStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REWRITE
+}
+
+// Who the testimonial/passcode was requested from - a Client or a partner Brand.
+enum TestimonialSourceType {
+  CLIENT
+  BRAND
+}
+
+
+
+model Testimonial {
+  id          String                @id @default(cuid())
+  name        String
+  email       String?
+  companyName String
+  designation String?
+  testimony   String                @db.LongText
+  status      TestimonialStatus     @default(PENDING)
+  sourceType  TestimonialSourceType @default(CLIENT)
+  clientId    String?
+  brandId     String?
+  client      Client?               @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  brand       Brand?                @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  @@index([status])
+  @@index([clientId])
+  @@index([brandId])
+  @@map("testimonials")
+}
+
+
+
+// One-time passcode an admin issues to a client or brand so they can submit a testimonial.
+
+model TestimonialPasscode {
+  id          String                @id @default(cuid())
+  code        String                @unique
+  sourceType  TestimonialSourceType @default(CLIENT)
+  companyName String
+  email       String?
+  clientId    String?
+  brandId     String?
+  client      Client?               @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  brand       Brand?                @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime              @default(now())
+  @@index([clientId])
+  @@index([brandId])
+  @@map("testimonial_passcodes")
+}
+
+
+
+// ============================================
+// SITE CONFIG (singleton config documents)
+// ============================================
+
+model SiteConfig {
+  key       String   @id
+  data      Json     
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@map("site_configs")
+}
+
+
+
+
+model Faq {
+  id                    String    @id @default(cuid())
+  name                  String?   
+  email                 String?   
+  question              String    @db.Text
+  answer                String?   @db.LongText
+  isApproved            Boolean   @default(false)
+  isListedOnFaqPage     Boolean   @default(false)
+  isFeaturedInComponent Boolean   @default(false)
+  isAdminCreated        Boolean   @default(false)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deletedAt             DateTime? 
+  @@index([isApproved, deletedAt])                    // admin list: filter by status
+  @@index([isListedOnFaqPage, deletedAt])             // public FAQ page query
+  @@index([isFeaturedInComponent, deletedAt])         // home-page component query
+  @@index([createdAt])                                // default sort
+  @@map("faqs")
+}
+
+// =============================================
+// contact us
+// =============================================
+
+model Contact {
+  id          String            @id @default(cuid())
+  fullName    String            @db.VarChar(255)
+  email       String            @db.VarChar(255)
+  phone       String            @db.VarChar(30)
+  companyName String            @db.VarChar(255)
+  subject     String            @db.VarChar(255)
+  message     String            @db.Text
+  responded   Boolean           @default(false)
+  adminNote   String?           @db.Text
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deletedAt   DateTime?         
+  responses   ContactResponse[] 
+  @@index([email])
+  @@index([createdAt])
+  @@map("contacts")
+}
+
+
+model ContactResponse {
+  id         String    @id @default(cuid())
+  contactId  String    
+  contact    Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  emailBody  String    @db.Text
+  sentAt     DateTime  @default(now())
+  sentFrom   String    @db.VarChar(255)
+  subject    String?   @db.VarChar(500)
+  receivedAt DateTime? 
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  @@index([contactId])
+  @@map("contact_responses")
+}
+
+
+// =======================================
+// industry innovation
+// =======================================
+
+model IndustryInnovation {
+  id          String   @id @default(cuid())
+  title       String   @db.Text
+  description String   @db.Text
+  image       String   @db.Text // main section image / background
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  keys        IndustryInnovationKey[] // relation to sub‑items
+}
+
+model IndustryInnovationKey {
+  id              String   @id @default(cuid())
+  innovationId    String   // foreign key to IndustryInnovation
+  title           String   @db.VarChar(255) // usually mandatory for a key point
+  sortOrder       Int      @default(0) // to control display order
+  isDeleted       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  innovation      IndustryInnovation @relation(fields: [innovationId], references: [id])
+}
+
+model WhyChooseUs {
+  id              String    @id @default(cuid())
+  title           String    @db.Text
+  description     String    @db.Text
+  isDeleted       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  keys            WhyChooseUsKey[]
+}
+
+model WhyChooseUsKey {
+  id              String    @id @default(cuid())
+  WhyChooseUsId   String
+  icon            String    @db.Text
+  title           String    @db.VarChar(255)
+  description     String    @db.Text
+  isDeleted       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  whychooseus     WhyChooseUs @relation(fields: [WhyChooseUsId], references: [id])
+}
+
+model ourPrinciple {
+  id                  String    @id @default(cuid())
+  title               String    @db.Text
+  description         String    @db.Text
+  titleimage          String    @db.Text
+  descriptionimage    String    @db.Text
+  isDeleted       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model AuthoriedNetwork {
+  id                  String    @id @default(cuid())
+}
+
+// ============================================
+// SYSTEM LOGS (Task: admin sidebar log viewer)
+// Logs auto-delete 24h after being marked reviewed — enforced by a
+// scheduled job in SystemLogsService (see system-logs.service.ts).
+// ============================================
+model SystemLog {
+  id         String    @id @default(cuid())
+  level      LogLevel  @default(INFO)
+  source     String    // e.g. "auth", "rfq", "site-config", "carousel"
+  message    String    @db.Text
+  meta       Json?
+  reviewed   Boolean   @default(false)
+  reviewedAt DateTime?
+  createdAt  DateTime  @default(now())
+  @@index([reviewed, reviewedAt])
+  @@index([createdAt])
+  @@map("system_logs")
+}
+
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+}
+
+// ============================================
+// ADMIN OTP (Task: OTP-gated Site Config access)
+// Short-lived one-time codes emailed to the requesting admin's own account
+// email before they can view/save Site Config.
+// ============================================
+model AdminOtp {
+  id        String   @id @default(cuid())
+  userId    String
+  email     String
+  codeHash  String
+  purpose   String   @default("site-config")
+  consumed  Boolean  @default(false)
+  consumedAt DateTime?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([userId, purpose])
+  @@map("admin_otps")
+}
+
+model PageSection {
+  id              Int      @id @default(autoincrement())
+  sectionName     String   // e.g., "About_Section_1"
+  heading         String
+  subHeading      String?
+  content         String   @db.Text // Yahan editor ka HTML store hoga
+  imageUrls       Json? // Array of strings (agar multiple images hain)
+  
+  // Repeater data ke liye alag relation
+  items           Item[]   // e.g., Features list ya "Grow Together" list
+}
+
+model Item {
+  id              Int         @id @default(autoincrement())
+  title           String
+  icon            String?     // Icon ka name ya path
+  sectionId       Int
+  section         PageSection @relation(fields: [sectionId], references: [id])
+}
+
+model Certificate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  imageUrl    String   // relative path, e.g. "/certificates/abc123.jpg"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

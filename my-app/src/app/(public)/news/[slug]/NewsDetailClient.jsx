@@ -1,0 +1,578 @@
+"use client";
+
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import publicNewsApi from "@/lib/news/publicNewsApi";
+import RichTextRenderer from "@/components/shared/RichTextRenderer";
+import LazyCacheImage from "@/components/shared/LazyCacheImage";
+import SuggestionAside from "@/components/shared/SuggestionAside";
+import { MessageCircle, Share2, AtSign, Briefcase, Mail, Link2, Check } from "lucide-react";
+
+const fmtDate = (iso) => {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+};
+
+// ─── Lightbox for full-size gallery viewing ───────────────────────────────────
+function Lightbox({ images, index, onClose, onNav }) {
+  if (index === null) return null;
+  const img = images[index];
+  return (
+    <div className="fixed inset-0 z-[999] bg-black/90 flex items-center justify-center p-4" onClick={onClose}>
+      <button onClick={onClose} className="absolute top-5 right-5 text-white/70 hover:text-white text-2xl font-bold">✕</button>
+      {index > 0 && (
+        <button onClick={(e) => { e.stopPropagation(); onNav(index - 1); }}
+          className="absolute left-3 sm:left-6 text-white/60 hover:text-white text-3xl font-bold px-2">‹</button>
+      )}
+      <div className="max-w-4xl max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+        {/* 🔧 FIX: added a unique key so the lazy image fully re‑mounts on index change */}
+        <LazyCacheImage
+          key={img.src || `lightbox-${index}`}
+          src={img.src}
+          alt={img.caption || ""}
+          className="max-h-[80vh] max-w-full object-contain rounded-lg mx-auto"
+          containerClassName="max-h-[80vh]"
+        />
+        {img.caption && <p className="text-white/80 text-sm text-center mt-3 font-medium">{img.caption}</p>}
+        <p className="text-white/40 text-xs text-center mt-1">{index + 1} / {images.length}</p>
+      </div>
+      {index < images.length - 1 && (
+        <button onClick={(e) => { e.stopPropagation(); onNav(index + 1); }}
+          className="absolute right-3 sm:right-6 text-white/60 hover:text-white text-3xl font-bold px-2">›</button>
+      )}
+    </div>
+  );
+}
+
+// ─── Social share bar ──────────────────────────────────────────────────────────
+function ShareBar({ title, url }) {
+  const encodedUrl = encodeURIComponent(url);
+  const encodedTitle = encodeURIComponent(title);
+  const [copied, setCopied] = useState(false);
+
+  const links = [
+    { name: "WhatsApp", Icon: MessageCircle, href: `https://wa.me/?text=${encodedTitle}%20-%20${encodedUrl}`, color: "hover:bg-green-50 hover:text-green-700 hover:border-green-200" },
+    { name: "Facebook", Icon: Share2, href: `https://www.facebook.com/sharer.php?u=${encodedUrl}`, color: "hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200" },
+    { name: "X / Twitter", Icon: AtSign, href: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`, color: "hover:bg-slate-100 hover:text-slate-900 hover:border-slate-300" },
+    { name: "LinkedIn", Icon: Briefcase, href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`, color: "hover:bg-blue-50 hover:text-blue-800 hover:border-blue-200" },
+    { name: "Email", Icon: Mail, href: `mailto:?subject=${encodedTitle}&body=Check this out: ${encodedUrl}`, color: "hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200" },
+  ];
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard unavailable — ignore */
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest mr-1">Share:</span>
+      {links.map(({ name, Icon, href, color }) => (
+        <a key={name} href={href} target="_blank" rel="noopener noreferrer" title={`Share on ${name}`}
+          className={`w-9 h-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center transition-all text-slate-500 ${color}`}>
+          <Icon size={16} strokeWidth={2.25} />
+        </a>
+      ))}
+      <button type="button" onClick={copyLink} title="Copy link"
+        className="w-9 h-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center transition-all text-slate-500 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200">
+        {copied ? <Check size={16} strokeWidth={2.25} /> : <Link2 size={16} strokeWidth={2.25} />}
+      </button>
+    </div>
+  );
+}
+
+// ─── localStorage helpers for comment form persistence ───────────────────────
+const STORAGE_PREFIX = "news_comment_";
+
+function loadFormFromStorage(postId) {
+  if (typeof window === "undefined" || !postId) return null;
+  try {
+    const name = localStorage.getItem(`${STORAGE_PREFIX}${postId}_name`);
+    const email = localStorage.getItem(`${STORAGE_PREFIX}${postId}_email`);
+    const body = localStorage.getItem(`${STORAGE_PREFIX}${postId}_body`);
+    return { name: name || "", email: email || "", body: body || "" };
+  } catch {
+    return null;
+  }
+}
+
+function saveFormToStorage(postId, form) {
+  if (typeof window === "undefined" || !postId) return;
+  try {
+    localStorage.setItem(`${STORAGE_PREFIX}${postId}_name`, form.name);
+    localStorage.setItem(`${STORAGE_PREFIX}${postId}_email`, form.email);
+    localStorage.setItem(`${STORAGE_PREFIX}${postId}_body`, form.body);
+  } catch { /* ignore */ }
+}
+
+function clearFormStorage(postId) {
+  if (typeof window === "undefined" || !postId) return;
+  try {
+    localStorage.removeItem(`${STORAGE_PREFIX}${postId}_name`);
+    localStorage.removeItem(`${STORAGE_PREFIX}${postId}_email`);
+    localStorage.removeItem(`${STORAGE_PREFIX}${postId}_body`);
+  } catch { /* ignore */ }
+}
+
+export default function PublicNewsDetailPage() {
+  const params = useParams();
+  const slug = params.slug;
+
+  const [article, setArticle] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [settings, setSettings] = useState({});
+  const [suggestedNews, setSuggestedNews] = useState([]);
+  const [relatedNews, setRelatedNews] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const [form, setForm] = useState({ name: "", email: "", body: "" });
+  const [replyForm, setReplyForm] = useState({ name: "", email: "", body: "" });
+  const [activeReplyBox, setActiveReplyBox] = useState(null);
+  const [notice, setNotice] = useState("");
+  const [hasLiked, setHasLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [liking, setLiking] = useState(false);
+  const [lightboxIdx, setLightboxIdx] = useState(null);
+
+  const pageUrl = typeof window !== "undefined" ? window.location.href : "";
+  const nameInputRef = useRef(null);
+
+  // Load article data
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [articleData, settingsData] = await Promise.all([
+          publicNewsApi.getPostBySlug(slug),
+          publicNewsApi.getSettings(),
+        ]);
+
+        setArticle(articleData);
+        setComments(articleData?.comments || []);
+        setLikeCount(articleData?.likesCount || 0);
+
+        // Real, server-verified like state for this visitor's IP (separate
+        // call since it depends on the request's IP, not on the article data).
+        if (articleData?.slug) {
+          publicNewsApi.getLikeStatus(articleData.slug).then((status) => {
+            if (status) {
+              setHasLiked(!!status.liked);
+              setLikeCount(status.likesCount ?? 0);
+            }
+          }).catch(() => {});
+        }
+
+        // Restore saved comment form for this article
+        const saved = loadFormFromStorage(articleData?.id);
+        if (saved) {
+          setForm(saved);
+        }
+
+        if (settingsData) setSettings(settingsData);
+
+        // Suggested-reading sidebar (replaces the old sponsored-products slot)
+        publicNewsApi.getLatestNews(slug, 5).then(setSuggestedNews).catch(() => {});
+
+        // Bottom-of-article recommendations — category/subcategory matched
+        publicNewsApi.getRelatedNews(slug, 10).then(setRelatedNews).catch(() => {});
+      } catch (error) {
+        console.error("Failed to load article:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (slug) loadData();
+  }, [slug]);
+
+  // Persist comment form to localStorage whenever it changes
+  useEffect(() => {
+    if (article?.id) {
+      saveFormToStorage(article.id, form);
+    }
+  }, [form, article?.id]);
+
+  // Tab title / meta description — previously never set for article pages.
+  useEffect(() => {
+    if (!article) return;
+    document.title = article.metaTitle?.trim() || `${article.title} — SBS Groups News`;
+    const desc = article.metaDescription?.trim() || article.excerpt || "";
+    if (desc) {
+      let tag = document.querySelector('meta[name="description"]');
+      if (!tag) {
+        tag = document.createElement("meta");
+        tag.setAttribute("name", "description");
+        document.head.appendChild(tag);
+      }
+      tag.setAttribute("content", desc);
+    }
+  }, [article]);
+
+  // Ctrl + '+' shortcut to focus first input in comment section
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.key === "+") {
+        e.preventDefault();
+        if (nameInputRef.current) {
+          nameInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+          nameInputRef.current.focus();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const handleLike = async () => {
+    if (liking || !article?.slug) return;
+    // Optimistic update for instant feedback, corrected once the server responds.
+    const prevLiked = hasLiked;
+    const prevCount = likeCount;
+    setHasLiked(!prevLiked);
+    setLikeCount((c) => (prevLiked ? c - 1 : c + 1));
+    setLiking(true);
+    try {
+      const result = await publicNewsApi.toggleLike(article.slug);
+      if (result) {
+        setHasLiked(!!result.liked);
+        setLikeCount(result.likesCount ?? 0);
+      }
+    } catch {
+      // Revert the optimistic change if the request failed (e.g. offline).
+      setHasLiked(prevLiked);
+      setLikeCount(prevCount);
+    } finally {
+      setLiking(false);
+    }
+  };
+
+  const handleAddComment = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.email.trim() || !form.body.trim()) return;
+    try {
+      await publicNewsApi.submitComment({ postId: article.id, name: form.name.trim(), email: form.email.trim(), body: form.body.trim() });
+      setNotice(settings.commentsRequireApproval ? "Thanks! Your comment was submitted and is awaiting approval." : "Thanks! Your comment has been posted.");
+      setForm({ name: "", email: "", body: "" });
+      clearFormStorage(article.id);
+    } catch (error) {
+      alert("Failed to submit comment: " + error.message);
+    }
+  };
+
+  const handleAddReply = async (parentId) => {
+    if (!replyForm.name.trim() || !replyForm.email.trim() || !replyForm.body.trim()) return;
+    try {
+      await publicNewsApi.submitComment({ postId: article.id, parentId, name: replyForm.name.trim(), email: replyForm.email.trim(), body: replyForm.body.trim() });
+      setNotice("Reply submitted!");
+      setReplyForm({ name: "", email: "", body: "" });
+      setActiveReplyBox(null);
+    } catch (error) {
+      alert("Failed to submit reply: " + error.message);
+    }
+  };
+
+  const CommentNode = ({ node, indent = 0 }) => (
+    <div className={indent ? "pl-5 border-l-2 border-slate-200" : ""}>
+      <div className="space-y-1.5 py-3">
+        <div className="flex justify-between text-[11px] font-bold text-slate-400">
+          <span className="text-slate-900 font-black">{node.name}</span>
+          <span>{fmtDate(node.createdAt)}</span>
+        </div>
+        <p className="text-xs text-slate-700 font-medium leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">{node.body}</p>
+        {settings.commentsAllowReplies && (
+          <button onClick={() => setActiveReplyBox(activeReplyBox === node.id ? null : node.id)}
+            className="text-[10px] font-black uppercase text-blue-900 tracking-wider hover:underline pl-1">↳ Reply</button>
+        )}
+        {activeReplyBox === node.id && (
+          <div className="pt-2 space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <input type="text" placeholder="Your name" value={replyForm.name} onChange={(e) => setReplyForm({ ...replyForm, name: e.target.value })} className="text-xs px-3 py-1.5 border rounded-lg" />
+              <input type="email" placeholder="Your email" value={replyForm.email} onChange={(e) => setReplyForm({ ...replyForm, email: e.target.value })} className="text-xs px-3 py-1.5 border rounded-lg" />
+            </div>
+            <div className="flex gap-2">
+              <input type="text" placeholder="Write a reply..." value={replyForm.body} onChange={(e) => setReplyForm({ ...replyForm, body: e.target.value })} className="flex-1 text-xs px-3 py-1.5 border rounded-lg" />
+              <button onClick={() => handleAddReply(node.id)} className="bg-slate-800 text-white font-bold text-[10px] px-3 rounded-lg uppercase">Send</button>
+            </div>
+          </div>
+        )}
+      </div>
+      {node.replies?.length > 0 && (
+        <div className="space-y-1">{node.replies.map((child) => <CommentNode key={child.id} node={child} indent={indent + 1} />)}</div>
+      )}
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  if (!article) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-8">
+        <div className="text-center">
+          <span className="text-3xl">📰</span>
+          <h1 className="text-xl font-black text-slate-900 mt-3">Article Not Found</h1>
+          <p className="text-xs text-slate-400 mt-1">This news item may have been moved or unpublished.</p>
+          <Link href="/news" className="inline-block mt-4 text-xs font-black text-blue-700 uppercase tracking-wider">← Back to Newsroom</Link>
+        </div>
+      </div>
+    );
+  }
+
+  const category = article.category;
+  const blocks = article.blocks || [];
+
+  const textBlocks = blocks.filter((b) => b.type === "text");
+  const allGalleryImages = blocks
+    .filter((b) => b.type === "imageRow")
+    .flatMap((b) => b.images || [])
+    .filter((img) => img?.src);
+
+  const headImage = article.coverImage || allGalleryImages[0]?.src || "";
+  const galleryImages = article.coverImage
+    ? allGalleryImages
+    : allGalleryImages.slice(1);
+
+  // Rough reading-time estimate (~200 wpm) from the plain text of all text blocks.
+  const wordCount = textBlocks
+    .map((b) => (b.content || "").replace(/<[^>]+>/g, " "))
+    .join(" ")
+    .split(/\s+/)
+    .filter(Boolean).length;
+  const readMinutes = Math.max(1, Math.round(wordCount / 200));
+
+  return (
+    <div className="bg-slate-50 min-h-screen p-4 md:p-12 font-sans text-slate-800 antialiased">
+      <div className="max-w-7xl mx-auto">
+        {/* AUDIT FIX: this used to reuse the article's own cover image as the
+            breadcrumb background — every article's breadcrumb looked
+            different, and a photo-heavy article's first image (which could
+            be anything) ended up standing in for site chrome. Breadcrumb now
+            uses the same admin-managed banner as every other public page;
+            the article's own image still gets its moment below as the large
+            in-article banner. */}
+        {/* <div className="mb-8 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+          <PageBreadcrumb
+            pageKey="news"
+            title={article.title}
+            items={[
+              { label: "Newsroom", href: "/news" },
+              { label: category?.name || "News" },
+            ]}
+          />
+        </div> */}
+
+        {/* Grid for main content and sidebar.
+            AUDIT FIX: the sidebar already had `sticky top-6`, but this row
+            used `items-start`, which sizes each grid cell to its own content
+            height rather than the row height — so the sidebar's cell was
+            never taller than the sidebar itself, leaving sticky nothing to
+            stick against while the (much taller) main column scrolled past.
+            Grid's default `stretch` lets the sidebar's cell match the row's
+            full height, which is what sticky needs. */}
+        <div className="grid gap-8 lg:gap-[5%] lg:grid-cols-[75%_20%]">
+          {/* MAIN COLUMN */}
+          <div className="space-y-8 min-w-0">
+            <article className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+              {/* ── HEADLINE (previously missing from the page entirely) ── */}
+              <div className="px-6 md:px-10 pt-8 pb-6 space-y-4">
+                <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400">
+                  <Link href="/news" className="hover:text-blue-900 transition-colors">Newsroom</Link>
+                  <span>/</span>
+                  <span className="text-blue-900">{category?.name || "News"}</span>
+                </div>
+                <h1 className="text-2xl md:text-4xl font-black text-slate-900 leading-tight tracking-tight">
+                  {article.title}
+                </h1>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500 font-medium">
+                  <span>Published <span className="font-bold text-slate-700">{fmtDate(article.publishedAt || article.createdAt)}</span></span>
+                  <span className="w-1 h-1 rounded-full bg-slate-300" />
+                  <span>{readMinutes} min read</span>
+                </div>
+              </div>
+
+              {/* ── HEAD IMAGE (Udyogi-style large banner) ──────────────────── */}
+              {headImage && (
+                <div className="w-full">
+                  <LazyCacheImage
+                    src={headImage}
+                    alt={article.title}
+                    className="w-full max-h-[480px] object-cover"
+                    containerClassName="w-full"
+                  />
+                </div>
+              )}
+
+              <div className="p-6 md:p-10 space-y-6">
+                {/* Category chip */}
+                <div className="space-y-3 border-b border-slate-100 pb-5">
+                  <span className="text-[10px] font-black tracking-widest text-blue-900 uppercase bg-blue-50 px-3 py-1 rounded-md">
+                    {category?.name || "News"}
+                  </span>
+                </div>
+
+                {/* ── DESCRIPTION (text blocks) ── */}
+                {textBlocks.length > 0 && (
+                  <div className="space-y-4">
+                    {textBlocks.map((block, index) => (
+                      <RichTextRenderer key={index} html={block.content} className="whitespace-pre-line" />
+                    ))}
+                  </div>
+                )}
+
+                {/* ── BOTTOM GALLERY GRID (unlimited images, lightbox on click) ── */}
+                {galleryImages.length > 0 && (
+                  <div className="space-y-3 pt-2">
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                      Gallery ({galleryImages.length} photo{galleryImages.length !== 1 ? "s" : ""})
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {galleryImages.map((img, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setLightboxIdx(i)}
+                          className="group relative aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100"
+                        >
+                          <LazyCacheImage src={img.src} alt={img.caption || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                            <span className="opacity-0 group-hover:opacity-100 text-white text-lg transition-opacity">🔍</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Like bar + share bar */}
+                <div className="border-t border-slate-100 pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <button onClick={handleLike} disabled={liking}
+                      className={`flex items-center space-x-2 text-xs font-black uppercase tracking-wider px-4 py-2 rounded-xl transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
+                        hasLiked ? "bg-rose-50 text-rose-600 border border-rose-200" : "bg-slate-50 hover:bg-slate-100 text-slate-600 border"
+                      }`}>
+                      <span>{hasLiked ? "❤️ Liked" : "🤍 Like"}</span>
+                      <span className="bg-slate-900 text-white rounded px-1.5 py-0.5 text-[10px] font-mono">{likeCount}</span>
+                    </button>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{comments.length} Comment{comments.length !== 1 ? "s" : ""}</span>
+                  </div>
+                  <ShareBar title={article.title} url={pageUrl} />
+                </div>
+              </div>
+            </article>
+
+            {/* Comments */}
+            <section className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+              <h2 className="text-xs font-black text-slate-900 uppercase tracking-widest border-b pb-2">Public Comments</h2>
+              {notice && <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl px-4 py-2.5 text-xs font-semibold">{notice}</div>}
+              <form onSubmit={handleAddComment} className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <input
+                    ref={nameInputRef}
+                    type="text"
+                    required
+                    placeholder="Your name"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    className="text-xs p-3 border rounded-xl bg-slate-50/50"
+                  />
+                  <input type="email" required placeholder="Your email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="text-xs p-3 border rounded-xl bg-slate-50/50" />
+                </div>
+                <textarea rows="3" required value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} placeholder="Share your feedback..." className="w-full text-xs p-3 border rounded-xl bg-slate-50/50" />
+                <button type="submit" className="bg-slate-900 text-white font-black text-[10px] uppercase px-4 py-2 rounded-lg">Post Comment</button>
+              </form>
+              <div className="divide-y divide-slate-100">
+                {comments.length > 0 ? comments.map((node) => <CommentNode key={node.id} node={node} />) : <p className="text-xs text-slate-400 py-4">No comments yet.</p>}
+              </div>
+            </section>
+          </div>
+
+          {/* SUGGESTED NEWS SIDEBAR (replaces the old, now-retired sponsored-products slot) */}
+          {suggestedNews.length > 0 && (
+            <aside className="space-y-4">
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 sticky top-25">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">You Might Also Like</p>
+                <div className="space-y-3">
+                  {suggestedNews.map((n) => (
+                    <Link key={n.id} href={`/news/${n.slug}`} className="flex gap-3 items-center p-2 rounded-xl border hover:border-blue-300 hover:shadow-sm transition-all group">
+                      <div className="w-14 h-14 shrink-0 bg-slate-50 rounded-lg border flex items-center justify-center p-1 overflow-hidden">
+                        {n.coverImage ? (
+                          <LazyCacheImage src={n.coverImage} alt={n.title} className="w-full h-full object-cover" />
+                        ) : (<span className="text-xl">📰</span>)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-black text-slate-900 line-clamp-2 group-hover:text-blue-900">{n.title}</p>
+                        <span className="text-[9px] font-bold text-blue-600 uppercase">Read →</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </aside>
+          )}
+        </div>
+
+        {/* RECOMMENDED NEWS — up to 10 articles matching this article's
+            category and subcategory (same-subcategory results first, topped
+            up with same-category if the subcategory pool is small) */}
+        {relatedNews.length > 0 && (
+          <div className="mt-10">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-black text-slate-900 tracking-tight">Recommended for You</h2>
+              <Link href="/news" className="text-[11px] font-black uppercase tracking-wider text-blue-700 hover:text-blue-900">
+                View All →
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              {relatedNews.map((n) => (
+                <Link
+                  key={n.id}
+                  href={`/news/${n.slug}`}
+                  className="group bg-white border border-slate-200 rounded-2xl overflow-hidden hover:border-blue-300 hover:shadow-md transition-all"
+                >
+                  <div className="aspect-[4/3] bg-slate-50 overflow-hidden">
+                    {n.coverImage ? (
+                      <LazyCacheImage
+                        src={n.coverImage}
+                        alt={n.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-3xl">📰</div>
+                    )}
+                  </div>
+                  <div className="p-3 space-y-1">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-blue-700">
+                      {n.category?.name || "News"}
+                    </span>
+                    <p className="text-xs font-bold text-slate-900 line-clamp-2 leading-snug group-hover:text-blue-900">
+                      {n.title}
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-medium">{fmtDate(n.publishedAt)}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Lightbox overlay – added key to force re‑mount when index changes */}
+      {lightboxIdx !== null && (
+        <Lightbox
+          key={lightboxIdx}
+          images={galleryImages}
+          index={lightboxIdx}
+          onClose={() => setLightboxIdx(null)}
+          onNav={setLightboxIdx}
+        />
+      )}
+    </div>
+  );
+}

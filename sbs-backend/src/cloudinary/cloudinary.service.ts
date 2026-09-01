@@ -1,0 +1,355 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { v2 as cloudinary } from 'cloudinary';
+import * as streamifier from 'streamifier';
+import sharp from 'sharp';
+import { ApiKeysService } from '../api-keys/api-keys.service';
+
+@Injectable()
+export class CloudinaryService {
+  private readonly logger = new Logger(CloudinaryService.name);
+
+  constructor(private readonly apiKeys: ApiKeysService) {}
+
+  private async configureCloudinary(): Promise<void> {
+    const [cloudName, apiKey, apiSecret] = await Promise.all([
+      this.apiKeys.get('CLOUDINARY_CLOUD_NAME'),
+      this.apiKeys.get('CLOUDINARY_API_KEY'),
+      this.apiKeys.get('CLOUDINARY_API_SECRET'),
+    ]);
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      this.logger.warn(
+        'Cloudinary credentials incomplete — upload may fail. ' +
+          'Set them in Admin → Site Settings → API Keys, or in .env.',
+      );
+    }
+
+    cloudinary.config({ cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret });
+  }
+
+  async uploadBrochure(
+    file: Express.Multer.File,
+    productId: string,
+  ): Promise<{
+    url: string;
+    name: string;
+    size: number;
+    format: string;
+    publicId: string;
+    resourceType: string;
+  }> {
+    await this.configureCloudinary();
+
+    const isPdf = file.mimetype === 'application/pdf';
+    // "raw" covers anything Cloudinary won't treat as an image/video (pdf, doc, docx, xls, xlsx)
+    const isRaw =
+      isPdf ||
+      file.mimetype === 'application/msword' ||
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      file.mimetype === 'application/vnd.ms-excel' ||
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+    const resourceType = isRaw ? 'raw' : 'auto';
+
+    // Cloudinary treats a "raw" public_id as a literal, opaque string — it does
+    // NOT append the file extension automatically the way it does for images.
+    // Without the extension in the URL, browsers/Cloudinary can't tell it's a
+    // PDF, so it downloads with no extension and won't open as one. Fix: bake
+    // the original extension into the public_id ourselves, but only for raw.
+    const originalExt = (file.originalname.split('.').pop() || '').toLowerCase();
+    const safeBase = file.originalname
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[^a-zA-Z0-9_-]+/g, '_')
+      .slice(0, 60);
+    const uniqueSuffix = Date.now();
+    const publicId = isRaw
+      ? `${safeBase}-${uniqueSuffix}.${originalExt}`
+      : `${safeBase}-${uniqueSuffix}`;
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: `sbs-products/brochures/${productId}`,
+          public_id: publicId,
+          resource_type: resourceType,
+          ...(isRaw ? {} : { quality: 'auto', fetch_format: 'auto' }),
+        },
+        (error, result) => {
+          if (error) { this.logger.error('Brochure upload error:', error); return reject(error); }
+          if (!result) return reject(new Error('Upload failed — no result'));
+          resolve({
+            url: result.secure_url,
+            name: file.originalname,
+            size: result.bytes,
+            format: result.format || (isPdf ? 'pdf' : result.resource_type),
+            publicId: result.public_id,
+            resourceType: result.resource_type,
+          });
+        },
+      );
+      streamifier.createReadStream(file.buffer).pipe(uploadStream);
+    });
+  }
+
+  // Design files (CAD/artwork: pdf, dwg, dxf, ai, psd, eps, svg, jpg, png, webp).
+  // Browsers report inconsistent/generic mimetypes for CAD formats, so routing
+  // between Cloudinary's "raw" and "image" resource types is done by file
+  // extension rather than mimetype (see DesignFileUploader.jsx on the frontend).
+  private static readonly IMAGE_DESIGN_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'svg']);
+
+  async uploadDesignFile(
+    file: Express.Multer.File,
+    productId: string,
+  ): Promise<{
+    url: string;
+    name: string;
+    size: number;
+    format: string;
+    publicId: string;
+    resourceType: string;
+  }> {
+    await this.configureCloudinary();
+
+    const originalExt = (file.originalname.split('.').pop() || '').toLowerCase();
+    const isImageLike = CloudinaryService.IMAGE_DESIGN_EXTENSIONS.has(originalExt);
+    const resourceType = isImageLike ? 'image' : 'raw';
+
+    const safeBase = file.originalname
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[^a-zA-Z0-9_-]+/g, '_')
+      .slice(0, 60);
+    const uniqueSuffix = Date.now();
+    // Same reasoning as uploadBrochure: "raw" public_ids don't get the
+    // extension appended automatically, so bake it in ourselves.
+    const publicId = isImageLike
+      ? `${safeBase}-${uniqueSuffix}`
+      : `${safeBase}-${uniqueSuffix}.${originalExt}`;
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: `sbs-products/design/${productId}`,
+          public_id: publicId,
+          resource_type: resourceType,
+        },
+        (error, result) => {
+          if (error) { this.logger.error('Design file upload error:', error); return reject(error); }
+          if (!result) return reject(new Error('Upload failed — no result'));
+          resolve({
+            url: result.secure_url,
+            name: file.originalname,
+            size: result.bytes,
+            format: result.format || originalExt,
+            publicId: result.public_id,
+            resourceType: result.resource_type,
+          });
+        },
+      );
+      streamifier.createReadStream(file.buffer).pipe(uploadStream);
+    });
+  }
+
+  async deleteDesignFile(publicId: string, resourceType: string = 'raw'): Promise<void> {
+    await this.configureCloudinary();
+    try {
+      const result = await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+      if (result.result === 'not found' && resourceType !== 'image') {
+        await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+      }
+    } catch (error) {
+      this.logger.error('Design file delete error:', error);
+    }
+  }
+
+  async uploadProductImage(
+    file: Express.Multer.File,
+    productId = 'unassigned',
+    maxBytes = 100 * 1024,
+  ): Promise<{ url: string; bytes: number; format: string; width: number; height: number }> {
+    await this.configureCloudinary();
+
+    const base = sharp(file.buffer, { failOn: 'none' })
+      .rotate()
+      .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true });
+
+    let quality = 82;
+    let output: Buffer = await base.clone().webp({ quality }).toBuffer();
+
+    while (output.length > maxBytes && quality > 30) {
+      quality -= 10;
+      output = await base.clone().webp({ quality }).toBuffer();
+    }
+
+    if (output.length > maxBytes) {
+      output = await sharp(file.buffer, { failOn: 'none' })
+        .rotate()
+        .resize({ width: 1000, height: 1000, fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 60 })
+        .toBuffer();
+    }
+
+    const meta = await sharp(output).metadata();
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: `sbs-products/images/${productId}`, resource_type: 'image', format: 'webp' },
+        (error, result) => {
+          if (error) { this.logger.error('Product image upload error:', error); return reject(error); }
+          if (!result) return reject(new Error('Image upload failed — no result'));
+          resolve({
+            url: result.secure_url,
+            bytes: result.bytes,
+            format: result.format,
+            width: meta.width || 0,
+            height: meta.height || 0,
+          });
+        },
+      );
+      streamifier.createReadStream(output).pipe(uploadStream);
+    });
+  }
+
+  async uploadEmployeeImage(
+    file: Express.Multer.File,
+    employeeId = 'unassigned',
+    maxBytes = 200 * 1024,
+  ): Promise<{ url: string; bytes: number }> {
+    await this.configureCloudinary();
+
+    const base = sharp(file.buffer, { failOn: 'none' })
+      .rotate()
+      .resize({ width: 1000, height: 1000, fit: 'inside', withoutEnlargement: true });
+
+    let quality = 82;
+    let output: Buffer = await base.clone().webp({ quality }).toBuffer();
+
+    while (output.length > maxBytes && quality > 30) {
+      quality -= 10;
+      output = await base.clone().webp({ quality }).toBuffer();
+    }
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: `sbs-employees/photos/${employeeId}`,
+          resource_type: 'image',
+          format: 'webp',
+          overwrite: true,
+        },
+        (error, result) => {
+          if (error) { this.logger.error('Employee image upload error:', error); return reject(error); }
+          if (!result) return reject(new Error('Employee image upload failed'));
+          resolve({ url: result.secure_url, bytes: result.bytes });
+        },
+      );
+      streamifier.createReadStream(output).pipe(uploadStream);
+    });
+  }
+
+  async uploadGenericImage(
+    file: Express.Multer.File,
+    folder = 'misc',
+    maxBytes = 250 * 1024,
+  ): Promise<{ url: string; bytes: number; width: number; height: number }> {
+    await this.configureCloudinary();
+
+    const base = sharp(file.buffer, { failOn: 'none' })
+      .rotate()
+      .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true });
+
+    let quality = 82;
+    let output: Buffer = await base.clone().webp({ quality }).toBuffer();
+
+    while (output.length > maxBytes && quality > 40) {
+      quality -= 10;
+      output = await base.clone().webp({ quality }).toBuffer();
+    }
+
+    const meta = await sharp(output).metadata();
+    const safeFolder = String(folder).replace(/[^a-z0-9/_-]/gi, '').slice(0, 60) || 'misc';
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: `sbs-media/${safeFolder}`, resource_type: 'image', format: 'webp' },
+        (error, result) => {
+          if (error) { this.logger.error('Generic image upload error:', error); return reject(error); }
+          if (!result) return reject(new Error('Image upload failed'));
+          resolve({
+            url: result.secure_url,
+            bytes: result.bytes,
+            width: meta.width || 0,
+            height: meta.height || 0,
+          });
+        },
+      );
+      streamifier.createReadStream(output).pipe(uploadStream);
+    });
+  }
+
+  /**
+   * Uploads an image AS-IS — no resize, no re-encode, no quality reduction.
+   * Use only for assets where pixel fidelity matters more than file size
+   * (site logo, favicon). Everything else should go through
+   * uploadGenericImage/uploadProductImage/etc., which compress.
+   */
+  async uploadImageNoCompression(
+    file: Express.Multer.File,
+    folder = 'misc',
+  ): Promise<{ url: string; bytes: number; width: number; height: number }> {
+    await this.configureCloudinary();
+    const safeFolder = String(folder).replace(/[^a-z0-9/_-]/gi, '').slice(0, 60) || 'misc';
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: `sbs-media/${safeFolder}`, resource_type: 'image' }, // no format/quality transform
+        (error, result) => {
+          if (error) { this.logger.error('Uncompressed image upload error:', error); return reject(error); }
+          if (!result) return reject(new Error('Image upload failed'));
+          resolve({
+            url: result.secure_url,
+            bytes: result.bytes,
+            width: result.width || 0,
+            height: result.height || 0,
+          });
+        },
+      );
+      streamifier.createReadStream(file.buffer).pipe(uploadStream);
+    });
+  }
+
+  async deleteImageByUrl(url: string): Promise<void> {
+    await this.configureCloudinary();
+    const publicId = this.getPublicIdFromUrl(url);
+    if (!publicId) return;
+    try {
+      await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+    } catch (error) {
+      this.logger.error('Image delete error:', error);
+    }
+  }
+
+  async deleteBrochure(publicId: string, resourceType: string = 'raw'): Promise<void> {
+    await this.configureCloudinary();
+    try {
+      const result = await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+      if (result.result === 'not found' && resourceType !== 'image') {
+        await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+      }
+    } catch (error) {
+      this.logger.error('Brochure delete error:', error);
+    }
+  }
+
+  getPublicIdFromUrl(url: string): string | null {
+    try {
+      const parts = url.split('/');
+      const uploadIndex = parts.indexOf('upload');
+      if (uploadIndex === -1) return null;
+      const afterUpload = parts.slice(uploadIndex + 1);
+      const start = /^v\d+$/.test(afterUpload[0]) ? 1 : 0;
+      return afterUpload.slice(start).join('/').replace(/\.[^.]+$/, '');
+    } catch {
+      return null;
+    }
+  }
+}

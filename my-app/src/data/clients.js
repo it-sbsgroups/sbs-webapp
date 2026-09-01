@@ -1,0 +1,117 @@
+export const CLIENTS = [
+  {
+    id: "CLNT-01",
+    slug: "adani-enterprises",
+    name: "Rajesh Malhotra",                       // client name (contact person)
+    designation: "VP — Procurement Operations",
+    companyName: "Adani Enterprises Ltd",
+    industry: "Mining & Heavy Infrastructure",
+    servingSince: "2020",
+    logo: "https://placehold.co/120x120/0f172a/a3e635?text=AE",
+    url: "https://www.adanienterprises.com",
+    details:
+      "Collaborating across multiple open-cast mining cells in the Singrauli zone for strategic distribution of high-tensile machinery spares, conveyor systems and site safety equipment. Engagement runs on an annual rate contract with consolidated monthly dispatches to three site stores, full test-certificate documentation on every line item, and a dedicated account executive for emergency breakdown sourcing.",
+    contact: { phone: "+91 98765 10001", email: "procurement@adanient.example.com" },
+    social: {
+      linkedin: "https://linkedin.com/company/adani-enterprises",
+      instagram: "https://instagram.com/adanionline",
+      twitter: "https://twitter.com/adanionline",
+    },
+    gallery: [
+      "https://placehold.co/480x300?text=Singrauli+Mining+Cell",
+      "https://placehold.co/480x300?text=Site+Stores",
+      "https://placehold.co/480x300?text=Conveyor+Line",
+    ],
+    reviews: [
+      { date: "2026-04-18", rating: 5, description: "Bulk sourcing turnaround for our Singrauli zone machinery spares has been stellar. The automated RFQ pipeline cut our order-tracking overhead by almost 35%." },
+      { date: "2025-12-03", rating: 5, description: "Emergency breakdown order delivered to site in 18 hours with complete test certificates. This is the standard we hold every vendor to now." },
+      { date: "2025-07-22", rating: 4, description: "Consistent quality across consignments. One packaging issue in monsoon was resolved with replacement within the week." },
+    ],
+  },
+  {
+    id: "CLNT-02",
+    slug: "hindalco-industries",
+    name: "Meera Krishnan",
+    designation: "Head — Plant Maintenance Stores",
+    companyName: "Hindalco Industries",
+    industry: "Metallurgy & Aluminium Refineries",
+    servingSince: "2022",
+    logo: "https://placehold.co/120x120/1e3a8a/ffffff?text=HI",
+    url: "https://www.hindalco.com",
+    details:
+      "Core strategic supplier for high-pressure industrial hydraulics, lubrication systems and electrical safety audit equipment across refinery maintenance cells. Procurement operates on quarterly purchase orders with MSDS sheets mandatory on all chemical lines and IEC-certified PPE for electrical crews.",
+    contact: { phone: "+91 98765 10002", email: "stores@hindalco.example.com" },
+    social: {
+      linkedin: "https://linkedin.com/company/hindalco",
+      instagram: "",
+      twitter: "https://twitter.com/hindalco",
+    },
+    gallery: [
+      "https://placehold.co/480x300?text=Refinery+Cell",
+      "https://placehold.co/480x300?text=Hydraulics+Bay",
+    ],
+    reviews: [
+      { date: "2026-02-09", rating: 5, description: "Every electrical safety item arrives with IEC certification and test stamps. Audit-ready paperwork without us having to chase — rare in this region." },
+      { date: "2025-09-15", rating: 4, description: "Hydraulic spares matched OEM part numbers exactly. Pricing on bulk lubricant orders is consistently competitive." },
+    ],
+  },
+  {
+    id: "CLNT-03",
+    slug: "ntpc-vindhyachal",
+    name: "Arvind Deshpande",
+    designation: "Sr. Manager — Materials",
+    companyName: "NTPC Vindhyachal",
+    industry: "Thermal Power Generation",
+    servingSince: "2021",
+    logo: "https://placehold.co/120x120/7c2d12/ffffff?text=NV",
+    url: "https://www.ntpc.co.in",
+    details:
+      "Annual rate contract covering calibrated torque tooling, lifting tackle with load-test certification, and Class-3 insulated electrical PPE for one of India's largest thermal power stations. All lifting equipment is supplied with EN-standard certificates and colour-coded SWL tagging per station safety protocol.",
+    contact: { phone: "+91 98765 10003", email: "materials@ntpcvin.example.com" },
+    social: { linkedin: "https://linkedin.com/company/ntpc", instagram: "", twitter: "" },
+    gallery: ["https://placehold.co/480x300?text=Power+Station"],
+    reviews: [
+      { date: "2026-01-27", rating: 5, description: "Calibration certificates traceable to national standards supplied with every torque wrench. Exactly what a power plant audit demands." },
+      { date: "2025-06-11", rating: 4, description: "Lifting tackle arrived with complete EN documentation. Delivery scheduling around our shutdown window was handled professionally." },
+    ],
+  },
+  {
+    id: "CLNT-04",
+    slug: "jp-cement-rewa",
+    name: "Sunita Agrawal",
+    designation: "Purchase Officer",
+    companyName: "JP Cement Works, Rewa",
+    industry: "Cement Manufacturing",
+    servingSince: "2023",
+    logo: "https://placehold.co/120x120/065f46/ffffff?text=JP",
+    url: "https://example.com/jp-cement",
+    details:
+      "Cement grinding unit sourcing industrial lubricants, hydraulic pump spares and maintenance chemicals. Requires MSDS documentation with every chemical consignment and sealed OEM packaging on all lubricant lines to guarantee against adulteration.",
+    contact: { phone: "+91 98765 10004", email: "purchase@jpcement.example.com" },
+    social: { linkedin: "https://linkedin.com/company/jp-cement", instagram: "https://instagram.com/jpcement", twitter: "" },
+    gallery: [],
+    reviews: [
+      { date: "2026-03-02", rating: 5, description: "Shell and Mobil lines always arrive in sealed OEM packaging with batch numbers. Zero adulteration concerns since switching to SBS." },
+    ],
+  },
+  {
+    id: "CLNT-05",
+    slug: "mp-infra-projects",
+    name: "Imran Qureshi",
+    designation: "Director — Site Operations",
+    companyName: "MP Infra Projects Ltd",
+    industry: "Roads & Bridge Construction",
+    servingSince: "2024",
+    logo: "https://placehold.co/120x120/581c87/ffffff?text=MP",
+    url: "https://example.com/mp-infra",
+    details:
+      "Road and bridge construction contractor placing seasonal bulk orders for power tools, IS-marked safety helmets and Grade-A work boots across multiple site offices in Madhya Pradesh. Multi-site split deliveries coordinated against a single consolidated purchase order.",
+    contact: { phone: "+91 98765 10005", email: "procure@mpinfra.example.com" },
+    social: { linkedin: "https://linkedin.com/company/mpinfra", instagram: "https://instagram.com/mpinfra", twitter: "https://twitter.com/mpinfra" },
+    gallery: ["https://placehold.co/480x300?text=Bridge+Site", "https://placehold.co/480x300?text=Site+Office"],
+    reviews: [
+      { date: "2025-12-29", rating: 4, description: "Multi-site delivery across four locations handled against one PO without a single mix-up. Helmets passed our safety audit first time." },
+      { date: "2025-08-14", rating: 4, description: "Good bulk pricing on Bosch and DeWalt lines. Would like faster quote turnaround during peak season, but quality is reliable." },
+    ],
+  },
+];
