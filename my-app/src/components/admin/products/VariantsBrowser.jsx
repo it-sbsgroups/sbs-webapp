@@ -4,14 +4,31 @@
 
 import { useState, useEffect, useMemo } from "react";
 import {
-  ChevronDown, ChevronRight, ChevronLeft, Edit, Trash2, Package, ImageOff,
-  Search, X, Eye, EyeOff
+  ChevronDown, ChevronLeft, ChevronRight, Edit, Trash2, Package, ImageOff,
+  Search, X, Eye, EyeOff, RefreshCw, Calendar
 } from "lucide-react";
 import toast from "react-hot-toast";
 import productsApi from "@/lib/productsApi";
 import { toStaticUrl } from "@/lib/client";
 
-// ---------- Sub‑component: Variant Row (inside expanded table) ----------
+// Helper: format date for display
+const formatDate = (dateString) => {
+  if (!dateString) return "—";
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+// Helper: get month name
+const getMonthName = (month) => {
+  const months = ["January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"];
+  return months[month - 1] || "Unknown";
+};
+
 function VariantRow({ variant, productId, onEdit, onDeleted }) {
   const thumb = variant.images?.[0];
   const attrSummary = Object.entries(variant.attributes || {})
@@ -47,16 +64,17 @@ function VariantRow({ variant, productId, onEdit, onDeleted }) {
       </td>
       <td className="px-4 py-3 text-sm text-slate-600">{variant.model || "—"}</td>
       <td className="px-4 py-3 text-sm text-indigo-600 font-bold">{variant.brand?.name || "—"}</td>
+      <td className="px-4 py-3 text-sm text-slate-500">{formatDate(variant.createdAt)}</td>
       <td className="px-4 py-3">
         <span className={`inline-block text-xs font-bold px-2.5 py-1 rounded-full ${variant.isActive !== false ? "text-emerald-700 bg-emerald-50" : "text-slate-500 bg-slate-100"}`}>
           {variant.isActive !== false ? "Active" : "Inactive"}
         </span>
       </td>
       <td className="px-4 py-3 text-right">
-        <button onClick={onEdit} className="rounded-lg p-2 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors" title="Edit in product form">
+        <button onClick={onEdit} className="rounded-lg p-2 text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="Edit in product form">
           <Edit size={15} />
         </button>
-        <button onClick={handleDelete} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Delete variant">
+        <button onClick={handleDelete} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600" title="Delete variant">
           <Trash2 size={15} />
         </button>
       </td>
@@ -64,7 +82,6 @@ function VariantRow({ variant, productId, onEdit, onDeleted }) {
   );
 }
 
-// ---------- Sub‑component: Product Row ----------
 function ProductRow({ product, expanded, onToggleExpand, onEditProduct }) {
   const variants = product.variants || [];
 
@@ -108,7 +125,7 @@ function ProductRow({ product, expanded, onToggleExpand, onEditProduct }) {
           </button>
           <button
             onClick={() => onEditProduct(product)}
-            className="ml-1 rounded-lg p-2 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+            className="ml-1 rounded-lg p-2 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
             title="Edit product"
           >
             <Edit size={15} />
@@ -126,6 +143,7 @@ function ProductRow({ product, expanded, onToggleExpand, onEditProduct }) {
                     <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-400">Variant</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-400">Model</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-400">Brand</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-400">Created</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-400">Status</th>
                     <th className="px-4 py-2 text-right text-xs font-semibold uppercase text-slate-400">Actions</th>
                   </tr>
@@ -142,7 +160,7 @@ function ProductRow({ product, expanded, onToggleExpand, onEditProduct }) {
                   ))}
                   {variants.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-4 text-center text-sm text-slate-400">
+                      <td colSpan={7} className="px-4 py-4 text-center text-sm text-slate-400">
                         No variants available for this product.
                       </td>
                     </tr>
@@ -157,49 +175,117 @@ function ProductRow({ product, expanded, onToggleExpand, onEditProduct }) {
   );
 }
 
-// ---------- Main Component ----------
 export default function VariantsBrowser({ onEditProduct }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [brandFilter, setBrandFilter] = useState("ALL");
+
+  // Date filters
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [sortBy, setSortBy] = useState("name"); // 'name' | 'created' | 'variantCount'
-  const [sortDir, setSortDir] = useState("asc"); // 'asc' | 'desc'
+  const [filterMonth, setFilterMonth] = useState("ALL");
+  const [filterYear, setFilterYear] = useState("ALL");
+  const [filterQuarter, setFilterQuarter] = useState("ALL");
+
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [showAllPages, setShowAllPages] = useState(false);
   const [expandedIds, setExpandedIds] = useState(new Set());
 
+  // Fetch ALL products (paginated loop)
+  const fetchAllProducts = async () => {
+    setLoading(true);
+    try {
+      const allProducts = [];
+      let page = 1;
+      const pageSize = 100;
+      let totalPages = 1;
+
+      while (true) {
+        const response = await productsApi.getAll({ page, pageSize, isActive: 'true' });
+        const data = Array.isArray(response) ? response : (response?.data || []);
+        allProducts.push(...data);
+
+        if (response?.meta?.totalPages) {
+          totalPages = response.meta.totalPages;
+        } else if (response?.meta?.total) {
+          totalPages = Math.ceil(response.meta.total / pageSize);
+        } else {
+          totalPages = page;
+        }
+
+        if (page >= totalPages) break;
+        page++;
+      }
+
+      // Keep only products that have variants
+      const withVariants = allProducts.filter((p) => p.variants?.length > 0);
+      setProducts(withVariants);
+    } catch (error) {
+      console.error("Failed to fetch products:", error);
+      toast.error("Failed to load variants");
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    productsApi.getAll({ pageSize: 100 })
-      .then((res) => {
-        const list = Array.isArray(res) ? res : res?.data || [];
-        setProducts(list.filter((p) => p.variants?.length > 0));
-      })
-      .catch(() => toast.error("Failed to load variants"))
-      .finally(() => setLoading(false));
+    fetchAllProducts();
   }, []);
 
-  // Filtered & sorted products
+  // Unique brands for filter
+  const uniqueBrands = useMemo(() => {
+    return [...new Set(products.map((p) => p.brand?.name || "").filter(Boolean))];
+  }, [products]);
+
+  // Available years from variants
+  const availableYears = useMemo(() => {
+    const years = new Set();
+    products.forEach((p) => {
+      (p.variants || []).forEach((v) => {
+        if (v.createdAt) {
+          years.add(new Date(v.createdAt).getFullYear());
+        }
+      });
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [products]);
+
+  // Filtered products based on all filters
   const filteredProducts = useMemo(() => {
     let filtered = products;
 
     // Brand filter
     if (brandFilter !== "ALL") {
-      filtered = filtered.filter((p) => (p.brand?.name || "Unassigned") === brandFilter);
+      filtered = filtered.filter((p) => p.brand?.name === brandFilter);
+    }
+
+    // Search by product name or variant name/attributes
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      filtered = filtered.filter((p) => {
+        const productMatch = (p.name || "").toLowerCase().includes(q);
+        const variantMatch = (p.variants || []).some((v) =>
+          (v.name || "").toLowerCase().includes(q) ||
+          Object.entries(v.attributes || {}).some(([k, val]) => `${k}: ${val}`.toLowerCase().includes(q))
+        );
+        return productMatch || variantMatch;
+      });
     }
 
     // Status filter (based on variants)
-    if (filterStatus === "ACTIVE") {
-      filtered = filtered.filter((p) => (p.variants || []).some((v) => v.isActive !== false));
-    } else if (filterStatus === "INACTIVE") {
-      filtered = filtered.filter((p) => (p.variants || []).some((v) => v.isActive === false));
+    if (filterStatus !== "ALL") {
+      filtered = filtered.filter((p) =>
+        filterStatus === "ACTIVE"
+          ? (p.variants || []).some((v) => v.isActive !== false)
+          : (p.variants || []).some((v) => v.isActive === false)
+      );
     }
 
-    // Date range filter on variant createdAt
+    // Date range filter (based on variant.createdAt)
     if (dateFrom || dateTo) {
       filtered = filtered.filter((p) =>
         (p.variants || []).some((v) => {
@@ -212,62 +298,52 @@ export default function VariantsBrowser({ onEditProduct }) {
       );
     }
 
-    // Search filter
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      filtered = filtered.filter((p) => {
-        const productMatch = p.name.toLowerCase().includes(q);
-        const variantMatch = (p.variants || []).some((v) =>
-          v.name?.toLowerCase().includes(q) ||
-          Object.entries(v.attributes || {}).some(([k, val]) => `${k}: ${val}`.toLowerCase().includes(q))
-        );
-        return productMatch || variantMatch;
-      });
+    // Month filter
+    if (filterMonth !== "ALL") {
+      const monthNum = parseInt(filterMonth, 10);
+      filtered = filtered.filter((p) =>
+        (p.variants || []).some((v) => {
+          if (!v.createdAt) return false;
+          return new Date(v.createdAt).getMonth() + 1 === monthNum;
+        })
+      );
     }
 
-    // Sorting
-    filtered.sort((a, b) => {
-      let cmp = 0;
-      if (sortBy === "name") {
-        cmp = (a.name || "").localeCompare(b.name || "");
-      } else if (sortBy === "created") {
-        const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        cmp = aDate - bDate;
-      } else if (sortBy === "variantCount") {
-        cmp = (a.variants?.length || 0) - (b.variants?.length || 0);
-      }
-      if (sortDir === "desc") cmp = -cmp;
-      return cmp;
-    });
+    // Year filter
+    if (filterYear !== "ALL") {
+      const yearNum = parseInt(filterYear, 10);
+      filtered = filtered.filter((p) =>
+        (p.variants || []).some((v) => {
+          if (!v.createdAt) return false;
+          return new Date(v.createdAt).getFullYear() === yearNum;
+        })
+      );
+    }
+
+    // Quarter filter
+    if (filterQuarter !== "ALL") {
+      const quarterNum = parseInt(filterQuarter, 10);
+      filtered = filtered.filter((p) =>
+        (p.variants || []).some((v) => {
+          if (!v.createdAt) return false;
+          const month = new Date(v.createdAt).getMonth() + 1;
+          const q = Math.ceil(month / 3);
+          return q === quarterNum;
+        })
+      );
+    }
 
     return filtered;
-  }, [products, search, filterStatus, brandFilter, dateFrom, dateTo, sortBy, sortDir]);
+  }, [products, search, brandFilter, filterStatus, dateFrom, dateTo, filterMonth, filterYear, filterQuarter]);
 
+  // Total variant count across filtered products
+  const totalVariants = useMemo(() => {
+    return filteredProducts.reduce((acc, p) => acc + (p.variants?.length || 0), 0);
+  }, [filteredProducts]);
+
+  // Pagination (client-side)
   const totalPages = Math.ceil(filteredProducts.length / pageSize);
-  const paginatedProducts = filteredProducts.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
-
-  const uniqueBrands = [...new Set(products.map((p) => p.brand?.name).filter(Boolean))];
-
-  const totalVariants = products.reduce((acc, p) => acc + (p.variants?.length || 0), 0);
-  const activeVariants = products.reduce((acc, p) => acc + (p.variants?.filter((v) => v.isActive !== false).length || 0), 0);
-  const inactiveVariants = totalVariants - activeVariants;
-
-  // For hover tooltips
-  const productsWithActive = products.filter((p) => (p.variants || []).some((v) => v.isActive !== false)).length;
-  const productsWithInactive = products.filter((p) => (p.variants || []).some((v) => v.isActive === false)).length;
-
-  const toggleExpand = (productId) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(productId)) next.delete(productId);
-      else next.add(productId);
-      return next;
-    });
-  };
+  const paginatedProducts = filteredProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const getPaginationItems = () => {
     if (showAllPages) {
@@ -285,6 +361,29 @@ export default function VariantsBrowser({ onEditProduct }) {
     return items;
   };
 
+  const toggleExpand = (productId) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+  };
+
+  const clearFilters = () => {
+    setSearch("");
+    setBrandFilter("ALL");
+    setFilterStatus("ALL");
+    setDateFrom("");
+    setDateTo("");
+    setFilterMonth("ALL");
+    setFilterYear("ALL");
+    setFilterQuarter("ALL");
+    setCurrentPage(1);
+  };
+
+  const hasFilters = search || brandFilter !== "ALL" || filterStatus !== "ALL" || dateFrom || dateTo || filterMonth !== "ALL" || filterYear !== "ALL" || filterQuarter !== "ALL";
+
   if (loading) {
     return (
       <div className="flex justify-center py-16">
@@ -295,149 +394,79 @@ export default function VariantsBrowser({ onEditProduct }) {
 
   return (
     <div className="space-y-6">
-      {/* Stats with hover tooltips */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="relative group">
-          <div className="rounded-2xl border bg-white p-4 shadow-sm">
-            <p className="text-xs font-bold text-slate-400 uppercase">Products</p>
-            <h3 className="text-2xl font-bold text-blue-600 mt-1">{products.length}</h3>
-          </div>
-          <div className="absolute z-50 right-0 top-full mt-2 w-48 rounded-xl border border-slate-200 bg-white p-3 shadow-lg hidden group-hover:block">
-            <p className="text-xs font-bold text-slate-800">Products with variants</p>
-            <p className="text-xs text-slate-500 mt-1">
-              {productsWithActive} have active variants<br />
-              {productsWithInactive} have inactive variants
-            </p>
-          </div>
+      {/* Header & Stats */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Variants Browser</h2>
+          <p className="text-sm text-slate-500">
+            {filteredProducts.length} products · {totalVariants} total variants
+          </p>
         </div>
-
-        <div className="relative group">
-          <div className="rounded-2xl border bg-white p-4 shadow-sm">
-            <p className="text-xs font-bold text-slate-400 uppercase">Total Variants</p>
-            <h3 className="text-2xl font-bold text-purple-600 mt-1">{totalVariants}</h3>
-          </div>
-          <div className="absolute z-50 right-0 top-full mt-2 w-48 rounded-xl border border-slate-200 bg-white p-3 shadow-lg hidden group-hover:block">
-            <p className="text-xs font-bold text-slate-800">All variant entries</p>
-            <p className="text-xs text-slate-500 mt-1">
-              Across {products.length} products
-            </p>
-          </div>
-        </div>
-
-        <div className="relative group">
-          <div className="rounded-2xl border bg-white p-4 shadow-sm">
-            <p className="text-xs font-bold text-slate-400 uppercase">Active</p>
-            <h3 className="text-2xl font-bold text-emerald-600 mt-1">{activeVariants}</h3>
-          </div>
-          <div className="absolute z-50 right-0 top-full mt-2 w-48 rounded-xl border border-slate-200 bg-white p-3 shadow-lg hidden group-hover:block">
-            <p className="text-xs font-bold text-slate-800">Active variants</p>
-            <p className="text-xs text-slate-500 mt-1">
-              {activeVariants} currently live<br />
-              {productsWithActive} products have active variants
-            </p>
-          </div>
-        </div>
-
-        <div className="relative group">
-          <div className="rounded-2xl border bg-white p-4 shadow-sm">
-            <p className="text-xs font-bold text-slate-400 uppercase">Inactive</p>
-            <h3 className="text-2xl font-bold text-rose-600 mt-1">{inactiveVariants}</h3>
-          </div>
-          <div className="absolute z-50 right-0 top-full mt-2 w-48 rounded-xl border border-slate-200 bg-white p-3 shadow-lg hidden group-hover:block">
-            <p className="text-xs font-bold text-slate-800">Inactive variants</p>
-            <p className="text-xs text-slate-500 mt-1">
-              {inactiveVariants} currently hidden<br />
-              {productsWithInactive} products have inactive variants
-            </p>
-          </div>
-        </div>
+        <button
+          onClick={fetchAllProducts}
+          className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm hover:bg-slate-50"
+        >
+          <RefreshCw size={16} /> Refresh
+        </button>
       </div>
 
-      {/* Filter & Sorting bar */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 min-w-64">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-            placeholder="Search by product, variant, or attribute..."
-            className="w-full rounded-xl border border-slate-300 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none"
-          />
+      {/* Filters */}
+      <div className="bg-white rounded-2xl border p-4 space-y-4">
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="relative flex-1 min-w-64">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+              placeholder="Search by product, variant, or attribute..."
+              className="w-full rounded-xl border border-slate-300 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+          <select value={brandFilter} onChange={(e) => { setBrandFilter(e.target.value); setCurrentPage(1); }} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+            <option value="ALL">All Brands</option>
+            {uniqueBrands.map((b) => <option key={b} value={b}>{b}</option>)}
+          </select>
+          <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+            <option value="ALL">All Status</option>
+            <option value="ACTIVE">Active Only</option>
+            <option value="INACTIVE">Inactive Only</option>
+          </select>
         </div>
 
-        <select
-          value={brandFilter}
-          onChange={(e) => { setBrandFilter(e.target.value); setCurrentPage(1); }}
-          className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-        >
-          <option value="ALL">All Brands</option>
-          {uniqueBrands.map((brand) => (
-            <option key={brand} value={brand}>{brand}</option>
-          ))}
-        </select>
+        {/* Date Filters */}
+        <div className="flex flex-wrap items-center gap-3 border-t pt-3">
+          <span className="text-xs font-bold uppercase text-slate-400 flex items-center gap-1"><Calendar size={14} /> Date</span>
+          <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+          <span className="text-slate-400">to</span>
+          <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
 
-        <select
-          value={filterStatus}
-          onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
-          className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-        >
-          <option value="ALL">All Status</option>
-          <option value="ACTIVE">Active Only</option>
-          <option value="INACTIVE">Inactive Only</option>
-        </select>
+          <select value={filterMonth} onChange={(e) => { setFilterMonth(e.target.value); setCurrentPage(1); }} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+            <option value="ALL">All Months</option>
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+              <option key={m} value={m}>{getMonthName(m)}</option>
+            ))}
+          </select>
 
-        {/* Date range */}
-        <input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
-          className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-          title="Variant added from"
-        />
-        <span className="text-slate-400">to</span>
-        <input
-          type="date"
-          value={dateTo}
-          onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
-          className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-          title="Variant added to"
-        />
+          <select value={filterYear} onChange={(e) => { setFilterYear(e.target.value); setCurrentPage(1); }} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+            <option value="ALL">All Years</option>
+            {availableYears.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
 
-        {/* Sorting */}
-        <select
-          value={sortBy}
-          onChange={(e) => { setSortBy(e.target.value); setCurrentPage(1); }}
-          className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-        >
-          <option value="name">Sort by Name</option>
-          <option value="created">Sort by Created</option>
-          <option value="variantCount">Sort by Variant Count</option>
-        </select>
-        <select
-          value={sortDir}
-          onChange={(e) => { setSortDir(e.target.value); setCurrentPage(1); }}
-          className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-        >
-          <option value="asc">Ascending</option>
-          <option value="desc">Descending</option>
-        </select>
+          <select value={filterQuarter} onChange={(e) => { setFilterQuarter(e.target.value); setCurrentPage(1); }} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+            <option value="ALL">All Quarters</option>
+            <option value="1">Q1 (Jan-Mar)</option>
+            <option value="2">Q2 (Apr-Jun)</option>
+            <option value="3">Q3 (Jul-Sep)</option>
+            <option value="4">Q4 (Oct-Dec)</option>
+          </select>
 
-        {(filterStatus !== "ALL" || brandFilter !== "ALL" || search.trim() || dateFrom || dateTo) && (
-          <button
-            onClick={() => {
-              setFilterStatus("ALL");
-              setBrandFilter("ALL");
-              setSearch("");
-              setDateFrom("");
-              setDateTo("");
-              setCurrentPage(1);
-            }}
-            className="text-xs text-slate-500 hover:text-red-600 flex items-center gap-1"
-          >
-            <X size={14} /> Clear all
-          </button>
-        )}
+          {hasFilters && (
+            <button onClick={clearFilters} className="flex items-center gap-1 text-xs text-slate-500 hover:text-red-600">
+              <X size={14} /> Clear All
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -468,7 +497,9 @@ export default function VariantsBrowser({ onEditProduct }) {
                 <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
                   <Package className="mx-auto h-8 w-8 mb-2 opacity-40" />
                   <p className="font-semibold">No products found</p>
-                  {products.length === 0 ? "No products have variants set up yet." : "No products match your search/filter."}
+                  {hasFilters && (
+                    <button onClick={clearFilters} className="mt-2 text-xs text-blue-600 hover:underline">Clear filters</button>
+                  )}
                 </td>
               </tr>
             )}
@@ -477,66 +508,33 @@ export default function VariantsBrowser({ onEditProduct }) {
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-slate-500">Rows:</span>
-          <select
-            value={pageSize}
-            onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); setShowAllPages(false); }}
-            className="rounded-lg border px-3 py-1.5 text-sm"
-          >
-            {[10, 20, 50, 100].map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-          <span className="text-sm text-slate-500">
-            {filteredProducts.length > 0
-              ? `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, filteredProducts.length)} of ${filteredProducts.length}`
-              : "0 results"}
-          </span>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-slate-500">Rows:</span>
+            <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); setShowAllPages(false); }} className="rounded-lg border px-3 py-1.5 text-sm">
+              {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <span className="text-sm text-slate-500">
+              {filteredProducts.length > 0 ? `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, filteredProducts.length)} of ${filteredProducts.length}` : "0 results"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="rounded-lg border p-2 disabled:opacity-40">
+              <ChevronLeft size={16} />
+            </button>
+            {getPaginationItems().map((item, idx) => {
+              if (item === "...left" || item === "...right") {
+                return <button key={`ellipsis-${idx}`} onClick={() => setShowAllPages(true)} className="h-9 w-9 rounded-lg text-sm font-medium border hover:bg-slate-50" title="Show all pages">...</button>;
+              }
+              return <button key={item} onClick={() => setCurrentPage(item)} className={`h-9 w-9 rounded-lg text-sm font-medium ${currentPage === item ? "bg-blue-600 text-white" : "border hover:bg-slate-50"}`}>{item}</button>;
+            })}
+            <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="rounded-lg border p-2 disabled:opacity-40">
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            className="rounded-lg border p-2 disabled:opacity-40"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          {getPaginationItems().map((item, idx) => {
-            if (item === "...left" || item === "...right") {
-              return (
-                <button
-                  key={`ellipsis-${idx}`}
-                  onClick={() => setShowAllPages(true)}
-                  className="h-9 w-9 rounded-lg text-sm font-medium border hover:bg-slate-50"
-                  title="Show all pages"
-                >
-                  ...
-                </button>
-              );
-            }
-            return (
-              <button
-                key={item}
-                onClick={() => setCurrentPage(item)}
-                className={`h-9 w-9 rounded-lg text-sm font-medium ${
-                  currentPage === item ? "bg-blue-600 text-white" : "border hover:bg-slate-50"
-                }`}
-              >
-                {item}
-              </button>
-            );
-          })}
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-            className="rounded-lg border p-2 disabled:opacity-40"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

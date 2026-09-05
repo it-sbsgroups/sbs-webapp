@@ -21,13 +21,22 @@ const FALLBACK_BRANDING = {
 async function fetchBranding() {
   try {
     const base = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
-    const res = await fetch(`${base}/site/branding`, {
+    // The admin "Company Branding" page (LogoManager.jsx) saves into the
+    // single `header` config blob's `branding` section — via /site/header,
+    // see src/lib/headerSections.js. It does NOT write to /site/branding
+    // (that route exists on the backend but nothing on the frontend ever
+    // calls its PUT), so reading from /site/branding here always returned
+    // nothing and the favicon/company name silently fell back to the
+    // hardcoded defaults below. Read from the same place the admin panel
+    // actually writes to instead.
+    const res = await fetch(`${base}/site/header`, {
       // Revalidate every 5 min — dynamic without hitting the backend on every request.
       next: { revalidate: 300 },
     });
     if (!res.ok) return null;
     const json = await res.json();
-    return json?.data ?? json ?? null;
+    const header = json?.data ?? json ?? null;
+    return header?.branding ?? null;
   } catch {
     // Backend unreachable at build/request time — fall back gracefully rather
     // than breaking the whole site's <head>.

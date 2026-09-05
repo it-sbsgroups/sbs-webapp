@@ -30,7 +30,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { ApplicationsService } from '../applications/applications.service';
 import * as fs from 'fs';
 import * as path from 'path';
-import sharp from 'sharp'; // <-- default import
+import sharp from 'sharp';
 import { PDFDocument } from 'pdf-lib';
 
 @Injectable()
@@ -61,20 +61,6 @@ export class ProductsService {
     },
   };
 
-  /**
-   * MySQL/MariaDB's default collation (utf8mb4_general_ci / similar) is
-   * case-insensitive, but the `specifications` unique index is enforced by
-   * the DB, not by JS. A form (or the Gemini brochure-extraction merge) can
-   * easily end up with two *distinct* JS object keys — e.g. "Weight" and
-   * "weight" — that the database considers identical for
-   * @@unique([productId, key]). Inserting both in the same create/update
-   * throws P2002 and the whole save fails with a 500.
-   *
-   * This normalizes + dedupes specs case-insensitively before they ever
-   * reach Prisma, keeping the *last* value for any colliding key (last
-   * write wins, matching how the form's own state merging behaves) and
-   * trimming stray whitespace on both key and value.
-   */
   private dedupeSpecifications(specs?: Record<string, string>): [string, string][] {
     if (!specs) return [];
     const byLowerKey = new Map<string, [string, string]>();
@@ -167,8 +153,6 @@ export class ProductsService {
   }
 
   async create(dto: CreateProductDto) {
-    const sku = dto.sku || (await this.generateSku());
-
     const category = await this.prisma.category.findUnique({ where: { id: dto.categoryId } });
     if (!category) throw new BadRequestException('Category not found');
 
@@ -184,13 +168,11 @@ export class ProductsService {
       if (!brand) throw new BadRequestException('Brand not found');
     }
 
-    // Resolves the mixed id/name refs into concrete rows, creating any
-    // brand-new custom application names the admin typed on the fly.
     const applicationRefs = dto.applications?.length
       ? await this.applicationsService.findOrCreateByRefs(dto.applications)
       : [];
 
-    const createData = {
+    const buildCreateData = (sku: string) => ({
       data: {
         sku,
         name: dto.name,
@@ -211,7 +193,7 @@ export class ProductsService {
         categoryId: dto.categoryId,
         subcategoryId: dto.subcategoryId,
         brandId: dto.brandId,
-        videoUrl: dto.videoUrl, // 👈 added this line
+        videoUrl: dto.videoUrl,
         images: dto.images?.length
           ? {
               create: dto.images.map((img, i) => ({
@@ -239,17 +221,40 @@ export class ProductsService {
           : undefined,
       },
       include: this.productInclude,
-    };
+    });
 
     let created;
-    try {
-      created = await this.prisma.product.create(createData);
-    } catch (err) {
-      throw this.toFriendlyPrismaError(err, dto.sku);
+    let attempt = 0;
+    const maxAttempts = dto.sku ? 1 : 5;
+    let sku = dto.sku || (await this.generateSku());
+
+    while (true) {
+      attempt++;
+      try {
+        created = await this.prisma.product.create(buildCreateData(sku));
+        break;
+      } catch (err) {
+        const isSkuConflict =
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2002' &&
+          String(err.meta?.target ?? '').includes('sku');
+
+        if (err instanceof Prisma.PrismaClientKnownRequestError) {
+          console.error(
+            `[ProductsService.create] Prisma ${err.code} on attempt ${attempt}, target=`,
+            err.meta?.target,
+          );
+        }
+
+        if (isSkuConflict && attempt < maxAttempts) {
+          sku = await this.generateSku();
+          continue;
+        }
+
+        throw this.toFriendlyPrismaError(err, sku);
+      }
     }
 
-    // Fire-and-forget: alert subscribers who opted into new-product emails.
-    // Notification failures must never block product creation.
     if (created.isActive) {
       void this.notifications.handleNewProduct(created);
     }
@@ -257,11 +262,6 @@ export class ProductsService {
     return created;
   }
 
-  /**
-   * Turns a raw PrismaClientKnownRequestError (P2002 unique-constraint
-   * violations in particular) into a clean 400 the admin UI can actually
-   * show, instead of the generic 500 "Internal server error".
-   */
   private toFriendlyPrismaError(err: unknown, sku?: string) {
     if (
       err instanceof Prisma.PrismaClientKnownRequestError &&
@@ -281,6 +281,10 @@ export class ProductsService {
       if (targetStr.includes('slug')) {
         return new BadRequestException('A product with this name/slug already exists. Please choose a different name or set a custom slug.');
       }
+      if (targetStr.includes('ProductApplications')) {
+        return new BadRequestException('One of the selected application/tag areas is already attached to this product. Please remove the duplicate and save again.');
+      }
+      console.error('[ProductsService] Unhandled P2002 target:', target);
       return new BadRequestException(`A record with the same ${targetStr || 'value'} already exists.`);
     }
     return err;
@@ -316,8 +320,6 @@ export class ProductsService {
       await this.prisma.productCertification.deleteMany({ where: { productId: id } });
     }
 
-    // Resolves the mixed id/name refs into concrete rows, creating any
-    // brand-new custom application names the admin typed on the fly.
     const applicationRefs =
       dto.applications !== undefined
         ? await this.applicationsService.findOrCreateByRefs(dto.applications)
@@ -343,7 +345,7 @@ export class ProductsService {
     if (dto.categoryId !== undefined) data.categoryId = dto.categoryId;
     if (dto.subcategoryId !== undefined) data.subcategoryId = dto.subcategoryId;
     if (dto.brandId !== undefined) data.brandId = dto.brandId;
-    if (dto.videoUrl !== undefined) data.videoUrl = dto.videoUrl; 
+    if (dto.videoUrl !== undefined) data.videoUrl = dto.videoUrl;
 
     if (dto.images?.length) {
       data.images = {
@@ -372,8 +374,6 @@ export class ProductsService {
       };
     }
 
-    // `set` fully replaces the m2m selection with whatever the form last
-    // submitted (including clearing it out if the admin removed everything).
     if (applicationRefs !== undefined) {
       data.applications = { set: applicationRefs };
     }
@@ -419,10 +419,6 @@ export class ProductsService {
       errors: [],
     };
 
-    // categoryId isn't in the payload at all when the import row's Category
-    // name didn't match anything — fall back to a shared "Uncategorized"
-    // bucket rather than rejecting the row, since only Name should be
-    // strictly required for a bulk import.
     let fallbackCategoryId: string | null = null;
     const getFallbackCategoryId = async () => {
       if (fallbackCategoryId) return fallbackCategoryId;
@@ -468,12 +464,6 @@ export class ProductsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Column names below match TEMPLATE_COLUMNS in
-    // components/admin/products/ProductImportExport.jsx exactly (for the
-    // 16 importable fields) so an export can be re-uploaded through
-    // "Upload Filled Template" with zero manual edits — this is what
-    // makes a localhost -> hosted migration actually work. ID/Created At
-    // are extra reference columns the importer ignores.
     return products.map((p) => ({
       Name: p.name,
       SKU: p.sku,
@@ -491,9 +481,6 @@ export class ProductsService {
       'Meta Description': p.metaDescription || '',
       'Is Active': p.isActive ? 'Yes' : 'No',
       'Is Featured': p.isFeatured ? 'Yes' : 'No',
-      // Reference-only columns below (imported back in if you fill/edit
-      // Specifications, Certifications, or Image URLs — see mapping in
-      // ProductImportExport.jsx's confirmImport).
       Specifications: p.specifications?.map((s) => `${s.key}: ${s.value}`).join('; ') || '',
       Certifications: p.certifications?.map((c) => c.name).join('; ') || '',
       'Image URLs': p.images?.map((i) => i.url).join('; ') || '',
@@ -544,10 +531,6 @@ export class ProductsService {
     return related;
   }
 
-  // ============================================
-  // IMAGE UPLOAD (Cloudinary – unchanged)
-  // ============================================
-
   async uploadImage(file: Express.Multer.File, productId?: string) {
     if (!file.mimetype?.startsWith('image/')) {
       throw new BadRequestException('File must be an image');
@@ -572,16 +555,6 @@ export class ProductsService {
     };
   }
 
-  // ============================================
-  // BROCHURE – LOCAL STORAGE & COMPRESSION
-  // ============================================
-
-  /**
-   * Compress the uploaded file:
-   * - PDF → pdf‑lib (optimises)
-   * - Image → sharp (WebP, quality 80)
-   * Returns the final file path (the same as the original after replacement).
-   */
   async compressBrochure(file: Express.Multer.File): Promise<string> {
     const ext = path.extname(file.originalname).toLowerCase();
     const inputPath = file.path;
@@ -603,9 +576,6 @@ export class ProductsService {
     return inputPath;
   }
 
-  /**
-   * Update product with brochure metadata (local path).
-   */
   async updateBrochure(productId: string, data: {
     url: string;
     name: string;
@@ -615,7 +585,7 @@ export class ProductsService {
     return this.prisma.product.update({
       where: { id: productId },
       data: {
-        brochureUrl: data.url,             // relative path, e.g. "products/brochure/..."
+        brochureUrl: data.url,
         brochureName: data.name,
         brochureSize: data.size,
         brochureFormat: data.format,
@@ -625,9 +595,6 @@ export class ProductsService {
     });
   }
 
-  /**
-   * Delete brochure – remove file from disk and clear DB fields.
-   */
   async deleteBrochure(productId: string) {
     const product = await this.findOne(productId);
     if (product.brochureUrl) {
@@ -649,12 +616,6 @@ export class ProductsService {
     });
   }
 
-  /**
-   * Read the product's already-uploaded brochure off disk and ask Gemini to
-   * extract structured product data from it (name, model, description,
-   * key features, specifications). Purely a suggestion — nothing is saved
-   * here; the admin reviews and applies fields on the frontend.
-   */
   async extractBrochureMetadata(productId: string) {
     const product = await this.findOne(productId);
     if (!product.brochureUrl) {
@@ -674,10 +635,6 @@ export class ProductsService {
     return this.gemini.extractProductDataFromFile(fileBuffer, format);
   }
 
-  // ============================================
-  // PRE-LAUNCH / TEASER — "Notify Me" signups
-  // ============================================
-
   async notifyMe(productId: string, email: string) {
     const product = await this.findOne(productId);
     if (!product.isPrelaunch) {
@@ -686,7 +643,6 @@ export class ProductsService {
     try {
       await this.prisma.productLaunchNotify.create({ data: { productId, email } });
     } catch (err: any) {
-      // Unique constraint — they already signed up. Treat as success (idempotent).
       if (err?.code !== 'P2002') throw err;
     }
     const count = await this.prisma.productLaunchNotify.count({ where: { productId } });
@@ -706,17 +662,13 @@ export class ProductsService {
     return { count, entries };
   }
 
-  // ============================================
-  // PRODUCT VARIANTS (color/size/material/etc — optional, flexible attributes)
-  // ============================================
-
   private readonly variantInclude = {
     brand: { select: { id: true, name: true, logo: true, slug: true } },
     applications: { select: { id: true, name: true, isActive: true } },
   };
 
   async getVariants(productId: string) {
-    await this.findOne(productId); // 404s if the product doesn't exist
+    await this.findOne(productId);
     return this.prisma.productVariant.findMany({
       where: { productId },
       orderBy: { sortOrder: 'asc' },
@@ -751,7 +703,31 @@ export class ProductsService {
     if (!variant || variant.productId !== productId) {
       throw new NotFoundException('Variant not found for this product');
     }
+
     const { scalarFields, applicationIds } = this.variantWriteData(data);
+
+    // ✅ Clean specifications: ensure array of {key, value}
+    if (data.specifications !== undefined) {
+      scalarFields.specifications = Array.isArray(data.specifications)
+        ? data.specifications.map((spec) => ({
+            key: String(spec.key).trim(),
+            value: String(spec.value).trim(),
+          })).filter((spec) => spec.key && spec.value)
+        : [];
+    }
+
+    // ✅ Clean images: ensure array of strings
+    if (data.images !== undefined) {
+      scalarFields.images = Array.isArray(data.images)
+        ? data.images.filter((img) => typeof img === 'string' && img.trim() !== '')
+        : [];
+    }
+
+    // ✅ Remove any undefined fields
+    Object.keys(scalarFields).forEach((key) => {
+      if (scalarFields[key] === undefined) delete scalarFields[key];
+    });
+
     return this.prisma.productVariant.update({
       where: { id: variantId },
       data: {
@@ -849,13 +825,8 @@ export class ProductsService {
     });
   }
 
-  // ============================================
-  // PRODUCT DESIGN FILE – CLOUDINARY (CAD/artwork)
-  // ============================================
-
   async uploadDesignFile(productId: string, file: Express.Multer.File) {
     const product = await this.findOne(productId);
-    // Replacing an existing design file: clean up the old Cloudinary asset first.
     if (product.designFilePublicId) {
       await this.cloudinary.deleteDesignFile(
         product.designFilePublicId,
@@ -897,13 +868,14 @@ export class ProductsService {
     });
   }
 
-  // ============================================
-  // PRIVATE HELPERS
-  // ============================================
-
   private async generateSku(): Promise<string> {
-    const count = await this.prisma.product.count();
-    return `PROD-${String(count + 1).padStart(4, '0')}`;
+    const rows = await this.prisma.$queryRaw<{ maxNum: number | bigint | string | null }[]>`
+      SELECT MAX(CAST(SUBSTRING(sku, 6) AS UNSIGNED)) AS maxNum
+      FROM products
+      WHERE sku LIKE 'PROD-%'
+    `;
+    const max = Number(rows[0]?.maxNum ?? 0);
+    return `PROD-${String(max + 1).padStart(4, '0')}`;
   }
 
   private slugify(text: string): string {

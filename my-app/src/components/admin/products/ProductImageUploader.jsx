@@ -1,7 +1,9 @@
+// src/components/admin/products/ProductImageUploader.jsx
+
 "use client";
 
 import { useState, useRef } from "react";
-import { Upload, Link2, X, Loader2, ImagePlus } from "lucide-react";
+import { Upload, Link2, X, Loader2, ImagePlus, GripVertical } from "lucide-react";
 import productsApi from "@/lib/productsApi";
 
 /**
@@ -11,6 +13,7 @@ import productsApi from "@/lib/productsApi";
  * - Files are sent to the backend which converts to WebP and compresses
  *   every image to under 100KB before storing on Cloudinary.
  * - Users can also paste a direct image URL to use an external image as-is.
+ * - Images can be reordered by dragging and dropping.
  *
  * `images` is the current array: [{ url, title, angle, altText, bytes? }, ...]
  * `onChange(nextImages)` is called whenever the list changes.
@@ -22,6 +25,8 @@ export default function ProductImageUploader({ images = [], onChange, productId 
   const [error, setError] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [linkTitle, setLinkTitle] = useState("");
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
   const fileInputRef = useRef(null);
 
   const update = (next) => onChange?.(next);
@@ -81,6 +86,37 @@ export default function ProductImageUploader({ images = [], onChange, productId 
   };
 
   const removeImage = (index) => update((images || []).filter((_, i) => i !== index));
+
+  // ── Drag & Drop reorder handlers ──
+  const handleDragStart = (index) => {
+    setDraggedIndex(index);
+    setDragOverIndex(index);
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDropReorder = (e, targetIndex) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    const newImages = [...(images || [])];
+    const [movedItem] = newImages.splice(draggedIndex, 1);
+    newImages.splice(targetIndex, 0, movedItem);
+    update(newImages);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
 
   const fmtSize = (b) =>
     !b ? "" : b < 1024 ? `${b} B` : `${(b / 1024).toFixed(0)} KB`;
@@ -167,16 +203,34 @@ export default function ProductImageUploader({ images = [], onChange, productId 
         </div>
       </div>
 
-      {/* PREVIEW GRID */}
+      {/* PREVIEW GRID (with drag-and-drop reorder) */}
       {(images || []).length > 0 && (
         <div className="grid grid-cols-4 gap-3">
           {images.map((img, i) => (
-            <div key={i} className="relative rounded-xl border p-2 group">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+            <div
+              key={i}
+              className={`relative rounded-xl border p-2 group transition-all ${
+                draggedIndex === i
+                  ? "opacity-50 ring-2 ring-blue-500"
+                  : dragOverIndex === i
+                  ? "ring-2 ring-blue-300"
+                  : ""
+              }`}
+              draggable
+              onDragStart={(e) => handleDragStart(i)}
+              onDragOver={(e) => handleDragOver(e, i)}
+              onDrop={(e) => handleDropReorder(e, i)}
+              onDragEnd={handleDragEnd}
+            >
+              {/* Drag handle */}
+              <div className="absolute top-1 left-1 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <GripVertical size={14} className="text-slate-400" />
+              </div>
+
               <img
                 src={img.url}
                 alt={img.title || "Image"}
-                className="h-20 w-full object-cover rounded-lg"
+                className="h-20 w-full object-cover rounded-lg cursor-grab"
               />
               <p className="mt-1 text-[10px] text-slate-500 truncate">
                 {img.title || "Image"}
@@ -189,6 +243,11 @@ export default function ProductImageUploader({ images = [], onChange, productId 
               >
                 <X size={10} />
               </button>
+
+              {/* Drop indicator when dragging over */}
+              {dragOverIndex === i && draggedIndex !== i && (
+                <div className="absolute inset-0 rounded-xl border-2 border-blue-400 bg-blue-100/20 pointer-events-none" />
+              )}
             </div>
           ))}
         </div>
